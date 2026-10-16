@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>04 · Caching | Tech Concepts Prep</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<nav class="top"><a href="03-scalability-reliability.html">← Scalability</a><span class="here">04 · Caching</span><a href="05-databases-data.html">Next: Databases →</a></nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">Section 04</div>
+  <h1>Caching: strategies, expiration &amp; pitfalls</h1>
+  <p>A cache keeps a copy of data somewhere faster, so you don't repeat expensive work. It's the cheapest performance win, and the easiest way to serve stale or wrong data.</p>
+  <div class="toc">
+    <a href="#layers" class="added">Where to cache</a>
+    <a href="#strategies">Caching strategies</a>
+    <a href="#expiration">Expiration strategies</a>
+    <a href="#eviction" class="added">Eviction policies</a>
+    <a href="#problems" class="added">Stampede, penetration, avalanche</a>
+    <a href="#cdn" class="added">CDN</a>
+    <a href="#redis" class="added">Redis vs Memcached</a>
+  </div>
+</header>
+
+<!-- LAYERS -->
+<section class="concept" id="layers">
+  <h2><span class="num">4.1</span> Caching basics: where can you cache? <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Cache as close to the user as you can, for as long as the data can safely be stale.</p>
+  <div class="flow">
+    <div class="n">Browser / app<small>Cache-Control</small></div><div class="ar">→</div>
+    <div class="n t">CDN edge<small>static, public GETs</small></div><div class="ar">→</div>
+    <div class="n p">API gateway / APIM<small>response cache</small></div><div class="ar">→</div>
+    <div class="n g">App in-memory<small>L1, per instance</small></div><div class="ar">→</div>
+    <div class="n a">Distributed cache<small>Redis, L2, shared</small></div><div class="ar">→</div>
+    <div class="n s">Database<small>buffer pool</small></div>
+  </div>
+  <div class="cols2">
+    <div class="box green"><h4>✅ Good to cache</h4><ul><li>Read-heavy, rarely changing data (reference data, product catalogue, config)</li><li>Expensive results (aggregations, third-party API calls)</li><li>Session data, tokens, rate-limit counters</li></ul></div>
+    <div class="box red"><h4>❌ Be careful</h4><ul><li>Balances, stock levels, anything that must be exactly right</li><li>Per-user sensitive data in shared caches (PII, auth)</li><li>Data that changes on almost every write</li></ul></div>
+  </div>
+  <div class="remember"><ul>
+    <li><b>Hit ratio</b> = hits ÷ (hits + misses). Aim high (often &gt;80–90%) or the cache isn't paying for itself.</li>
+    <li>"There are only two hard things in computer science: cache invalidation and naming things." (Phil Karlton)</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>HybridCache</b> ⭐</td><td><code>Microsoft.Extensions.Caching.Hybrid</code></td><td>Default choice: in-memory L1 + distributed L2 in one API, with stampede protection and tag invalidation</td></tr>
+    <tr><td><b>IMemoryCache</b></td><td><span class="pill builtin">built-in</span> <code>Microsoft.Extensions.Caching.Memory</code></td><td>Per-instance in-process cache (L1 only)</td></tr>
+    <tr><td><b>IDistributedCache</b></td><td><code>Microsoft.Extensions.Caching.StackExchangeRedis</code> (or <code>.SqlServer</code>)</td><td>Shared cache across all instances (L2)</td></tr>
+    <tr><td><b>Output caching</b></td><td><span class="pill builtin">built-in</span> ASP.NET Core (<code>AddOutputCache</code>); Redis store: <code>Microsoft.AspNetCore.OutputCaching.StackExchangeRedis</code></td><td>Cache whole HTTP responses on the server</td></tr>
+    <tr><td><b>Response caching</b></td><td><span class="pill builtin">built-in</span> <code>[ResponseCache]</code> / <code>Cache-Control</code> headers</td><td>Let browsers and CDNs cache responses</td></tr>
+  </table>
+<pre class="code"><code>var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddStackExchangeRedisCache(o =&gt;
+    o.Configuration = builder.Configuration.GetConnectionString("redis")); // L2 (shared)
+builder.Services.AddHybridCache();   // L1 memory + the L2 registered above
+builder.Services.AddOutputCache();   // full-response cache
+
+var app = builder.Build();
+app.UseOutputCache();
+app.MapGet("/products", GetProducts)
+   .CacheOutput(p =&gt; p.Expire(TimeSpan.FromMinutes(5)).Tag("products"));</code></pre>
+</div>
+  </section>
+
+<!-- STRATEGIES -->
+<section class="concept" id="strategies">
+  <h2><span class="num">4.2</span> Caching strategies (read &amp; write patterns)</h2>
+  <p class="oneliner">They answer two questions: who loads the cache on a read, and what happens to the cache on a write?</p>
+
+  <div class="grid wide">
+    <div class="box blue">
+      <h4>1. Cache-aside (lazy loading) ⭐ most common</h4>
+      <div class="flow" style="margin:8px 0;padding:10px"><div class="n">App</div><div class="ar">→<small>1 get</small></div><div class="n a">Cache</div><div class="ar">miss →<small>2 read</small></div><div class="n s">DB</div><div class="ar">→<small>3 set</small></div><div class="n a">Cache</div></div>
+      <ul><li>The app manages the cache. Data is loaded only when someone asks for it.</li><li>➕ Cache failure isn't fatal. Only hot data gets cached.</li><li>➖ First request is slow (miss). Data can go stale.</li></ul>
+    </div>
+    <div class="box blue">
+      <h4>2. Read-through</h4>
+      <div class="flow" style="margin:8px 0;padding:10px"><div class="n">App</div><div class="ar">→</div><div class="n a">Cache<small>loads from DB on miss</small></div><div class="ar">→</div><div class="n s">DB</div></div>
+      <ul><li>The cache library or provider fetches from the DB on a miss.</li><li>➕ Simpler app code.</li><li>➖ Needs a cache that supports loaders. Same first-miss cost.</li></ul>
+    </div>
+    <div class="box green">
+      <h4>3. Write-through</h4>
+      <div class="flow" style="margin:8px 0;padding:10px"><div class="n">App</div><div class="ar">→<small>write</small></div><div class="n a">Cache</div><div class="ar">→<small>sync</small></div><div class="n s">DB</div></div>
+      <ul><li>Every write goes to the cache and the DB at the same time.</li><li>➕ Cache is always fresh. Reads are fast.</li><li>➖ Slower writes. Caches data nobody may read.</li></ul>
+    </div>
+    <div class="box amber">
+      <h4>4. Write-behind (write-back)</h4>
+      <div class="flow" style="margin:8px 0;padding:10px"><div class="n">App</div><div class="ar">→</div><div class="n a">Cache</div><div class="ar">⇢<small>async batch</small></div><div class="n s">DB</div></div>
+      <ul><li>Write to the cache now, flush to the DB later.</li><li>➕ Very fast writes. Absorbs spikes.</li><li>➖ <b>Data loss risk</b> if the cache dies before flushing.</li></ul>
+    </div>
+    <div class="box purple">
+      <h4>5. Write-around</h4>
+      <div class="flow" style="margin:8px 0;padding:10px"><div class="n">App</div><div class="ar">→<small>write</small></div><div class="n s">DB</div><div class="ar">…</div><div class="n a">Cache<small>filled on later read</small></div></div>
+      <ul><li>Writes skip the cache. Usually paired with cache-aside.</li><li>➕ Data that's written but never read doesn't fill the cache.</li><li>➖ A read right after a write is a miss.</li></ul>
+    </div>
+    <div class="box teal">
+      <h4>6. Refresh-ahead</h4>
+      <div class="flow" style="margin:8px 0;padding:10px"><div class="n a">Cache</div><div class="ar">↻<small>refresh before TTL ends</small></div><div class="n s">DB</div></div>
+      <ul><li>Hot keys reload in the background just before they expire.</li><li>➕ No miss spikes on hot data.</li><li>➖ Wasted work if you predict wrong.</li></ul>
+    </div>
+  </div>
+
+  <div class="tablewrap"><table>
+    <tr><th>Strategy</th><th>Read speed</th><th>Write speed</th><th>Freshness</th><th>Risk</th><th>Use when</th></tr>
+    <tr><td>Cache-aside</td><td>Fast after first miss</td><td>Normal</td><td>Stale until TTL or invalidation</td><td>Low</td><td>General purpose, read-heavy</td></tr>
+    <tr><td>Read-through</td><td>Same</td><td>Normal</td><td>Same</td><td>Low</td><td>You want cleaner app code</td></tr>
+    <tr><td>Write-through</td><td>Fast</td><td>Slower</td><td>High</td><td>Low</td><td>Data read soon after it's written</td></tr>
+    <tr><td>Write-behind</td><td>Fast</td><td>Fastest</td><td>High in cache</td><td>Data loss</td><td>Counters, metrics, high write rates</td></tr>
+    <tr><td>Write-around</td><td>Miss after write</td><td>Normal</td><td>High</td><td>Low</td><td>Write-once, rarely read (logs)</td></tr>
+    <tr><td>Refresh-ahead</td><td>Fastest</td><td>Normal</td><td>High</td><td>Wasted loads</td><td>Predictable hot keys</td></tr>
+  </table></div>
+  <div class="remember"><ul>
+    <li>With cache-aside, on update: <b>write the DB, then delete the cache key</b>. Don't update the key, because two racing writers can leave the wrong value behind.</li>
+    <li>Always set a TTL as a safety net, even when you also invalidate explicitly.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Strategy</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Cache-aside / read-through</b></td><td><code>HybridCache.GetOrCreateAsync</code></td><td>Checks the cache, runs your factory on a miss, then stores the result. Effectively read-through</td></tr>
+    <tr><td><b>Write-through</b></td><td><code>HybridCache.SetAsync</code> after the DB write</td><td>Write the DB and cache in the same code path</td></tr>
+    <tr><td><b>Write-behind</b></td><td><span class="pill builtin">built-in</span> <code>System.Threading.Channels</code> + <code>BackgroundService</code></td><td>Queue writes in memory and flush them to the DB in batches. Accept the data-loss risk, or use a durable queue</td></tr>
+    <tr><td><b>Refresh-ahead</b></td><td><code>ZiggyCreatures.FusionCache</code> (<code>EagerRefreshThreshold</code>)</td><td>Refreshes hot keys in the background before they expire. FusionCache also adds fail-safe: it serves stale data if the DB is down</td></tr>
+  </table>
+<pre class="code"><code>public sealed class ProductService(HybridCache cache, AppDbContext db)
+{
+    // Cache-aside: on a miss, the factory runs once and the result is cached
+    public ValueTask&lt;Product?&gt; GetAsync(int id, CancellationToken ct) =&gt;
+        cache.GetOrCreateAsync($"product:{id}",
+            async token =&gt; await db.Products.FindAsync([id], token),
+            cancellationToken: ct);
+
+    public async Task UpdateAsync(Product product, CancellationToken ct)
+    {
+        db.Products.Update(product);
+        await db.SaveChangesAsync(ct);                       // 1. write the DB
+        await cache.RemoveAsync($"product:{product.Id}", ct); // 2. then delete the key
+    }
+}</code></pre>
+</div>
+  <div class="post">
+    <p>6 caching strategies every engineer should know 🧠</p>
+    <p>1️⃣ Cache-aside: app checks the cache, loads from the DB on a miss</p>
+    <p>2️⃣ Read-through: cache loads from the DB for you</p>
+    <p>3️⃣ Write-through: write cache + DB together</p>
+    <p>4️⃣ Write-behind: write cache now, DB later (fast but risky)</p>
+    <p>5️⃣ Write-around: writes skip the cache</p>
+    <p>6️⃣ Refresh-ahead: refresh hot keys before they expire</p>
+    <p>Which one runs your system? 👇 #SystemDesign #Caching #Redis</p>
+  </div>
+</section>
+
+<!-- EXPIRATION -->
+<section class="concept" id="expiration">
+  <h2><span class="num">4.3</span> Cache expiration strategies</h2>
+  <p class="oneliner">Expiration decides <b>when an entry stops being valid</b>. (Eviction decides <b>what to throw out when memory is full</b>.)</p>
+  <div class="grid">
+    <div class="box"><h4>⏳ Absolute TTL</h4><p>Expires X seconds after it's written. Simple and predictable. Example: FX rates, TTL 60 s.</p></div>
+    <div class="box"><h4>🔄 Sliding expiration</h4><p>The timer resets on each access. Good for sessions ("log out after 15 min idle"). Hot data may never refresh, so add an absolute cap.</p></div>
+    <div class="box"><h4>🎯 Explicit / event-based invalidation</h4><p>Delete or update the key when the source changes, triggered by the write path, an event or CDC. Freshest, but more moving parts.</p></div>
+    <div class="box"><h4>🏷 Versioned keys</h4><p><code>product:42:v7</code>. Bump the version on change and old keys age out. Great for CDN assets (<code>app.3f9a.js</code>).</p></div>
+    <div class="box"><h4>🌓 Stale-while-revalidate</h4><p>Serve the stale value right away and refresh in the background. Users never wait.</p></div>
+    <div class="box"><h4>🎲 TTL with jitter</h4><p>TTL = 300 s ± random 30 s, so many keys don't expire at the same moment (prevents an avalanche).</p></div>
+  </div>
+  <h3>HTTP caching headers (browser, CDN, APIM)</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Header</th><th>Meaning</th></tr>
+    <tr><td><code>Cache-Control: max-age=600</code></td><td>Fresh for 10 minutes</td></tr>
+    <tr><td><code>s-maxage=3600</code></td><td>TTL for shared caches (CDN) only</td></tr>
+    <tr><td><code>no-cache</code></td><td>May store, but must revalidate before use</td></tr>
+    <tr><td><code>no-store</code></td><td>Never store (sensitive data)</td></tr>
+    <tr><td><code>private</code> / <code>public</code></td><td>Browser only / CDN allowed</td></tr>
+    <tr><td><code>ETag</code> + <code>If-None-Match</code></td><td>Server replies <b>304 Not Modified</b> if unchanged, which saves bandwidth</td></tr>
+  </table></div>
+  <div class="remember"><ul>
+    <li>Pick the TTL from the business rule: "How stale is acceptable?" Not from a guess.</li>
+    <li><b>Short TTL</b> = fresher but more DB load. <b>Long TTL</b> = cheaper but staler.</li>
+    <li>Invalidating across instances: use pub/sub (Redis keyspace notifications) or events to clear L1 caches.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Expiration type</th><th>Library / API</th></tr>
+    <tr><td><b>Absolute TTL</b></td><td><code>HybridCacheEntryOptions.Expiration</code> / <code>MemoryCacheEntryOptions.AbsoluteExpirationRelativeToNow</code></td></tr>
+    <tr><td><b>Sliding</b></td><td><code>MemoryCacheEntryOptions.SlidingExpiration</code> (add an absolute cap)</td></tr>
+    <tr><td><b>Event / tag invalidation</b></td><td><code>HybridCache.RemoveAsync</code> / <code>RemoveByTagAsync</code>; output cache <code>IOutputCacheStore.EvictByTagAsync</code></td></tr>
+    <tr><td><b>Change tokens</b></td><td><code>CancellationChangeToken</code> / <code>IChangeToken</code> on <code>IMemoryCache</code> entries</td></tr>
+    <tr><td><b>HTTP caching</b></td><td><code>[ResponseCache]</code>, <code>Response.GetTypedHeaders().CacheControl</code>, <code>EntityTagHeaderValue</code> for ETag / 304</td></tr>
+  </table>
+<pre class="code"><code>// TTL with jitter + tags, so a whole group can be invalidated by one event
+var options = new HybridCacheEntryOptions
+{
+    Expiration = TimeSpan.FromMinutes(5) + TimeSpan.FromSeconds(Random.Shared.Next(30)),
+    LocalCacheExpiration = TimeSpan.FromMinutes(1)
+};
+var rate = await cache.GetOrCreateAsync($"fx:{pair}", LoadRateAsync, options, tags: ["fx"]);
+await cache.RemoveByTagAsync("fx");      // e.g. when a "RatesPublished" event arrives
+
+// Sliding expiration with an absolute cap (sessions)
+memoryCache.Set(sessionId, session, new MemoryCacheEntryOptions
+{
+    SlidingExpiration = TimeSpan.FromMinutes(15),
+    AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(8)
+});</code></pre>
+  <p class="warn"><code>RemoveAsync</code> / <code>RemoveByTagAsync</code> invalidate this server's L1 and the shared L2, but <b>not</b> the in-memory L1 on other servers. Keep <code>LocalCacheExpiration</code> short, so stale L1 copies age out quickly.</p>
+</div>
+  </section>
+
+<!-- EVICTION -->
+<section class="concept" id="eviction">
+  <h2><span class="num">4.4</span> Cache eviction policies <span class="tag-added">Added</span></h2>
+  <p class="oneliner">When the cache is full, which entry goes?</p>
+  <div class="tablewrap"><table>
+    <tr><th>Policy</th><th>Evicts</th><th>Good for</th></tr>
+    <tr><td><b>LRU</b>: Least Recently Used</td><td>Entry not touched for the longest time</td><td>Default choice. Recent = likely to be used again</td></tr>
+    <tr><td><b>LFU</b>: Least Frequently Used</td><td>Entry with the fewest hits</td><td>Stable popularity (top products)</td></tr>
+    <tr><td><b>FIFO</b></td><td>Oldest inserted</td><td>Simple, ignores usage</td></tr>
+    <tr><td><b>MRU</b></td><td>Most recently used</td><td>Scans where the recent item won't be reused</td></tr>
+    <tr><td><b>Random</b></td><td>Any entry</td><td>Cheap, surprisingly OK</td></tr>
+    <tr><td><b>TTL-based</b></td><td>Entry closest to expiry</td><td>Redis <code>volatile-ttl</code></td></tr>
+  </table></div>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"LRU cache, capacity 3","interval":2200,
+ "frames":[
+  {"label":"access A","caption":"Miss: A is loaded and goes to the front.",
+   "rows":[
+    {"label":"Request","items":[{"t":"A","sub":"access","c":"blue","big":true,"w":80}]},
+    {"label":"Cache","items":[{"t":"A","sub":"most recent","c":"green","big":true,"w":110},{"k":"arrow","g":"→"},{"t":"·","sub":"empty","c":"off","big":true,"w":110},{"k":"arrow","g":"→"},{"t":"·","sub":"empty","c":"off","big":true,"w":110}]},
+    {"label":"Evicted","items":[{"k":"text","t":"nothing"}]}
+   ]},
+  {"label":"access B","caption":"Miss: B goes to the front, A shifts back.",
+   "rows":[
+    {"label":"Request","items":[{"t":"B","sub":"access","c":"blue","big":true,"w":80}]},
+    {"label":"Cache","items":[{"t":"B","sub":"most recent","c":"green","big":true,"w":110},{"k":"arrow","g":"→"},{"t":"A","sub":"","c":"blue","big":true,"w":110},{"k":"arrow","g":"→"},{"t":"·","sub":"empty","c":"off","big":true,"w":110}]},
+    {"label":"Evicted","items":[{"k":"text","t":"nothing"}]}
+   ]},
+  {"label":"access C","caption":"Miss: C goes to the front. The cache is now full.",
+   "rows":[
+    {"label":"Request","items":[{"t":"C","sub":"access","c":"blue","big":true,"w":80}]},
+    {"label":"Cache","items":[{"t":"C","sub":"most recent","c":"green","big":true,"w":110},{"k":"arrow","g":"→"},{"t":"B","sub":"","c":"blue","big":true,"w":110},{"k":"arrow","g":"→"},{"t":"A","sub":"least recent","c":"blue","big":true,"w":110}]},
+    {"label":"Evicted","items":[{"k":"text","t":"nothing"}]}
+   ]},
+  {"label":"access A","caption":"Hit: A moves to the front. B is now the least recently used.","ms":2600,
+   "rows":[
+    {"label":"Request","items":[{"t":"A","sub":"access","c":"blue","big":true,"w":80}]},
+    {"label":"Cache","items":[{"t":"A","sub":"hit, moved to front","c":"amber","big":true,"w":110},{"k":"arrow","g":"→"},{"t":"C","sub":"","c":"blue","big":true,"w":110},{"k":"arrow","g":"→"},{"t":"B","sub":"least recent","c":"blue","big":true,"w":110}]},
+    {"label":"Evicted","items":[{"k":"text","t":"nothing"}]}
+   ]},
+  {"label":"access D","caption":"Miss and the cache is full: <b>B is evicted</b> (least recently used). D goes to the front.","ms":3400,
+   "rows":[
+    {"label":"Request","items":[{"t":"D","sub":"access","c":"blue","big":true,"w":80}]},
+    {"label":"Cache","items":[{"t":"D","sub":"most recent","c":"green","big":true,"w":110},{"k":"arrow","g":"→"},{"t":"A","sub":"","c":"blue","big":true,"w":110},{"k":"arrow","g":"→"},{"t":"C","sub":"least recent","c":"blue","big":true,"w":110}]},
+    {"label":"Evicted","items":[{"t":"B","sub":"evicted","c":"red","big":true,"w":80}]}
+   ]}
+ ]}
+</script></figure>
+<p class="tip">Implementation: <b>HashMap + doubly linked list</b> gives O(1) get and put. The map finds the entry, and the list keeps the usage order (move to front on access, drop from the tail when full). A classic interview question.</p>
+  <div class="remember"><ul><li>Redis policies: <code>noeviction</code>, <code>allkeys-lru</code>, <code>volatile-lru</code>, <code>allkeys-lfu</code>, <code>volatile-lfu</code>, <code>allkeys-random</code>, <code>volatile-ttl</code>. "volatile" = only keys that have a TTL.</li></ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Use it for</th></tr>
+    <tr><td><code>MemoryCacheOptions.SizeLimit</code> + entry <code>Size</code></td><td>Cap the in-process cache. On compaction, low-priority and least-recently-used entries go first</td></tr>
+    <tr><td><code>CacheItemPriority</code> (<code>Low</code> … <code>NeverRemove</code>)</td><td>Protect important entries from eviction</td></tr>
+    <tr><td><code>MemoryCache.Compact(0.25)</code></td><td>Free 25% of entries on demand</td></tr>
+    <tr><td>Redis <code>maxmemory-policy</code></td><td>A server setting (e.g. <code>allkeys-lru</code>), not client code. Set it in Azure Managed Redis / Azure Cache for Redis</td></tr>
+  </table>
+  <p>Interview version: an O(1) LRU in C# with <code>Dictionary</code> + <code>LinkedList</code> (not thread-safe; wrap it in a <code>Lock</code> if it's shared):</p>
+<pre class="code"><code>public sealed class LruCache&lt;TKey, TValue&gt;(int capacity) where TKey : notnull
+{
+    private readonly Dictionary&lt;TKey, LinkedListNode&lt;(TKey Key, TValue Value)&gt;&gt; _map = new();
+    private readonly LinkedList&lt;(TKey Key, TValue Value)&gt; _list = new();
+
+    public bool TryGet(TKey key, out TValue value)
+    {
+        if (_map.TryGetValue(key, out var node))
+        {
+            _list.Remove(node); _list.AddFirst(node);      // now most recently used
+            value = node.Value.Value; return true;
+        }
+        value = default!; return false;
+    }
+
+    public void Put(TKey key, TValue value)
+    {
+        if (_map.TryGetValue(key, out var existing)) _list.Remove(existing);
+        else if (_map.Count == capacity)
+        {
+            var lru = _list.Last!;                          // least recently used
+            _list.RemoveLast(); _map.Remove(lru.Value.Key);
+        }
+        _map[key] = _list.AddFirst((key, value));
+    }
+}</code></pre>
+</div>
+  </section>
+
+<!-- PROBLEMS -->
+<section class="concept" id="problems">
+  <h2><span class="num">4.5</span> Cache problems &amp; fixes <span class="tag-added">Added</span></h2>
+  <p class="oneliner">The classic ways caches fail in production, and the standard fix for each.</p>
+  <div class="grid wide">
+    <div class="box red"><h4>🐘 Cache stampede (thundering herd)</h4><p>A hot key expires and 10,000 requests hit the DB at once.</p><ul><li>Lock or <b>request coalescing</b> (only one request rebuilds)</li><li>Stale-while-revalidate, refresh-ahead</li><li>Probabilistic early expiry</li></ul></div>
+    <div class="box red"><h4>🕳 Cache penetration</h4><p>Requests for keys that <b>don't exist</b> always miss and hit the DB (often an attack).</p><ul><li>Cache "null" results with a short TTL</li><li><b>Bloom filter</b> of valid keys</li><li>Input validation, rate limiting</li></ul></div>
+    <div class="box red"><h4>🏔 Cache avalanche</h4><p>Many keys expire together, or the cache cluster goes down, and the DB is flooded.</p><ul><li>TTL jitter</li><li>Highly available cache cluster, multi-level cache</li><li>Circuit breaker and rate limiting on the DB</li></ul></div>
+    <div class="box amber"><h4>🔥 Hot key</h4><p>One key (a celebrity or a promotion) overloads a single cache node.</p><ul><li>Local L1 cache in front</li><li>Replicate the key (<code>key#1..#N</code>)</li></ul></div>
+    <div class="box amber"><h4>🔀 Inconsistency</h4><p>Cache and DB disagree after a race or a failed invalidation.</p><ul><li>Update the DB, then delete the key</li><li>Delayed double delete</li><li>CDC-driven invalidation (Debezium → delete key)</li></ul></div>
+    <div class="box amber"><h4>🧳 Big keys</h4><p>Huge values block a single-threaded Redis and saturate the network.</p><ul><li>Split values, compress, use hashes</li></ul></div>
+  </div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Problem</th><th>Library / API</th></tr>
+    <tr><td><b>Stampede</b></td><td><code>HybridCache</code>: concurrent callers for the same key share one factory call. <code>FusionCache</code>: the same, plus eager refresh</td></tr>
+    <tr><td><b>Penetration</b></td><td>Cache "not found" results with a short TTL. Bloom filter: <code>NRedisStack</code> (<code>db.BF()</code>, needs Redis with the Bloom module, e.g. Azure Managed Redis)</td></tr>
+    <tr><td><b>Avalanche</b></td><td>TTL jitter (<code>Random.Shared</code>), <code>FusionCache</code> fail-safe (serve stale data), a Polly circuit breaker in front of the DB (<code>Microsoft.Extensions.Resilience</code>)</td></tr>
+    <tr><td><b>Hot key</b></td><td>The L1 in <code>HybridCache</code> absorbs repeat reads on each instance</td></tr>
+    <tr><td><b>Inconsistency</b></td><td>Update the DB, then <code>RemoveAsync</code>; or CDC-driven invalidation (Cosmos DB change feed / Kafka consumer → <code>RemoveAsync</code>)</td></tr>
+  </table>
+<pre class="code"><code>// Penetration guard: reject IDs that can't exist before touching the cache or DB
+var bloom = redis.GetDatabase().BF();
+if (!await bloom.ExistsAsync("accounts:valid", accountId))
+    return Results.NotFound();</code></pre>
+</div>
+  </section>
+
+<!-- CDN -->
+<section class="concept" id="cdn">
+  <h2><span class="num">4.6</span> CDN (Content Delivery Network) <span class="tag-added">Added</span></h2>
+  <p class="oneliner">A worldwide network of edge servers that cache content close to users, cutting latency and load on your origin.</p>
+  <div class="flow">
+    <div class="n">User in Perth</div><div class="ar">→</div><div class="n t">Edge POP (Perth)<small>HIT → ~10 ms</small></div><div class="ar">miss →</div><div class="n s">Origin (Sydney)<small>App / Blob storage</small></div>
+  </div>
+  <ul>
+    <li><b>Pull CDN</b>: the edge fetches from the origin on the first request (most common). <b>Push CDN</b>: you upload content ahead of time.</li>
+    <li>Cache static assets (JS, CSS, images, video) and public GET APIs. Dynamic or personalised content gets "acceleration" (optimised routing) but isn't cached.</li>
+    <li>Extras: TLS at the edge, WAF, DDoS protection, compression, geo-blocking.</li>
+    <li>Examples: Azure Front Door, Akamai, Cloudflare, Amazon CloudFront.</li>
+  </ul>
+  <div class="remember"><ul><li>Purging is slow and costly. Prefer <b>versioned file names</b> (cache busting).</li><li>Watch the cache key: query strings and headers can fragment the cache.</li></ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>MapStaticAssets</b></td><td><span class="pill builtin">built-in</span> ASP.NET Core</td><td>Fingerprinted file names, build-time compression, ETags and long cache headers. CDN-friendly cache busting</td></tr>
+    <tr><td><b>Cache headers</b></td><td><span class="pill builtin">built-in</span> <code>[ResponseCache]</code> / <code>CacheControlHeaderValue</code></td><td><code>public, max-age, s-maxage</code> for edge caching</td></tr>
+    <tr><td><b>Purge</b></td><td><code>Azure.ResourceManager.Cdn</code> (Front Door / CDN endpoints)</td><td>Purge content from a release pipeline when versioned names aren't possible</td></tr>
+  </table>
+</div>
+  </section>
+
+<!-- REDIS -->
+<section class="concept" id="redis">
+  <h2><span class="num">4.7</span> Redis vs Memcached <span class="tag-added">Added</span></h2>
+  <div class="tablewrap"><table>
+    <tr><th></th><th>Redis</th><th>Memcached</th></tr>
+    <tr><td>Data types</td><td>Strings, hashes, lists, sets, sorted sets, streams, JSON, vectors</td><td>Strings only</td></tr>
+    <tr><td>Persistence</td><td>Optional (RDB snapshots, AOF log)</td><td>None</td></tr>
+    <tr><td>Replication / HA</td><td>Yes (replicas, Sentinel, Cluster)</td><td>No (client-side sharding)</td></tr>
+    <tr><td>Extras</td><td>Pub/sub, Lua, TTLs, rate limiting, locks, leaderboards</td><td>Simple, multi-threaded</td></tr>
+    <tr><td>Pick when</td><td>Almost always today</td><td>Pure, simple key-value cache at huge scale</td></tr>
+  </table></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Package</th><th>Use it for</th></tr>
+    <tr><td><code>StackExchange.Redis</code></td><td>The standard Redis client: strings, hashes, sorted sets, pub/sub, Lua, transactions</td></tr>
+    <tr><td><code>Microsoft.Extensions.Caching.StackExchangeRedis</code></td><td><code>IDistributedCache</code> on Redis (the L2 for <code>HybridCache</code>)</td></tr>
+    <tr><td><code>NRedisStack</code></td><td>Redis modules: JSON, Search and vector search, Bloom, time-series</td></tr>
+    <tr><td><code>Aspire.StackExchange.Redis</code></td><td>Aspire integration: connection, health checks and telemetry wired up for you</td></tr>
+    <tr><td><code>EnyimMemcachedCore</code> (community)</td><td>Memcached client, if you really need Memcached</td></tr>
+  </table>
+</div>
+  </section>
+
+<div class="qa-wrap">
+  <h2>⚡ Quick-fire Q&amp;A</h2>
+  <details class="qa"><summary>Expiration vs eviction?</summary><p>Expiration is time or validity based (TTL). Eviction is space based (LRU/LFU when memory is full).</p></details>
+  <details class="qa"><summary>Why delete instead of update the cache on write?</summary><p>Two concurrent writers can update the cache in the opposite order to the DB and leave stale data. Deleting forces the next read to load the true value.</p></details>
+  <details class="qa"><summary>Would you cache an account balance?</summary><p>Generally no, or only with a very short TTL, clearly labelled "as at" time, and never for authorising transactions. Correctness beats speed.</p></details>
+</div>
+
+<div class="pager"><a href="03-scalability-reliability.html">← 03 · Scalability</a><a class="next" href="05-databases-data.html">05 · Databases &amp; Data →</a></div>
+</main>
+<footer>Tech Concepts Prep · Section 04</footer>
+<script src="assets/app.js"></script>
+<script src="assets/viz.js"></script>
+</body>
+</html>

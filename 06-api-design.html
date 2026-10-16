@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>06 · API Design, Security &amp; Performance | Tech Concepts Prep</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<nav class="top"><a href="05-databases-data.html">← Databases</a><span class="here">06 · API Design</span><a href="07-apim.html">Next: APIM →</a></nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">Section 06</div>
+  <h1>APIs: styles, design, auth, performance &amp; rate limiting</h1>
+  <p>APIs are the contracts between systems. This section covers which API style to use, how to design them well, how to secure them, how to make them fast, and how to protect them.</p>
+  <div class="toc">
+    <a href="#styles">API architecture patterns</a>
+    <a href="#rest" class="added">REST design best practices</a>
+    <a href="#auth">API authentication &amp; authorization</a>
+    <a href="#oauth" class="added">OAuth 2.0 / OIDC / JWT deep dive</a>
+    <a href="#performance">API performance</a>
+    <a href="#ratelimit">Rate limit algorithms</a>
+    <a href="#idempotency" class="added">Idempotency</a>
+  </div>
+</header>
+
+<!-- STYLES -->
+<section class="concept" id="styles">
+  <h2><span class="num">6.1</span> API architecture patterns (styles)</h2>
+  <p class="oneliner">The main API styles, each built for a different kind of interaction between client and server.</p>
+  <div class="tablewrap"><table>
+    <tr><th>Style</th><th>Shape</th><th>Strengths</th><th>Weaknesses</th><th>Use for</th></tr>
+    <tr><td><b>REST</b></td><td>Resources + HTTP verbs, JSON</td><td>Simple, cacheable, universal tooling</td><td>Over/under-fetching, many round trips</td><td>Public, partner and CRUD APIs</td></tr>
+    <tr><td><b>GraphQL</b></td><td>One endpoint, client writes the query</td><td>Get exactly the fields you need, typed schema</td><td>HTTP caching is harder, query-cost attacks, N+1</td><td>Rich UIs, mobile, BFF</td></tr>
+    <tr><td><b>gRPC</b></td><td>RPC on HTTP/2 + Protobuf</td><td>Fast, streaming, contract-first, generated code</td><td>Weak browser support, hard to read on the wire</td><td>Internal microservices</td></tr>
+    <tr><td><b>SOAP</b></td><td>XML envelope + WSDL</td><td>Strict contracts, WS-Security, transactions</td><td>Verbose, heavy</td><td>Legacy enterprise and banking cores</td></tr>
+    <tr><td><b>Webhooks</b></td><td>Server POSTs an event to a client URL</td><td>Real-time, no polling</td><td>Delivery guarantees, security</td><td>Event notifications to partners</td></tr>
+    <tr><td><b>WebSocket / SSE</b></td><td>Persistent connection</td><td>Real-time push</td><td>Stateful scaling</td><td>Live UIs, streaming</td></tr>
+    <tr><td><b>Async / event APIs</b></td><td>Messages on a broker (documented with AsyncAPI)</td><td>Decoupled, scalable</td><td>Eventual consistency</td><td>Integration, event-driven systems</td></tr>
+  </table></div>
+  <div class="remember"><ul>
+    <li>A common enterprise mix: <b>REST outside</b> (partners, mobile), <b>gRPC or events inside</b>, <b>GraphQL/BFF</b> for UI aggregation.</li>
+    <li>Contract-first: <b>OpenAPI</b> (REST), <b>.proto</b> (gRPC), <b>SDL</b> (GraphQL), <b>AsyncAPI</b> (events).</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Style</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>REST</b></td><td><span class="pill builtin">built-in</span> Minimal APIs (<code>MapGet</code>…) or controllers</td><td>Minimal APIs are the default for new services</td></tr>
+    <tr><td><b>GraphQL</b></td><td><code>HotChocolate.AspNetCore</code></td><td>Schema-first or code-first server, DataLoader against N+1, query cost limits</td></tr>
+    <tr><td><b>gRPC</b></td><td><code>Grpc.AspNetCore</code>, <code>Grpc.Net.Client</code>; <code>Microsoft.AspNetCore.Grpc.JsonTranscoding</code></td><td>Contract-first from <code>.proto</code>. JSON transcoding also exposes the same service as REST</td></tr>
+    <tr><td><b>SOAP</b></td><td><code>CoreWCF.Http</code> (server); <code>System.ServiceModel.Http</code> + <code>dotnet-svcutil</code> (client)</td><td>Host or call legacy WCF / SOAP services on .NET 10</td></tr>
+    <tr><td><b>WebSocket / SSE</b></td><td><span class="pill builtin">built-in</span> SignalR; <code>TypedResults.ServerSentEvents</code> (new in .NET 10)</td><td>Live UIs and streaming. SignalR handles scale-out (Azure SignalR Service / Redis backplane)</td></tr>
+    <tr><td><b>Webhooks / events</b></td><td><code>IHttpClientFactory</code> + <code>HMACSHA256</code>; <code>Azure.Messaging.ServiceBus</code>, <code>Confluent.Kafka</code></td><td>No built-in webhook framework: sign the payload, retry with Polly, keep a delivery log</td></tr>
+  </table>
+<pre class="code"><code>// .NET 10: stream server-sent events from a minimal API
+app.MapGet("/payments/{id}/status", (string id, PaymentEvents events, CancellationToken ct) =&gt;
+    TypedResults.ServerSentEvents(events.WatchAsync(id, ct), eventType: "status"));</code></pre>
+</div>
+  <div class="post">
+    <p>REST vs GraphQL vs gRPC: stop asking "which is best". Ask "who is the consumer?" 🎯</p>
+    <p>🌍 External partners → REST (universal, cacheable)</p>
+    <p>📱 Rich front-end needing flexible data → GraphQL</p>
+    <p>⚙️ Service-to-service, low latency → gRPC</p>
+    <p>🔔 "Tell me when it happens" → Webhooks / events</p>
+    <p>#APIs #Architecture #Integration</p>
+  </div>
+</section>
+
+<!-- REST -->
+<section class="concept" id="rest">
+  <h2><span class="num">6.2</span> REST design best practices <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Nouns for resources, HTTP verbs for actions, status codes for outcomes, and a contract you never break silently.</p>
+  <div class="cols2">
+    <div>
+      <h3>Methods</h3>
+      <table>
+        <tr><th>Verb</th><th>Use</th><th>Safe</th><th>Idempotent</th></tr>
+        <tr><td>GET</td><td>Read</td><td>✅</td><td>✅</td></tr>
+        <tr><td>POST</td><td>Create / action</td><td>❌</td><td>❌ (use an Idempotency-Key)</td></tr>
+        <tr><td>PUT</td><td>Replace</td><td>❌</td><td>✅</td></tr>
+        <tr><td>PATCH</td><td>Partial update</td><td>❌</td><td>Not guaranteed</td></tr>
+        <tr><td>DELETE</td><td>Remove</td><td>❌</td><td>✅</td></tr>
+      </table>
+      <h3>URL examples</h3>
+      <ul>
+        <li>✅ <code>GET /customers/42/accounts</code></li>
+        <li>✅ <code>POST /payments</code></li>
+        <li>❌ <code>POST /getCustomerAccounts</code></li>
+      </ul>
+    </div>
+    <div>
+      <h3>Status codes cheat sheet</h3>
+      <table>
+        <tr><td>200 OK · 201 Created · 202 Accepted · 204 No Content</td></tr>
+        <tr><td>304 Not Modified</td></tr>
+        <tr><td>400 Bad Request · <b>401</b> Unauthenticated · <b>403</b> Forbidden · 404 Not Found</td></tr>
+        <tr><td>409 Conflict · 412 Precondition Failed · 422 Unprocessable · <b>429</b> Too Many Requests</td></tr>
+        <tr><td>500 Server Error · 502 Bad Gateway · 503 Unavailable · 504 Gateway Timeout</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="grid">
+    <div class="box"><h4>Versioning</h4><p>URI <code>/v1/</code> (most common), header <code>api-version</code>, query <code>?api-version=</code>, or media type. Only breaking changes need a new major version.</p></div>
+    <div class="box"><h4>Pagination</h4><p><b>Offset</b> <code>?page=3&amp;size=50</code> is simple but slow and drifts on deep pages. <b>Cursor / keyset</b> <code>?after=abc</code> is stable and fast.</p></div>
+    <div class="box"><h4>Filter / sort / fields</h4><p><code>?status=active&amp;sort=-createdAt&amp;fields=id,name</code></p></div>
+    <div class="box"><h4>Errors</h4><p>Use a consistent body such as RFC 9457 <b>Problem Details</b>: type, title, status, detail, traceId.</p></div>
+    <div class="box"><h4>Concurrency</h4><p><b>ETag + If-Match</b> for optimistic locking. Return 412 on conflict.</p></div>
+    <div class="box"><h4>HATEOAS</h4><p>Responses include links to next actions. Rarely used in full.</p></div>
+  </div>
+  <div class="remember"><ul>
+    <li>Backward-compatible changes: adding optional fields or new endpoints. Breaking changes: removing or renaming fields, changing types, making a field required.</li>
+    <li>Consumers should be <b>tolerant readers</b> (ignore unknown fields).</li>
+    <li>Publish a deprecation policy (e.g. <code>Sunset</code> header, 6–12 months' notice).</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>OpenAPI document</b></td><td><code>Microsoft.AspNetCore.OpenApi</code> (<code>AddOpenApi</code>)</td><td>Generates the contract; OpenAPI 3.1 by default in .NET 10. Swashbuckle was dropped from the templates in .NET 9 but still works</td></tr>
+    <tr><td><b>API docs UI</b></td><td><code>Scalar.AspNetCore</code> or <code>Swashbuckle.AspNetCore.SwaggerUI</code></td><td>Interactive docs over the generated document</td></tr>
+    <tr><td><b>Versioning</b></td><td><code>Asp.Versioning.Http</code> (minimal APIs) / <code>Asp.Versioning.Mvc</code></td><td>URL, header, query or media-type versions; reports supported and deprecated versions</td></tr>
+    <tr><td><b>Errors + validation</b></td><td><span class="pill builtin">built-in</span> <code>AddProblemDetails</code>, <code>IExceptionHandler</code>, <code>AddValidation</code> (.NET 10); <code>FluentValidation</code></td><td>RFC 9457 error bodies; DataAnnotations checked automatically on minimal API parameters</td></tr>
+    <tr><td><b>PATCH</b></td><td><code>Microsoft.AspNetCore.JsonPatch.SystemTextJson</code></td><td>RFC 6902 JSON Patch on <code>System.Text.Json</code> (new in .NET 10)</td></tr>
+    <tr><td><b>Typed clients</b></td><td><code>Microsoft.Kiota.Bundle</code> (+ Kiota CLI), <code>Refit</code>, <code>NSwag</code></td><td>Generate clients from the OpenAPI document</td></tr>
+  </table>
+<pre class="code"><code>builder.Services.AddOpenApi();          // document at /openapi/v1.json
+builder.Services.AddProblemDetails();   // consistent RFC 9457 errors
+builder.Services.AddValidation();       // .NET 10: [Required], [Range] etc. on parameters -&gt; 400
+
+var app = builder.Build();
+app.UseExceptionHandler();              // unhandled exceptions -&gt; ProblemDetails 500
+app.MapOpenApi();
+app.MapScalarApiReference();            // UI at /scalar
+
+app.MapPost("/v1/payments", async (CreatePayment cmd, PaymentService svc, CancellationToken ct) =&gt;
+{
+    var payment = await svc.CreateAsync(cmd, ct);
+    return TypedResults.Created($"/v1/payments/{payment.Id}", payment);   // 201 + Location
+});</code></pre>
+  <p class="warn">ETags aren't automatic. Return an <code>ETag</code> header from a row version, read <code>If-Match</code> (<code>EntityTagHeaderValue</code>) and return 412 when it doesn't match.</p>
+</div>
+  </section>
+
+<!-- AUTH -->
+<section class="concept" id="auth">
+  <h2><span class="num">6.3</span> API authentication &amp; authorization</h2>
+  <p class="oneliner"><b>Authentication</b> = who are you? <b>Authorization</b> = what are you allowed to do? (Fail authN → 401. Fail authZ → 403.)</p>
+  <div class="tablewrap"><table>
+    <tr><th>Method</th><th>How it works</th><th>Good for</th><th>Caution</th></tr>
+    <tr><td><b>Basic auth</b></td><td>Base64(user:password) in a header</td><td>Internal or legacy only</td><td>Credentials sent every call. TLS is mandatory</td></tr>
+    <tr><td><b>API key</b></td><td>Static key in a header</td><td>Identifying apps, metering, simple partner access</td><td>Identifies an app, not a user. Easy to leak. Rotate</td></tr>
+    <tr><td><b>OAuth 2.0 bearer token</b></td><td>Short-lived access token from an authorization server</td><td>Delegated access, user and M2M APIs</td><td>Validate signature, audience, expiry and scopes</td></tr>
+    <tr><td><b>OIDC</b></td><td>Identity layer on OAuth2 (ID token)</td><td>User login and SSO</td><td>ID token ≠ access token</td></tr>
+    <tr><td><b>JWT</b></td><td>Self-contained signed token</td><td>Stateless validation at the gateway</td><td>Can't revoke easily. Keep expiry short</td></tr>
+    <tr><td><b>mTLS</b></td><td>Both sides present X.509 certificates</td><td>B2B, service-to-service, open banking</td><td>Certificate lifecycle management</td></tr>
+    <tr><td><b>HMAC signature</b></td><td>Request signed with a shared secret + timestamp</td><td>Webhooks, payment APIs (AWS SigV4)</td><td>Secret distribution, clock skew</td></tr>
+  </table></div>
+  <h3>Authorization models</h3>
+  <ul>
+    <li><b>Scopes</b> (OAuth): what the client app may do, e.g. <code>accounts.read</code>.</li>
+    <li><b>RBAC</b>: permissions by role. <b>ABAC</b>: by attributes (department, region, time). <b>ReBAC</b>: by relationship (owner of the account).</li>
+    <li>Always check <b>object-level</b> access: can <i>this user</i> see <i>account 42</i>? This is OWASP API #1 (BOLA).</li>
+  </ul>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Method</th><th>Library / API</th></tr>
+    <tr><td><b>OAuth 2.0 / JWT bearer</b></td><td><code>Microsoft.AspNetCore.Authentication.JwtBearer</code>; for Entra ID, <code>Microsoft.Identity.Web</code></td></tr>
+    <tr><td><b>API key</b></td><td>No built-in handler: a custom <code>AuthenticationHandler&lt;T&gt;</code>, comparing hashes with <code>CryptographicOperations.FixedTimeEquals</code></td></tr>
+    <tr><td><b>mTLS</b></td><td><code>Microsoft.AspNetCore.Authentication.Certificate</code> + Kestrel <code>ClientCertificateMode.RequireCertificate</code></td></tr>
+    <tr><td><b>HMAC signature</b></td><td><span class="pill builtin">built-in</span> <code>HMACSHA256.HashData</code> over timestamp + body, checked with <code>FixedTimeEquals</code></td></tr>
+    <tr><td><b>RBAC / scopes / ABAC</b></td><td><span class="pill builtin">built-in</span> authorization policies: <code>RequireRole</code>, <code>RequireClaim</code>, custom <code>IAuthorizationRequirement</code> + handler</td></tr>
+    <tr><td><b>Object-level (BOLA)</b></td><td><span class="pill builtin">built-in</span> resource-based <code>IAuthorizationService.AuthorizeAsync(user, resource, requirement)</code></td></tr>
+  </table>
+<pre class="code"><code>public sealed class AccountOwner : IAuthorizationRequirement;
+
+public sealed class AccountOwnerHandler : AuthorizationHandler&lt;AccountOwner, Account&gt;
+{
+    protected override Task HandleRequirementAsync(
+        AuthorizationHandlerContext ctx, AccountOwner req, Account account)
+    {
+        if (account.OwnerId == ctx.User.FindFirst("oid")?.Value) ctx.Succeed(req);
+        return Task.CompletedTask;
+    }
+}
+// builder.Services.AddSingleton&lt;IAuthorizationHandler, AccountOwnerHandler&gt;();
+
+app.MapGet("/accounts/{id:int}", async (int id, AppDbContext db,
+    IAuthorizationService auth, ClaimsPrincipal user) =&gt;
+{
+    var account = await db.Accounts.FindAsync(id);
+    if (account is null) return Results.NotFound();
+    var check = await auth.AuthorizeAsync(user, account, new AccountOwner());  // can THIS user see THIS account?
+    return check.Succeeded ? Results.Ok(account) : Results.Forbid();          // 403
+}).RequireAuthorization();                                                     // 401 if not signed in</code></pre>
+</div>
+  </section>
+
+<!-- OAUTH DEEP DIVE -->
+<section class="concept" id="oauth">
+  <h2><span class="num">6.4</span> OAuth 2.0, OIDC &amp; JWT deep dive <span class="tag-added">Added</span></h2>
+  <p class="oneliner">OAuth 2.0 lets an app get <b>limited access</b> to an API on behalf of a user or itself, without ever seeing the user's password.</p>
+  <h3>Four roles</h3>
+  <div class="flow">
+    <div class="n">Resource owner<small>the user</small></div>
+    <div class="n p">Client<small>app wanting access</small></div>
+    <div class="n a">Authorization server<small>Entra ID, Okta, Ping</small></div>
+    <div class="n g">Resource server<small>your API</small></div>
+  </div>
+  <h3>Authorization Code + PKCE (user-facing apps, SPAs, mobile)</h3>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Authorization Code + PKCE","actors":[{"t":"User","c":"blue"},{"t":"Client app","c":"purple"},{"t":"Auth server","c":"amber"},{"t":"API","c":"green"}],"colW":215,"rowH":50,"stepMs":1000,
+ "steps":[
+  {"from":0,"to":1,"t":"\"Log in\""},
+  {"from":1,"to":2,"t":"/authorize + code_challenge","sub":"client_id · scope · redirect_uri (PKCE)","c":"purple"},
+  {"from":2,"to":0,"t":"login page + MFA","c":"amber"},
+  {"from":0,"to":2,"t":"credentials + consent","c":"blue"},
+  {"from":2,"to":1,"t":"redirect with ?code=XYZ","dash":true,"c":"amber"},
+  {"from":1,"to":2,"t":"/token: code + code_verifier","sub":"back channel","c":"purple"},
+  {"from":2,"to":1,"t":"access_token","sub":"+ refresh_token, + id_token if OIDC","dash":true,"c":"green"},
+  {"from":1,"to":3,"t":"Authorization: Bearer access_token","c":"purple"},
+  {"note":"API validates signature · iss · aud · exp · scopes","over":[2,3],"c":"teal"},
+  {"from":3,"to":1,"t":"200 OK","dash":true,"c":"green"}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>Grant type</th><th>Use when</th></tr>
+    <tr><td><b>Authorization Code + PKCE</b></td><td>Any app acting for a user (web, SPA, mobile)</td></tr>
+    <tr><td><b>Client Credentials</b></td><td>Machine-to-machine. No user (batch job, backend service)</td></tr>
+    <tr><td><b>Device Code</b></td><td>Devices without a browser (TV, CLI)</td></tr>
+    <tr><td><b>Refresh Token</b></td><td>Get a new access token without logging in again</td></tr>
+    <tr><td><b>On-Behalf-Of / Token Exchange</b></td><td>API A calls API B while keeping the user's identity</td></tr>
+    <tr><td><s>Implicit</s>, <s>Password (ROPC)</s></td><td><span class="pill r">Deprecated</span> in OAuth 2.1 / security best practice</td></tr>
+  </table></div>
+  <h3>JWT anatomy</h3>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"JWT = header . payload . signature","interval":2600,
+ "frames":[
+  {"label":"Encoded","caption":"What travels on the wire: three Base64URL parts joined by dots.","rows":[
+   [{"t":"eyJhbGciOiJSUzI1NiJ9","sub":"header","c":"amber"},{"k":"text","t":"."},{"t":"eyJzdWIiOiI0MiIsImF1ZCI6…","sub":"payload / claims","c":"green"},{"k":"text","t":"."},{"t":"SflKxwRJSMeKKF2QT4fwpM…","sub":"signature","c":"red"}]]},
+  {"label":"Decoded","caption":"Base64URL-<b>encoded, NOT encrypted</b>. Anyone can decode and read it.","ms":3200,"rows":[
+   [{"t":"{ alg: RS256, kid }","sub":"header","c":"amber"},{"k":"text","t":"."},{"t":"{ sub: 42, aud: api://payments, exp }","sub":"+ iss · scp · roles","c":"green"},{"k":"text","t":"."},{"t":"SflKxwRJSMeKKF2QT4fwpM…","sub":"signature","c":"red"}]]},
+  {"label":"Verified","caption":"The signature proves the token hasn't been tampered with. Check it with the issuer's public key (JWKS, found by <b>kid</b>).","ms":3200,"rows":[
+   [{"t":"{ alg: RS256, kid }","sub":"header","c":"amber"},{"k":"text","t":"."},{"t":"{ sub: 42, aud: api://payments, exp }","sub":"+ iss · scp · roles","c":"green"},{"k":"text","t":"."},{"t":"✓ signature verified","sub":"with public key","c":"teal"}]]}
+ ]}
+</script></figure>
+  <div class="remember"><ul>
+    <li>OAuth = <b>authorization</b> (access token). OIDC = <b>authentication</b> (ID token + userinfo).</li>
+    <li>Never put secrets or sensitive PII in a JWT. It's only encoded.</li>
+    <li>Validate: signature (via JWKS <code>kid</code>), <code>iss</code>, <code>aud</code>, <code>exp</code>/<code>nbf</code>, scopes and roles. Keep access tokens short (5–60 min).</li>
+    <li>SPAs: prefer the <b>BFF pattern</b> (tokens kept server-side) over storing tokens in localStorage.</li>
+    <li>Banking: <b>FAPI</b> (Financial-grade API) profile tightens OAuth with mTLS or private_key_jwt, PAR and JARM. Australia's <b>Consumer Data Right (CDR)</b> uses it.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Role / flow</th><th>Package</th><th>Notes</th></tr>
+    <tr><td><b>Resource server (your API)</b></td><td><code>Microsoft.Identity.Web</code> or <code>Microsoft.AspNetCore.Authentication.JwtBearer</code></td><td>Validates signature (JWKS), issuer, audience and expiry for you</td></tr>
+    <tr><td><b>Auth code + PKCE (web login)</b></td><td><code>Microsoft.AspNetCore.Authentication.OpenIdConnect</code> / <code>Microsoft.Identity.Web</code></td><td>PKCE is on by default. Server-side web apps are already a BFF: tokens stay on the server</td></tr>
+    <tr><td><b>Client credentials / OBO</b></td><td><code>Microsoft.Identity.Client</code> (MSAL); <code>Azure.Identity</code> for managed identity</td><td>MSAL caches tokens. Prefer a certificate or managed identity over a client secret</td></tr>
+    <tr><td><b>Attach tokens to HttpClient</b></td><td><code>Duende.AccessTokenManagement</code> (Apache 2.0)</td><td>Gets, caches and refreshes tokens for <code>IHttpClientFactory</code> clients with any OAuth server</td></tr>
+    <tr><td><b>Your own auth server</b></td><td><code>OpenIddict.AspNetCore</code> (free); <code>Duende.IdentityServer</code> <span class="pill lic">commercial licence</span></td><td>Duende has a free community edition for small companies. Most banks use Entra ID, Okta or Ping instead</td></tr>
+    <tr><td><b>Read / create JWTs</b></td><td><code>Microsoft.IdentityModel.JsonWebTokens</code> (<code>JsonWebTokenHandler</code>)</td><td>Low-level token handling; rarely needed directly</td></tr>
+  </table>
+<pre class="code"><code>// API: validate Entra ID tokens and require a scope
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"));
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy("payments.write", p =&gt; p.RequireScope("payments.write"));
+
+// Batch job: client credentials with a certificate (no user, no secret)
+var msal = ConfidentialClientApplicationBuilder.Create(clientId)
+    .WithCertificate(certificate)
+    .WithAuthority($"https://login.microsoftonline.com/{tenantId}")
+    .Build();
+var result = await msal.AcquireTokenForClient(["api://payments/.default"]).ExecuteAsync();</code></pre>
+  <p>Login without passwords: ASP.NET Core Identity in .NET 10 supports passkeys (WebAuthn / FIDO2).</p>
+</div>
+  <div class="post">
+    <p>OAuth 2.0 explained with a hotel key card 🏨</p>
+    <p>You (resource owner) show ID at reception (authorization server). You get a key card (access token) that opens only your room (scope) until checkout (expiry).</p>
+    <p>The door (API) doesn't need your passport. It just checks that the card is valid.</p>
+    <p>OAuth = what you can access. OIDC = who you are.</p>
+    <p>#Security #OAuth #APIs</p>
+  </div>
+</section>
+
+<!-- PERFORMANCE -->
+<section class="concept" id="performance">
+  <h2><span class="num">6.5</span> API performance</h2>
+  <p class="oneliner">Measure first (p95/p99 latency, throughput, error rate), find the slowest hop, then fix that hop.</p>
+  <h3>Where the time goes</h3>
+<figure class="viz" data-viz="lanes"><script type="application/json">
+{"title":"One API call, hop by hop","max":100,"labelW":80,"width":900,"rowH":46,"axis":"time →","dur":5000,
+ "rows":[
+  {"label":"1 request","blocks":[
+   {"s":0,"e":5,"t":"DNS","c":"slate","size":11.5},
+   {"s":5,"e":10,"t":"TCP","c":"slate","size":11.5},
+   {"s":10,"e":15,"t":"TLS","c":"slate","size":11.5},
+   {"s":15,"e":34,"t":"Gateway: auth, policies","c":"purple","size":11.5},
+   {"s":34,"e":46,"t":"Service logic","c":"blue","size":11.5},
+   {"s":46,"e":82,"t":"DB / downstream calls","c":"red","size":12.5},
+   {"s":82,"e":89,"t":"Serialize","c":"teal","size":11},
+   {"s":89,"e":100,"t":"Network back","c":"slate","size":11}
+  ]}
+ ],
+ "spans":[{"s":46,"e":82,"t":"↓ usually the biggest slice","c":"red"}]}
+</script></figure>
+  <div class="grid">
+    <div class="box green"><h4>🗃 Caching</h4><p>HTTP cache headers, CDN, gateway response cache, Redis.</p></div>
+    <div class="box green"><h4>📄 Pagination &amp; field selection</h4><p>Never return 10,000 rows. Use cursors and sparse fields.</p></div>
+    <div class="box green"><h4>🗜 Compression</h4><p>gzip / Brotli for JSON payloads over ~1 KB.</p></div>
+    <div class="box blue"><h4>🔌 Connection pooling &amp; keep-alive</h4><p>Reuse DB and HTTP connections. Avoid a new TLS handshake per call.</p></div>
+    <div class="box blue"><h4>⚡ Async processing</h4><p>Return 202 for long work. Push to a queue.</p></div>
+    <div class="box blue"><h4>🧮 Fix the N+1 problem</h4><p>Batch DB queries (JOIN, IN, DataLoader) instead of one query per item.</p></div>
+    <div class="box purple"><h4>📦 Smaller payloads</h4><p>Protobuf/gRPC internally. Trim unused fields.</p></div>
+    <div class="box purple"><h4>🔀 Parallelise calls</h4><p>Fan out independent downstream calls together, not one after another.</p></div>
+    <div class="box purple"><h4>📈 Scale &amp; protect</h4><p>Auto-scale, load balance, rate limit, timeouts, circuit breakers.</p></div>
+  </div>
+  <div class="remember"><ul>
+    <li>Load-test tools: JMeter, k6, Gatling, Azure Load Testing. Monitor with App Insights / APM and distributed tracing.</li>
+    <li>Set a <b>latency budget</b> per hop (e.g. gateway 20 ms, service 50 ms, DB 30 ms).</li>
+    <li>Index DB queries. Slow APIs are usually slow queries.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Fix</th><th>Library / API</th></tr>
+    <tr><td><b>Caching</b></td><td><span class="pill builtin">built-in</span> <code>AddOutputCache</code>, <code>HybridCache</code> (see section 04)</td></tr>
+    <tr><td><b>Compression</b></td><td><span class="pill builtin">built-in</span> <code>AddResponseCompression</code> (Brotli, gzip). Often better done at the gateway or CDN</td></tr>
+    <tr><td><b>Connection reuse</b></td><td><code>IHttpClientFactory</code> (<code>AddHttpClient</code>), <code>AddDbContextPool</code>, HTTP/2 and HTTP/3 in Kestrel</td></tr>
+    <tr><td><b>N+1 and big payloads</b></td><td>EF Core <code>Select</code> projections, <code>Include</code> / <code>AsSplitQuery</code>, <code>AsNoTracking</code>; HotChocolate DataLoader; keyset pagination</td></tr>
+    <tr><td><b>Faster serialisation / start-up</b></td><td><span class="pill builtin">built-in</span> <code>System.Text.Json</code> source generation (<code>JsonSerializerContext</code>), Native AOT (<code>PublishAot</code>)</td></tr>
+    <tr><td><b>Parallel and async</b></td><td><code>Task.WhenAll</code>; <code>IAsyncEnumerable&lt;T&gt;</code> streaming; 202 + <code>Channel&lt;T&gt;</code> / queue for long work</td></tr>
+  </table>
+<pre class="code"><code>// Keyset pagination: fast and stable on deep pages (needs an index on Id)
+app.MapGet("/payments", (long? after, AppDbContext db, CancellationToken ct) =&gt;
+    db.Payments.AsNoTracking()
+        .Where(p =&gt; after == null || p.Id &gt; after)
+        .OrderBy(p =&gt; p.Id)
+        .Take(50)
+        .Select(p =&gt; new PaymentDto(p.Id, p.Amount, p.Status))   // only the columns needed
+        .ToListAsync(ct));
+
+// Fan out independent downstream calls together, not one after another
+var customerTask = customers.GetAsync(id, ct);
+var accountsTask = accounts.ListAsync(id, ct);
+await Task.WhenAll(customerTask, accountsTask);</code></pre>
+  <p class="warn">Measure with OpenTelemetry traces, <code>dotnet-counters</code> and a load test before tuning. Response compression over HTTPS is off by default because of BREACH-style attacks on secrets in responses.</p>
+</div>
+  </section>
+
+<!-- RATE LIMIT -->
+<section class="concept" id="ratelimit">
+  <h2><span class="num">6.6</span> Rate limit algorithms</h2>
+  <p class="oneliner">Rate limiting caps how many requests a client can make in a time window. It protects backends, ensures fairness and blocks abuse.</p>
+
+  <div class="grid wide">
+    <div class="box blue">
+      <h4>🪣 Token bucket ⭐ most popular</h4>
+<div class="svgwrap">
+<svg viewBox="0 0 320 200" width="320" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, sans-serif" role="img" aria-label="Token bucket: tokens refill at rate r into a bucket of capacity B; each request takes one token; an empty bucket returns 429">
+  <text x="160" y="13" text-anchor="middle" font-size="13" font-weight="700" fill="#b45309">refill +r tokens/sec</text>
+  <path d="M105,52 L115,140 Q116,148 124,148 L196,148 Q204,148 205,140 L215,52" fill="#dbeafe" stroke="#2563eb" stroke-width="2.5"/>
+  <text x="262" y="96" text-anchor="middle" font-size="13" font-weight="700" fill="#1e3a8a">capacity B</text>
+  <text x="262" y="112" text-anchor="middle" font-size="12" fill="#64748b">(here B = 5)</text>
+  <g fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="3 2">
+    <circle cx="128" cy="134" r="7"/><circle cx="144" cy="134" r="7"/><circle cx="160" cy="134" r="7"/><circle cx="176" cy="134" r="7"/><circle cx="192" cy="134" r="7"/>
+  </g>
+  <g fill="#f59e0b" stroke="#b45309" stroke-width="1.5">
+    <circle cx="128" cy="134" r="7"><animate attributeName="opacity" values="1;0;1" keyTimes="0;0.3667;0.5333" calcMode="discrete" dur="6s" repeatCount="indefinite"/></circle>
+    <circle cx="144" cy="134" r="7"><animate attributeName="opacity" values="1;0;1" keyTimes="0;0.3;0.6333" calcMode="discrete" dur="6s" repeatCount="indefinite"/></circle>
+    <circle cx="160" cy="134" r="7"><animate attributeName="opacity" values="1;0;1" keyTimes="0;0.2333;0.7333" calcMode="discrete" dur="6s" repeatCount="indefinite"/></circle>
+    <circle cx="176" cy="134" r="7"><animate attributeName="opacity" values="1;0;1" keyTimes="0;0.1667;0.8333" calcMode="discrete" dur="6s" repeatCount="indefinite"/></circle>
+    <circle cx="192" cy="134" r="7"><animate attributeName="opacity" values="1;0;1" keyTimes="0;0.1;0.9333" calcMode="discrete" dur="6s" repeatCount="indefinite"/></circle>
+  </g>
+  <g fill="#f59e0b" stroke="#b45309" stroke-width="1.5">
+    <circle r="6" opacity="0"><animateMotion path="M160,22 L160,62" keyPoints="0;0;1;1" keyTimes="0;0.4667;0.5333;1" calcMode="linear" dur="6s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.4667;0.5333" calcMode="discrete" dur="6s" repeatCount="indefinite"/></circle>
+    <circle r="6" opacity="0"><animateMotion path="M160,22 L160,62" keyPoints="0;0;1;1" keyTimes="0;0.5667;0.6333;1" calcMode="linear" dur="6s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.5667;0.6333" calcMode="discrete" dur="6s" repeatCount="indefinite"/></circle>
+    <circle r="6" opacity="0"><animateMotion path="M160,22 L160,62" keyPoints="0;0;1;1" keyTimes="0;0.6667;0.7333;1" calcMode="linear" dur="6s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.6667;0.7333" calcMode="discrete" dur="6s" repeatCount="indefinite"/></circle>
+    <circle r="6" opacity="0"><animateMotion path="M160,22 L160,62" keyPoints="0;0;1;1" keyTimes="0;0.7667;0.8333;1" calcMode="linear" dur="6s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.7667;0.8333" calcMode="discrete" dur="6s" repeatCount="indefinite"/></circle>
+    <circle r="6" opacity="0"><animateMotion path="M160,22 L160,62" keyPoints="0;0;1;1" keyTimes="0;0.8667;0.9333;1" calcMode="linear" dur="6s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.8667;0.9333" calcMode="discrete" dur="6s" repeatCount="indefinite"/></circle>
+  </g>
+  <line x1="14" y1="174" x2="304" y2="174" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4 4"/>
+  <g fill="#2563eb">
+    <rect x="-7" y="-5" width="14" height="10" rx="2" opacity="0"><animateMotion path="M20,174 L300,174" keyPoints="0;0;1;1" keyTimes="0;0.025;0.175;1" calcMode="linear" dur="6s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.025;0.175" calcMode="discrete" dur="6s" repeatCount="indefinite"/></rect>
+    <rect x="-7" y="-5" width="14" height="10" rx="2" opacity="0"><animateMotion path="M20,174 L300,174" keyPoints="0;0;1;1" keyTimes="0;0.0917;0.2417;1" calcMode="linear" dur="6s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.0917;0.2417" calcMode="discrete" dur="6s" repeatCount="indefinite"/></rect>
+    <rect x="-7" y="-5" width="14" height="10" rx="2" opacity="0"><animateMotion path="M20,174 L300,174" keyPoints="0;0;1;1" keyTimes="0;0.1583;0.3083;1" calcMode="linear" dur="6s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.1583;0.3083" calcMode="discrete" dur="6s" repeatCount="indefinite"/></rect>
+    <rect x="-7" y="-5" width="14" height="10" rx="2" opacity="0"><animateMotion path="M20,174 L300,174" keyPoints="0;0;1;1" keyTimes="0;0.225;0.375;1" calcMode="linear" dur="6s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.225;0.375" calcMode="discrete" dur="6s" repeatCount="indefinite"/></rect>
+    <rect x="-7" y="-5" width="14" height="10" rx="2" opacity="0"><animateMotion path="M20,174 L300,174" keyPoints="0;0;1;1" keyTimes="0;0.2917;0.4417;1" calcMode="linear" dur="6s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.2917;0.4417" calcMode="discrete" dur="6s" repeatCount="indefinite"/></rect>
+  </g>
+  <rect x="-7" y="-5" width="14" height="10" rx="2" fill="#dc2626" opacity="0"><animateMotion path="M20,174 L150,174" keyPoints="0;0;1;1" keyTimes="0;0.3917;0.4667;1" calcMode="linear" dur="6s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.3917;0.5667" calcMode="discrete" dur="6s" repeatCount="indefinite"/></rect>
+  <text x="312" y="162" text-anchor="end" font-size="13.5" font-weight="700" fill="#059669" opacity="0">200 ✓ allowed<animate attributeName="opacity" values="0;1;0" keyTimes="0;0.1;0.4417" calcMode="discrete" dur="6s" repeatCount="indefinite"/></text>
+  <text x="312" y="162" text-anchor="end" font-size="13.5" font-weight="700" fill="#dc2626" opacity="0">429 · bucket empty<animate attributeName="opacity" values="0;1;0" keyTimes="0;0.4667;0.6" calcMode="discrete" dur="6s" repeatCount="indefinite"/></text>
+  <text x="8" y="195" font-size="13" fill="#475569">1 request = 1 token</text>
+  <text x="312" y="195" text-anchor="end" font-size="13" fill="#475569">burst ≤ B, then r</text>
+</svg>
+</div>
+      <ul><li>Allows <b>bursts</b> up to B, then a steady rate r.</li><li>➕ Simple, memory-light, allows bursts. Used by AWS and Stripe.</li><li>➖ Two parameters to tune.</li></ul>
+    </div>
+    <div class="box teal">
+      <h4>💧 Leaky bucket</h4>
+<div class="svgwrap">
+<svg viewBox="0 0 320 200" width="320" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, sans-serif" role="img" aria-label="Leaky bucket: bursty requests fill a queue, which drips out at a fixed rate; when the queue is full, new requests are dropped">
+  <text x="10" y="13" font-size="13" font-weight="700" fill="#334155">requests (bursty)</text>
+  <line x1="12" y1="30" x2="160" y2="30" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4 4"/>
+  <path d="M110,44 L120,136 Q121,142 128,142 L192,142 Q199,142 200,136 L210,44" fill="#ccfbf1" stroke="#0f766e" stroke-width="2.5"/>
+  <rect x="153" y="142" width="14" height="9" fill="#0f766e"/>
+  <text x="262" y="92" text-anchor="middle" font-size="13" font-weight="700" fill="#0f766e">queue</text>
+  <text x="262" y="108" text-anchor="middle" font-size="12" fill="#64748b">(capacity 3)</text>
+  <g fill="#14b8a6" stroke="#0f766e" stroke-width="1.5">
+    <rect x="130" y="112" width="60" height="22" rx="5" opacity="0"><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.0833;0.875" calcMode="discrete" dur="6s" repeatCount="indefinite"/></rect>
+    <rect x="130" y="86" width="60" height="22" rx="5" opacity="0"><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.1333;0.65" calcMode="discrete" dur="6s" repeatCount="indefinite"/></rect>
+    <rect x="130" y="60" width="60" height="22" rx="5" opacity="0"><animate attributeName="opacity" values="0;1;0;1;0" keyTimes="0;0.1833;0.2;0.2333;0.425" calcMode="discrete" dur="6s" repeatCount="indefinite"/></rect>
+  </g>
+  <g fill="#2563eb">
+    <rect x="-7" y="-5" width="14" height="10" rx="2" opacity="0"><animateMotion path="M14,30 L160,30 L160,58" keyPoints="0;0;1;1" keyTimes="0;0.0033;0.0833;1" calcMode="linear" dur="6s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.0033;0.0833" calcMode="discrete" dur="6s" repeatCount="indefinite"/></rect>
+    <rect x="-7" y="-5" width="14" height="10" rx="2" opacity="0"><animateMotion path="M14,30 L160,30 L160,58" keyPoints="0;0;1;1" keyTimes="0;0.05;0.1333;1" calcMode="linear" dur="6s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.05;0.1333" calcMode="discrete" dur="6s" repeatCount="indefinite"/></rect>
+    <rect x="-7" y="-5" width="14" height="10" rx="2" opacity="0"><animateMotion path="M14,30 L160,30 L160,58" keyPoints="0;0;1;1" keyTimes="0;0.1;0.1833;1" calcMode="linear" dur="6s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.1;0.1833" calcMode="discrete" dur="6s" repeatCount="indefinite"/></rect>
+    <rect x="-7" y="-5" width="14" height="10" rx="2" opacity="0"><animateMotion path="M14,30 L160,30 L160,58" keyPoints="0;0;1;1" keyTimes="0;0.15;0.2333;1" calcMode="linear" dur="6s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.15;0.2333" calcMode="discrete" dur="6s" repeatCount="indefinite"/></rect>
+  </g>
+  <rect x="-7" y="-5" width="14" height="10" rx="2" fill="#dc2626" opacity="0"><animateMotion path="M14,30 L150,30 L182,10" keyPoints="0;0;1;1" keyTimes="0;0.2;0.3333;1" calcMode="linear" dur="6s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.2;0.3833" calcMode="discrete" dur="6s" repeatCount="indefinite"/></rect>
+  <text x="314" y="34" text-anchor="end" font-size="13.5" font-weight="700" fill="#dc2626" opacity="0">queue full → drop<animate attributeName="opacity" values="0;1;0" keyTimes="0;0.2833;0.5" calcMode="discrete" dur="6s" repeatCount="indefinite"/></text>
+  <line x1="160" y1="172" x2="304" y2="172" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4 4"/>
+  <g fill="#0f766e">
+    <circle r="6" opacity="0"><animateMotion path="M160,152 L160,172 L300,172" keyPoints="0;0;1;1" keyTimes="0;0.2;0.3167;1" calcMode="linear" dur="6s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.2;0.3167" calcMode="discrete" dur="6s" repeatCount="indefinite"/></circle>
+    <circle r="6" opacity="0"><animateMotion path="M160,152 L160,172 L300,172" keyPoints="0;0;1;1" keyTimes="0;0.425;0.5417;1" calcMode="linear" dur="6s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.425;0.5417" calcMode="discrete" dur="6s" repeatCount="indefinite"/></circle>
+    <circle r="6" opacity="0"><animateMotion path="M160,152 L160,172 L300,172" keyPoints="0;0;1;1" keyTimes="0;0.65;0.7667;1" calcMode="linear" dur="6s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.65;0.7667" calcMode="discrete" dur="6s" repeatCount="indefinite"/></circle>
+    <circle r="6" opacity="0"><animateMotion path="M160,152 L160,172 L300,172" keyPoints="0;0;1;1" keyTimes="0;0.875;0.9917;1" calcMode="linear" dur="6s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.875;0.9917" calcMode="discrete" dur="6s" repeatCount="indefinite"/></circle>
+  </g>
+  <text x="312" y="195" text-anchor="end" font-size="13" font-weight="700" fill="#0f766e">drips out at a fixed rate →</text>
+</svg>
+</div>
+      <ul><li>Smooths traffic to a <b>constant output rate</b>.</li><li>➕ Steady load on the backend.</li><li>➖ Bursts get queued or dropped. Adds latency.</li></ul>
+    </div>
+    <div class="box amber">
+      <h4>🪟 Fixed window counter</h4>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Per-minute counter","interval":2200,
+ "frames":[
+  {"label":"10:00:30","caption":"Count requests in the current calendar minute.","rows":[
+   [{"t":"10:00–10:01","sub":"count 45 / 100","c":"blue"},{"t":"10:01–10:02","sub":"not started","c":"off"}],
+   [{"k":"text","t":"allow ✓","c":"green"}]]},
+  {"label":"10:00:59","caption":"Counter reaches the max of 100. Extra requests get 429.","rows":[
+   [{"t":"10:00–10:01","sub":"count 100 / 100","c":"red"},{"t":"10:01–10:02","sub":"not started","c":"off"}],
+   [{"k":"text","t":"429 until the window ends","c":"red"}]]},
+  {"label":"10:01:00","caption":"New window: the counter resets to 0.","rows":[
+   [{"t":"10:00–10:01","sub":"closed","c":"off"},{"t":"10:01–10:02","sub":"count 0 / 100 (reset)","c":"green"}],
+   [{"k":"text","t":"allow ✓","c":"green"}]]},
+  {"label":"Boundary burst","caption":"<b>99 req at 10:00:59 + 100 at 10:01:00 = 199 in 2 s!</b> Each window is under its limit.","ms":3600,"rows":[
+   [{"t":"99 req","sub":"at 10:00:59","c":"amber"},{"t":"100 req","sub":"at 10:01:00","c":"amber"}],
+   [{"k":"text","t":"= 199 in 2 s ⚠","c":"red"}]]}
+ ]}
+</script></figure>
+      <ul><li>Count per calendar window (e.g. per minute).</li><li>➕ Simplest (Redis INCR + EXPIRE).</li><li>➖ <b>Boundary burst</b> problem.</li></ul>
+    </div>
+    <div class="box purple">
+      <h4>📜 Sliding window log</h4>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Timestamp log","interval":2300,
+ "frames":[
+  {"label":"Store","caption":"Limit 2 per 60 s (times are mm:ss after 10:00). New request at 10:01:10: store the timestamp of every request.","rows":[
+   [{"t":"00:05","c":"slate"},{"t":"00:40","c":"slate"},{"t":"01:10","sub":"new","c":"blue"}]]},
+  {"label":"Drop old","caption":"Drop timestamps older than 60 s (before 10:00:10).","rows":[
+   [{"t":"00:05","sub":"&gt;60 s: drop","c":"off"},{"t":"00:40","c":"slate"},{"t":"01:10","sub":"new","c":"blue"}]]},
+  {"label":"Count","caption":"Count the older entries: 1 &lt; limit 2 → allow ✓","rows":[
+   [{"t":"00:40","c":"slate"},{"t":"01:10","sub":"allowed","c":"green"},{"k":"gap"}]]},
+  {"label":"Next","caption":"Another request at 10:01:15: count 2 = limit → reject (429).","ms":2800,"rows":[
+   [{"t":"00:40","c":"slate"},{"t":"01:10","c":"slate"},{"t":"01:15","sub":"429","c":"red"}]]}
+ ]}
+</script></figure>
+      <ul><li>➕ Exact, no boundary problem.</li><li>➖ Memory-heavy (one entry per request).</li></ul>
+    </div>
+    <div class="box green">
+      <h4>🧮 Sliding window counter</h4>
+<div class="svgwrap">
+<svg viewBox="0 0 300 172" width="300" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, sans-serif" role="img" aria-label="Sliding window counter: estimate = current count + previous count × overlap; example 40 + 80 × 0.25 = 60, under the limit of 100">
+  <text x="80" y="14" text-anchor="middle" font-size="12.5" fill="#64748b">previous minute</text>
+  <text x="220" y="14" text-anchor="middle" font-size="12.5" fill="#64748b">current minute</text>
+  <rect x="10" y="22" width="140" height="38" rx="8" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+  <rect x="150" y="22" width="140" height="38" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <rect x="115" y="22" width="35" height="38" fill="#fde68a" opacity="0"><animate attributeName="opacity" values="0;0.9;0" keyTimes="0;0.5;0.97" calcMode="discrete" dur="6s" repeatCount="indefinite"/></rect>
+  <text x="62" y="46" text-anchor="middle" font-size="14.5" font-weight="700" fill="#334155">80 req</text>
+  <text x="220" y="46" text-anchor="middle" font-size="14.5" font-weight="700" fill="#1e3a8a">40 req</text>
+  <text x="132" y="46" text-anchor="middle" font-size="12" font-weight="700" fill="#92400e" opacity="0">25%<animate attributeName="opacity" values="0;1;0" keyTimes="0;0.5;0.97" calcMode="discrete" dur="6s" repeatCount="indefinite"/></text>
+  <g>
+    <animateTransform attributeName="transform" type="translate" values="0,0;105,0;105,0" keyTimes="0;0.5;1" dur="6s" repeatCount="indefinite"/>
+    <rect x="10" y="68" width="140" height="20" rx="6" fill="#d1fae5" stroke="#059669" stroke-width="2"/>
+    <text x="80" y="82" text-anchor="middle" font-size="12.5" font-weight="700" fill="#065f46">sliding 60 s</text>
+    <path d="M150,90 l-5,7 h10 z" fill="#059669"/>
+  </g>
+  <text x="150" y="110" text-anchor="middle" font-size="13" fill="#334155">estimate = current + previous × overlap%</text>
+  <text x="150" y="134" text-anchor="middle" font-size="15.5" font-weight="700" fill="#1e293b" opacity="0">40 + 80 × 0.25 = 60<animate attributeName="opacity" values="0;1;0" keyTimes="0;0.5;0.97" calcMode="discrete" dur="6s" repeatCount="indefinite"/></text>
+  <text x="150" y="158" text-anchor="middle" font-size="13.5" font-weight="700" fill="#059669" opacity="0">60 ≤ limit 100 → allow ✓<animate attributeName="opacity" values="0;1;0" keyTimes="0;0.58;0.97" calcMode="discrete" dur="6s" repeatCount="indefinite"/></text>
+</svg>
+</div>
+      <ul><li>Blends the current and previous fixed windows.</li><li>➕ Accurate enough, low memory. Popular at scale (used by Cloudflare).</li><li>➖ An approximation.</li></ul>
+    </div>
+  </div>
+
+  <div class="tablewrap"><table>
+    <tr><th>Algorithm</th><th>Bursts</th><th>Accuracy</th><th>Memory</th><th>Typical use</th></tr>
+    <tr><td>Token bucket</td><td>Allowed (up to B)</td><td>Good</td><td>Low</td><td>API gateways, public APIs</td></tr>
+    <tr><td>Leaky bucket</td><td>Smoothed</td><td>Good</td><td>Low</td><td>Traffic shaping, protecting fragile backends</td></tr>
+    <tr><td>Fixed window</td><td>2× at edges</td><td>Weak</td><td>Lowest</td><td>Simple quotas</td></tr>
+    <tr><td>Sliding log</td><td>No</td><td>Exact</td><td>High</td><td>Low-volume, strict limits</td></tr>
+    <tr><td>Sliding counter</td><td>Minimal</td><td>Very good</td><td>Low</td><td>High-scale distributed limits</td></tr>
+  </table></div>
+
+  <h3>How to apply it</h3>
+  <ul>
+    <li><b>Where</b>: at the edge (API gateway / APIM / WAF) first, then inside services for fine-grained limits.</li>
+    <li><b>Key by</b>: API key, user, client ID, IP, tenant, endpoint.</li>
+    <li><b>Respond</b>: <code>429 Too Many Requests</code> + <code>Retry-After</code>, plus <code>RateLimit-Limit / Remaining / Reset</code> headers.</li>
+    <li><b>Distributed</b>: keep counters in Redis (atomic Lua scripts) so all gateway nodes share them.</li>
+  </ul>
+  <div class="remember"><ul>
+    <li><b>Rate limit</b> (short term, e.g. 100/s) vs <b>quota</b> (long term, e.g. 1M/month) vs <b>throttling</b> (slowing down rather than rejecting).</li>
+    <li>Clients should back off with exponential backoff and jitter when they get a 429.</li>
+    <li>Tiered limits per product or plan (Free / Gold / Partner) is a classic APIM setup.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Algorithm</th><th>Library / API</th></tr>
+    <tr><td><b>Token bucket</b></td><td><span class="pill builtin">built-in</span> <code>TokenBucketRateLimiter</code> (<code>AddTokenBucketLimiter</code>)</td></tr>
+    <tr><td><b>Leaky bucket</b></td><td>No built-in limiter. Approximate it with a token bucket that has a <code>QueueLimit</code>, or a <code>ConcurrencyLimiter</code></td></tr>
+    <tr><td><b>Fixed window</b></td><td><span class="pill builtin">built-in</span> <code>FixedWindowRateLimiter</code> (<code>AddFixedWindowLimiter</code>)</td></tr>
+    <tr><td><b>Sliding window counter</b></td><td><span class="pill builtin">built-in</span> <code>SlidingWindowRateLimiter</code> (window split into <code>SegmentsPerWindow</code>). There is no sliding-log limiter</td></tr>
+    <tr><td><b>Per key / user / IP</b></td><td><span class="pill builtin">built-in</span> <code>PartitionedRateLimiter</code> via <code>RateLimitPartition.Get…Limiter</code>; <code>ConcurrencyLimiter</code> caps in-flight requests</td></tr>
+    <tr><td><b>Distributed (all nodes)</b></td><td><code>RedisRateLimiting.AspNetCore</code> (community, Redis-backed limiters), or your own Redis Lua script via <code>StackExchange.Redis</code></td></tr>
+  </table>
+<pre class="code"><code>builder.Services.AddRateLimiter(o =&gt;
+{
+    o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    o.AddPolicy("per-api-key", http =&gt; RateLimitPartition.GetTokenBucketLimiter(
+        partitionKey: http.Request.Headers["X-Api-Key"].ToString() is { Length: &gt; 0 } key
+            ? key : $"ip:{http.Connection.RemoteIpAddress}",
+        factory: _ =&gt; new TokenBucketRateLimiterOptions
+        {
+            TokenLimit = 100,                              // bucket size B (max burst)
+            TokensPerPeriod = 10,                          // refill r ...
+            ReplenishmentPeriod = TimeSpan.FromSeconds(1), // ... per second
+            QueueLimit = 0                                 // reject at once, don't queue
+        }));
+    o.OnRejected = (ctx, ct) =&gt;
+    {
+        if (ctx.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+            ctx.HttpContext.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString();
+        return ValueTask.CompletedTask;
+    };
+});
+
+var app = builder.Build();
+app.UseRateLimiter();
+app.MapPost("/payments", CreatePayment).RequireRateLimiting("per-api-key");</code></pre>
+  <p class="warn">Built-in limiters count per instance (10 nodes = 10&times; the limit). Authenticate the key before using it as a partition, or callers can invent keys to get fresh buckets. On the client side, <code>Microsoft.Extensions.Http.Resilience</code> retries honour <code>Retry-After</code>.</p>
+</div>
+  <div class="post">
+    <p>5 rate-limiting algorithms in one post 🚦</p>
+    <p>🪣 Token bucket: allows bursts, then a steady rate</p>
+    <p>💧 Leaky bucket: smooth, constant output</p>
+    <p>🪟 Fixed window: simple, but 2× bursts at the edges</p>
+    <p>📜 Sliding log: exact, memory hungry</p>
+    <p>🧮 Sliding counter: the practical sweet spot</p>
+    <p>Rule of thumb: token bucket at the gateway, return 429 + Retry-After, and let clients back off.</p>
+    <p>#APIs #SystemDesign #RateLimiting</p>
+  </div>
+</section>
+
+<!-- IDEMPOTENCY -->
+<section class="concept" id="idempotency">
+  <h2><span class="num">6.7</span> Idempotency <span class="tag-added">Added</span></h2>
+  <p class="oneliner">An operation is <b>idempotent</b> if doing it once or many times has the same effect. Essential when networks retry.</p>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Retry with an Idempotency-Key","actors":[{"t":"Client","c":"blue"},{"t":"API","c":"purple"},{"t":"Key store","c":"teal"}],"colW":220,"rowH":48,"stepMs":950,
+ "steps":[
+  {"from":0,"to":1,"t":"POST /payments","sub":"Idempotency-Key: 7f3a…","c":"blue"},
+  {"from":1,"to":2,"t":"key seen before?"},
+  {"from":2,"to":1,"t":"No","dash":true,"c":"green"},
+  {"from":1,"to":1,"t":"process payment","c":"purple"},
+  {"from":1,"to":2,"t":"store key → response (201)","c":"teal"},
+  {"from":1,"to":0,"t":"201 Created","sub":"lost: timeout ✗","dash":true,"c":"red"},
+  {"note":"timeout: client retries with the same key","over":[0,1],"c":"amber"},
+  {"from":0,"to":1,"t":"POST /payments (retry)","sub":"same Idempotency-Key: 7f3a…","c":"blue"},
+  {"from":1,"to":2,"t":"key seen before?"},
+  {"from":2,"to":1,"t":"Yes → stored 201","dash":true,"c":"amber"},
+  {"from":1,"to":0,"t":"201 (stored response)","sub":"no double charge ✓","c":"green"}
+ ]}
+</script></figure>
+  <div class="remember"><ul>
+    <li>Payments, transfers and order creation <b>must</b> be idempotent.</li>
+    <li>Store keys with a TTL (e.g. 24 h). Scope them per client. Reject the same key sent with a different payload.</li>
+    <li>Message consumers: deduplicate by message ID (the idempotent receiver pattern).</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Piece</th><th>Library / API</th></tr>
+    <tr><td><b>Read the key</b></td><td><span class="pill builtin">built-in</span> <code>IEndpointFilter</code> on the POST endpoints (there's no built-in idempotency middleware)</td></tr>
+    <tr><td><b>Store the response</b></td><td><code>IDistributedCache</code> on Redis (<code>Microsoft.Extensions.Caching.StackExchangeRedis</code>) or a SQL table, with a 24 h TTL</td></tr>
+    <tr><td><b>Hard guarantee</b></td><td>A unique index on <code>(ClientId, IdempotencyKey)</code> (EF Core <code>HasIndex(…).IsUnique()</code>), written in the same transaction as the payment</td></tr>
+    <tr><td><b>Message consumers</b></td><td>Idempotent receiver: insert the message ID into a processed-messages table with a unique key, in the same transaction as the business change</td></tr>
+    <tr><td><b>Clients</b></td><td><code>Microsoft.Extensions.Http.Resilience</code> retries: send the same <code>Idempotency-Key</code> on every retry</td></tr>
+  </table>
+<pre class="code"><code>public sealed class IdempotencyFilter(IDistributedCache cache) : IEndpointFilter
+{
+    public async ValueTask&lt;object?&gt; InvokeAsync(EndpointFilterInvocationContext ctx, EndpointFilterDelegate next)
+    {
+        var http = ctx.HttpContext;
+        string? key = http.Request.Headers["Idempotency-Key"];
+        if (string.IsNullOrWhiteSpace(key))
+            return TypedResults.Problem("Idempotency-Key header is required", statusCode: 400);
+
+        var cacheKey = $"idem:{http.User.FindFirst("azp")?.Value}:{key}";   // scope keys per client
+        if (await cache.GetStringAsync(cacheKey) is { } saved)
+            return TypedResults.Text(saved, "application/json");          // replay, don't charge twice
+
+        var result = await next(ctx);
+        if (result is IValueHttpResult { Value: { } value })
+            await cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(value, JsonSerializerOptions.Web),
+                new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24) });
+        return result;
+    }
+}
+// app.MapPost("/payments", CreatePayment).AddEndpointFilter&lt;IdempotencyFilter&gt;();</code></pre>
+  <p class="warn">This sketch has a race: two identical requests arriving together both run. Claim the key first (Redis <code>SET NX</code> or the unique index), store a hash of the body to reject the same key with a different payload (422), and replay the original status code too.</p>
+</div>
+  </section>
+
+<div class="qa-wrap">
+  <h2>⚡ Quick-fire Q&amp;A</h2>
+  <details class="qa"><summary>API key vs OAuth token?</summary><p>An API key identifies the calling app and never expires unless rotated. An OAuth token is short-lived, scoped, can represent a user, and is issued by a trusted authorization server.</p></details>
+  <details class="qa"><summary>Which grant type for a nightly batch job calling an API?</summary><p>Client Credentials, ideally with a certificate or private_key_jwt, or a managed identity, instead of a client secret.</p></details>
+  <details class="qa"><summary>How do you rate limit across 10 gateway nodes?</summary><p>Use a shared counter store (Redis) with atomic operations, or a gateway feature with synchronised counters. Accept slight approximation for speed.</p></details>
+  <details class="qa"><summary>401 vs 403?</summary><p>401: we don't know who you are (missing or invalid token). 403: we know who you are, but you're not allowed.</p></details>
+</div>
+
+<div class="pager"><a href="05-databases-data.html">← 05 · Databases</a><a class="next" href="07-apim.html">07 · API Management →</a></div>
+</main>
+<footer>Tech Concepts Prep · Section 06</footer>
+<script src="assets/app.js"></script>
+<script src="assets/viz.js"></script>
+</body>
+</html>

@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>14 · Architecture Documents &amp; Governance | Tech Concepts Prep</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<nav class="top"><a href="13-agentic-ai.html">← Agentic AI</a><span class="here">14 · Architecture Documents</span><a href="15-system-design-playbook.html">Next: Playbook →</a></nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">Section 14</div>
+  <h1>Architecture documents &amp; governance</h1>
+  <p>What each document is for, when it's written, who reads it and what goes in it: ACD, AIA, SO, HLD, LLD, ADR, SOP, plus NFRs, C4, threat models and runbooks.</p>
+  <div class="toc">
+    <a href="#lifecycle">Document lifecycle</a>
+    <a href="#acd">ACD</a>
+    <a href="#aia">AIA</a>
+    <a href="#so">SO</a>
+    <a href="#hld" class="added">HLD</a>
+    <a href="#lld">LLD</a>
+    <a href="#adr">ADR</a>
+    <a href="#sop">SOP</a>
+    <a href="#nfr" class="added">NFRs</a>
+    <a href="#c4" class="added">C4 model</a>
+    <a href="#threat" class="added">Threat model</a>
+    <a href="#runbook" class="added">Runbook vs SOP vs Playbook</a>
+    <a href="#frameworks" class="added">TOGAF &amp; Well-Architected</a>
+  </div>
+</header>
+
+<div class="warn">Acronyms like <b>ACD</b>, <b>AIA</b> and <b>SO</b> mean different things in different organisations. The expansions below are the common ones. Check your organisation's templates and adjust the names, keeping the purpose.</div>
+
+<!-- LIFECYCLE -->
+<section class="concept" id="lifecycle">
+  <h2><span class="num">14.1</span> Where each document fits</h2>
+  <p class="oneliner">Documents get more detailed as an initiative moves from idea to operations. ADRs are written throughout.</p>
+  <div class="flow">
+    <div class="n">💡 Idea / demand</div><div class="ar">→</div>
+    <div class="n p">ACD<small>concept &amp; context</small></div><div class="ar">→</div>
+    <div class="n p">AIA<small>impact &amp; governance path</small></div><div class="ar">→</div>
+    <div class="n a">SO / HLD<small>solution design</small></div><div class="ar">→</div>
+    <div class="n a">LLD<small>build detail</small></div><div class="ar">→</div>
+    <div class="n g">Build &amp; test</div><div class="ar">→</div>
+    <div class="n t">SOP / Runbook<small>operate</small></div>
+  </div>
+  <div class="flow"><div class="n s" style="min-width:60%">📝 ADRs: one per significant decision, at any stage</div></div>
+  <div class="tablewrap"><table>
+    <tr><th>Doc</th><th>Question it answers</th><th>Audience</th><th>Detail</th></tr>
+    <tr><td>ACD</td><td>Why are we doing this, and what's the concept?</td><td>Business, sponsors, enterprise architects</td><td>Low</td></tr>
+    <tr><td>AIA</td><td>What does it impact, and how risky is it?</td><td>Architecture review board, risk, security</td><td>Low–medium</td></tr>
+    <tr><td>SO / HLD</td><td>What's the solution, and how does it fit together?</td><td>Architects, tech leads, delivery, security</td><td>Medium</td></tr>
+    <tr><td>LLD</td><td>Exactly how do we build it?</td><td>Developers, testers, platform engineers</td><td>High</td></tr>
+    <tr><td>ADR</td><td>Why did we choose X over Y?</td><td>Current and future team</td><td>Focused</td></tr>
+    <tr><td>SOP</td><td>How do we operate it, step by step?</td><td>Operations, support, SRE</td><td>Procedural</td></tr>
+  </table></div>
+</section>
+
+<!-- ACD -->
+<section class="concept" id="acd">
+  <h2><span class="num">14.2</span> ACD: Architecture Concept / Context Document</h2>
+  <p class="oneliner">The earliest architecture artefact. It frames the problem, the business context and the target concept before detailed design begins.</p>
+  <div class="cols2">
+    <div><h3>Typical contents</h3><ul>
+      <li>Problem statement and business drivers</li>
+      <li>Scope (in / out), stakeholders</li>
+      <li>Current state (as-is) context diagram</li>
+      <li>Target state concept (to-be), capabilities affected</li>
+      <li>Options considered (at a high level), recommended direction</li>
+      <li>Key assumptions, constraints, dependencies, risks</li>
+      <li>Alignment with enterprise strategy and principles</li>
+    </ul></div>
+    <div class="remember" style="margin-top:0"><ul>
+      <li>Keep it short and visual. Its job is to get <b>agreement on direction</b>.</li>
+      <li>One context diagram is worth pages of text (C4 level 1).</li>
+      <li>Capture options early so later reviews don't reopen them.</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- AIA -->
+<section class="concept" id="aia">
+  <h2><span class="num">14.3</span> AIA: Architecture Impact Assessment</h2>
+  <p class="oneliner">Assesses how a change affects existing systems, data, integrations, security, operations and cost, and decides how much governance it needs.</p>
+  <div class="cols2">
+    <div><h3>Typical contents</h3><ul>
+      <li>Change summary and classification (minor / major / strategic)</li>
+      <li>Impacted applications, interfaces, data stores</li>
+      <li>Data impact: classification, PII, residency, retention</li>
+      <li>Security and privacy impact, regulatory obligations</li>
+      <li>Infrastructure, operational and support impact</li>
+      <li>Technology standards compliance, technical debt created or removed</li>
+      <li>Risk rating → governance path (fast-track vs full review board)</li>
+    </ul></div>
+    <div class="remember" style="margin-top:0"><ul>
+      <li>In AI programmes, "AIA" can also mean <b>AI Impact Assessment</b>: fairness, transparency, data use, human oversight, model risk.</li>
+      <li>Be honest about impacts. Surprises found later cost much more.</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- SO -->
+<section class="concept" id="so">
+  <h2><span class="num">14.4</span> SO: Solution Outline / Solution Overview</h2>
+  <p class="oneliner">A high-level description of the proposed solution: its components, integrations, key decisions and how it meets requirements. The bridge between concept and detailed design.</p>
+  <div class="cols2">
+    <div><h3>Typical contents</h3><ul>
+      <li>Requirements summary: functional + <b>non-functional</b></li>
+      <li>Solution architecture diagram (C4 level 2: containers)</li>
+      <li>Components and responsibilities, build vs buy</li>
+      <li>Integration overview: interfaces, patterns (sync/async/batch), protocols</li>
+      <li>Data flows and data model overview</li>
+      <li>Security architecture (IAM, encryption, network zones)</li>
+      <li>Deployment and environments, HA/DR approach</li>
+      <li>Options analysis, key decisions (link ADRs), risks, costs</li>
+    </ul></div>
+    <div class="remember" style="margin-top:0"><ul>
+      <li>Explain how each NFR is met (availability target → zone redundancy + DR region).</li>
+      <li>Show trade-offs. Reviewers trust designs that admit their weaknesses.</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- HLD -->
+<section class="concept" id="hld">
+  <h2><span class="num">14.5</span> HLD: High-Level Design <span class="tag-added">Added</span></h2>
+  <p class="oneliner">The system-level design: major components, interactions, technology choices and deployment topology. In many organisations, the SO and HLD are one document.</p>
+  <ul><li>Architecture diagrams (logical + physical), component interactions, sequence diagrams for key flows</li><li>Technology stack, hosting, networking, environments</li><li>Cross-cutting concerns: logging, monitoring, security, resilience</li></ul>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Aspire AppHost</b></td><td><code>Aspire.Hosting.AppHost</code> (+ <code>Aspire.Hosting.*</code> integrations)</td><td>The HLD topology as runnable C#: services, databases, queues and their references. The dashboard draws the live resource graph</td></tr>
+    <tr><td><b>Architecture tests</b></td><td><code>TngTech.ArchUnitNET</code> (+ <code>.xUnitV3</code> / <code>.MSTestV2</code>)</td><td>Fail the build when code breaks the layering in the HLD (e.g. API must not reference the data layer)</td></tr>
+    <tr><td><b>Cross-cutting defaults</b></td><td>Aspire ServiceDefaults template (OpenTelemetry, health checks, resilience, service discovery)</td><td>Apply the HLD's logging, monitoring and resilience decisions to every service the same way</td></tr>
+  </table>
+<pre class="code"><code>// AppHost: the container view (C4 level 2) in code
+var builder = DistributedApplication.CreateBuilder(args);
+var redis = builder.AddRedis("cache");
+var sql   = builder.AddSqlServer("sql").AddDatabase("payments");
+var bus   = builder.AddAzureServiceBus("bus");
+
+builder.AddProject&lt;Projects.Payments_Api&gt;("payments-api")
+       .WithReference(sql).WithReference(redis).WithReference(bus);
+
+builder.Build().Run();</code></pre>
+  <p class="warn"><code>NetArchTest.Rules</code> is still popular, but it hasn't had a release since 2021. Prefer ArchUnitNET for new projects.</p>
+</div>
+  </section>
+
+<!-- LLD -->
+<section class="concept" id="lld">
+  <h2><span class="num">14.6</span> LLD: Low-Level Design</h2>
+  <p class="oneliner">The developer-ready blueprint. It describes each component in enough detail to build and test without guessing.</p>
+  <div class="cols2">
+    <div><h3>Typical contents</h3><ul>
+      <li>Component internals: modules, classes, responsibilities</li>
+      <li><b>API contracts</b> (OpenAPI), message schemas, event definitions</li>
+      <li>Database schema: tables, keys, indexes, partitioning</li>
+      <li>Detailed sequence diagrams, including error paths</li>
+      <li>Validation rules, mappings and transformations, business rules</li>
+      <li>Error handling, retries, idempotency, timeouts</li>
+      <li>Configuration, feature flags, secrets references</li>
+      <li>Logging and metrics events, alert definitions</li>
+      <li>Infrastructure specifics: SKUs, network rules, IaC modules</li>
+      <li>Test approach: unit, integration, performance</li>
+    </ul></div>
+    <div class="remember" style="margin-top:0"><ul>
+      <li>Keep it close to the code (in the repo, as Markdown + diagrams-as-code) so it doesn't drift.</li>
+      <li>Generated artefacts (OpenAPI, schema DDL) are better than hand-copied tables.</li>
+    </ul></div>
+  </div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>LLD artefact</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>API contract (OpenAPI)</b></td><td><span class="pill builtin">built-in</span> <code>Microsoft.AspNetCore.OpenApi</code> (<code>AddOpenApi</code> / <code>MapOpenApi</code>)</td><td>Generated from the code; OpenAPI 3.1 by default in .NET 10. Add <code>Microsoft.Extensions.ApiDescription.Server</code> to write the file at build time</td></tr>
+    <tr><td><b>Message / event schemas</b></td><td><span class="pill builtin">built-in</span> <code>JsonSchemaExporter</code> (<code>System.Text.Json.Schema</code>)</td><td>Export JSON Schema from your event record types</td></tr>
+    <tr><td><b>Database schema</b></td><td>EF Core migrations: <code>dotnet ef migrations script --idempotent</code></td><td>Reviewable DDL generated from the model, not hand-copied tables</td></tr>
+    <tr><td><b>Layer and naming rules</b></td><td><code>TngTech.ArchUnitNET</code></td><td>Turn LLD rules into tests</td></tr>
+    <tr><td><b>Validation rules</b></td><td><span class="pill builtin">built-in</span> minimal API validation (<code>AddValidation()</code>, .NET 10) with DataAnnotations</td><td>Rules live on the request types and show up in the OpenAPI document</td></tr>
+  </table>
+<pre class="code"><code>// Program.cs
+builder.Services.AddOpenApi();
+app.MapOpenApi();                          // /openapi/v1.json
+
+// Event schema for the LLD / schema registry
+JsonNode schema = JsonSerializerOptions.Default.GetJsonSchemaAsNode(typeof(PaymentCompleted));</code></pre>
+</div>
+  </section>
+
+<!-- ADR -->
+<section class="concept" id="adr">
+  <h2><span class="num">14.7</span> ADR: Architecture Decision Record</h2>
+  <p class="oneliner">A short, immutable note recording <b>one significant decision</b>: its context, the options, the choice and the consequences. Your future self will thank you.</p>
+<pre class="code"><span class="hl">ADR-017: Use Azure Service Bus for payment event integration</span>
+<span class="ok">Status</span>:   Accepted (2026-03-04)   <span class="dim">[Proposed | Accepted | Deprecated | Superseded by ADR-0xx]</span>
+<span class="ok">Context</span>:  Payment service must notify 4 downstream systems; needs ordering per account,
+          DLQ, at-least-once delivery, enterprise support; volumes ~200 msg/s peak.
+<span class="ok">Options</span>:  1) Service Bus topics  2) Event Hubs/Kafka  3) Direct REST calls
+<span class="ok">Decision</span>: Service Bus topics with sessions (session = account ID) + transactional outbox.
+<span class="ok">Consequences</span>:
+   + ordering per account, DLQ, managed service, fits volumes
+   − not built for replaying history (use Event Hubs later if analytics streaming needed)
+   − consumers must be idempotent</pre>
+  <div class="remember"><ul>
+    <li>Write ADRs for decisions that are <b>hard to reverse</b> or <b>often questioned</b>.</li>
+    <li>Never edit an accepted ADR. Supersede it with a new one, so the history is kept.</li>
+    <li>Store them in the repo (<code>/docs/adr</code>). Tools: adr-tools, Log4brains.</li>
+    <li>Formats: Michael Nygard's (above), MADR.</li>
+  </ul></div>
+  <div class="post">
+    <p>"Why on earth did we choose this?" 🤔 Every team, 18 months later.</p>
+    <p>Fix: Architecture Decision Records. One page per big decision: Context → Options → Decision → Consequences.</p>
+    <p>Never edit an old one, supersede it. Your architecture gets a memory.</p>
+    <p>#SoftwareArchitecture #ADR #EngineeringCulture</p>
+  </div>
+</section>
+
+<!-- SOP -->
+<section class="concept" id="sop">
+  <h2><span class="num">14.8</span> SOP: Standard Operating Procedure</h2>
+  <p class="oneliner">Step-by-step instructions for a routine operational task, so it's done the same way every time, by anyone trained.</p>
+  <div class="cols2">
+    <div><h3>Typical structure</h3><ol>
+      <li>Purpose and scope</li>
+      <li>Roles and responsibilities (RACI)</li>
+      <li>Prerequisites, access and tools needed</li>
+      <li>Numbered steps with expected results (and screenshots or commands)</li>
+      <li>Verification / success criteria</li>
+      <li>Rollback or exception handling</li>
+      <li>Escalation contacts</li>
+      <li>Version, owner, review date</li>
+    </ol></div>
+    <div><h3>Examples</h3><ul>
+      <li>Certificate renewal and rotation</li>
+      <li>Monthly DR failover test</li>
+      <li>Onboarding a new API consumer in APIM</li>
+      <li>Replaying messages from a DLQ</li>
+      <li>Patching and release deployment</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- NFR -->
+<section class="concept" id="nfr">
+  <h2><span class="num">14.9</span> Non-Functional Requirements (NFRs) <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Functional requirements say <i>what</i> the system does. NFRs say <i>how well</i> it does it. Make them <b>measurable</b>.</p>
+  <div class="grid">
+    <div class="box"><h4>Performance</h4><p>p95 &lt; 300 ms at 500 TPS</p></div>
+    <div class="box"><h4>Availability</h4><p>99.95% monthly, excluding planned maintenance</p></div>
+    <div class="box"><h4>Scalability</h4><p>Handle 3× peak with auto-scale</p></div>
+    <div class="box"><h4>Recoverability</h4><p>RPO 5 min, RTO 1 h</p></div>
+    <div class="box"><h4>Security</h4><p>OAuth2, TLS 1.2+, encryption at rest, OWASP</p></div>
+    <div class="box"><h4>Compliance</h4><p>Privacy Act, APRA CPS 234/230, PCI DSS</p></div>
+    <div class="box"><h4>Observability</h4><p>Traces, dashboards, alerts on SLOs</p></div>
+    <div class="box"><h4>Maintainability &amp; cost</h4><p>Deployment frequency, cost per transaction</p></div>
+  </div>
+  <div class="tip">❌ "The system should be fast." ✅ "95% of balance enquiries respond within 300 ms at 1,000 req/s."</div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>NFR</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Performance (code level)</b></td><td><code>BenchmarkDotNet</code></td><td>Micro-benchmarks for hot paths, run before and after changes</td></tr>
+    <tr><td><b>Performance (system level)</b></td><td><code>NBomber</code> <span class="pill lic">check licence</span>; Azure Load Testing (JMeter / Locust)</td><td>Prove "p95 &lt; 300 ms at 500 TPS" before go-live</td></tr>
+    <tr><td><b>Availability</b></td><td><span class="pill builtin">built-in</span> <code>AddHealthChecks()</code> / <code>MapHealthChecks</code>; <code>AspNetCore.HealthChecks.*</code> (Xabaril)</td><td>Liveness / readiness probes for the load balancer and orchestrator</td></tr>
+    <tr><td><b>Resilience</b></td><td><code>Microsoft.Extensions.Http.Resilience</code> (<code>AddStandardResilienceHandler</code>)</td><td>Timeouts, retries, circuit breakers on every outbound call</td></tr>
+    <tr><td><b>Observability / SLIs</b></td><td><span class="pill builtin">built-in</span> <code>System.Diagnostics.Metrics</code> + <code>OpenTelemetry.Extensions.Hosting</code></td><td>ASP.NET Core emits <code>http.server.request.duration</code>; build SLO dashboards and alerts on it</td></tr>
+    <tr><td><b>Scalability / abuse</b></td><td><span class="pill builtin">built-in</span> <code>Microsoft.AspNetCore.RateLimiting</code></td><td>Protect capacity and enforce fair use</td></tr>
+  </table>
+</div>
+  </section>
+
+<!-- C4 -->
+<section class="concept" id="c4">
+  <h2><span class="num">14.10</span> C4 model for diagrams <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Four zoom levels of architecture diagrams, like Google Maps for software.</p>
+  <div class="flow">
+    <div class="n">1. Context<small>system + users + external systems</small></div><div class="ar">→ zoom</div>
+    <div class="n p">2. Container<small>apps, APIs, DBs, queues</small></div><div class="ar">→ zoom</div>
+    <div class="n a">3. Component<small>modules inside one container</small></div><div class="ar">→ zoom</div>
+    <div class="n g">4. Code<small>classes (rarely drawn)</small></div>
+  </div>
+  <div class="remember"><ul><li>ACD → level 1. SO/HLD → levels 1–2. LLD → levels 3–4. Diagrams-as-code: Structurizr, PlantUML, Mermaid.</li></ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Tool</th><th>Notes</th></tr>
+    <tr><td><b>Structurizr DSL / Mermaid / PlantUML</b> (text files in the repo)</td><td>The recommended way to write C4 diagrams as code; no .NET package needed. Render in CI or in the docs site</td></tr>
+    <tr><td><b>Structurizr for .NET</b> (<code>Structurizr.Core</code>)</td><td>Exists, but its own README says it lags the Java version. Use it only if you must generate the model from C#</td></tr>
+    <tr><td><b>Aspire dashboard resource graph</b></td><td>A live, always-accurate view of containers (level 2) for a running .NET system</td></tr>
+  </table>
+</div>
+  </section>
+
+<!-- THREAT -->
+<section class="concept" id="threat">
+  <h2><span class="num">14.11</span> Threat model (STRIDE) <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Systematically ask "what could go wrong?" on your data-flow diagram, before attackers do.</p>
+  <div class="tablewrap"><table>
+    <tr><th>STRIDE</th><th>Threat</th><th>Typical control</th></tr>
+    <tr><td><b>S</b>poofing</td><td>Pretending to be someone else</td><td>Strong authentication, MFA, mTLS</td></tr>
+    <tr><td><b>T</b>ampering</td><td>Changing data</td><td>Integrity checks, signatures, TLS</td></tr>
+    <tr><td><b>R</b>epudiation</td><td>Denying an action</td><td>Audit logs, signing</td></tr>
+    <tr><td><b>I</b>nformation disclosure</td><td>Data leak</td><td>Encryption, access control, masking</td></tr>
+    <tr><td><b>D</b>enial of service</td><td>Making it unavailable</td><td>Rate limits, WAF, auto-scale</td></tr>
+    <tr><td><b>E</b>levation of privilege</td><td>Gaining more rights</td><td>Least privilege, authZ checks</td></tr>
+  </table></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <p>The Microsoft Threat Modeling Tool is a desktop app for drawing the data-flow diagram, not a library. The controls it recommends map to these .NET APIs:</p>
+  <table>
+    <tr><th>STRIDE</th><th>.NET control</th></tr>
+    <tr><td><b>Spoofing</b></td><td><code>Microsoft.Identity.Web</code> / <code>Microsoft.AspNetCore.Authentication.JwtBearer</code>; mTLS with <code>Microsoft.AspNetCore.Authentication.Certificate</code>; <code>Azure.Identity</code> managed identities</td></tr>
+    <tr><td><b>Tampering</b></td><td><span class="pill builtin">built-in</span> HTTPS + HSTS middleware; <code>HMACSHA256</code> / <code>ECDsa</code> (<code>System.Security.Cryptography</code>) for message signatures</td></tr>
+    <tr><td><b>Repudiation</b></td><td>Structured audit logs via <code>ILogger</code> + OpenTelemetry, with user ID and trace ID on every action</td></tr>
+    <tr><td><b>Information disclosure</b></td><td><span class="pill builtin">built-in</span> Data Protection API; <code>Microsoft.Extensions.Compliance.Redaction</code>; <code>Azure.Security.KeyVault.Secrets</code></td></tr>
+    <tr><td><b>Denial of service</b></td><td><span class="pill builtin">built-in</span> <code>Microsoft.AspNetCore.RateLimiting</code>; Kestrel request size and timeout limits</td></tr>
+    <tr><td><b>Elevation of privilege</b></td><td><span class="pill builtin">built-in</span> authorization policies (<code>AddAuthorizationBuilder</code>, <code>RequireAuthorization</code>), resource-based <code>IAuthorizationService</code></td></tr>
+  </table>
+</div>
+  </section>
+
+<!-- RUNBOOK -->
+<section class="concept" id="runbook">
+  <h2><span class="num">14.12</span> Runbook vs SOP vs Playbook <span class="tag-added">Added</span></h2>
+  <div class="grid">
+    <div class="box blue"><h4>SOP</h4><p>Routine, planned tasks. The "how we always do X" procedure.</p></div>
+    <div class="box amber"><h4>Runbook</h4><p>Specific operational or incident steps for one system or alert ("if the DLQ depth is over 100, do…"). Often automated.</p></div>
+    <div class="box purple"><h4>Playbook</h4><p>Broader response strategy across teams for a scenario (cyber incident, regional outage, major release).</p></div>
+  </div>
+</section>
+
+<!-- FRAMEWORKS -->
+<section class="concept" id="frameworks">
+  <h2><span class="num">14.13</span> TOGAF &amp; Well-Architected frameworks <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Two widely used frameworks: TOGAF for running enterprise architecture, and Well-Architected for reviewing cloud workloads.</p>
+  <div class="cols2">
+    <div class="box"><h4>TOGAF ADM (enterprise architecture method)</h4><p>Preliminary → A. Vision → B. Business → C. Information Systems (data + application) → D. Technology → E. Opportunities &amp; Solutions → F. Migration Planning → G. Implementation Governance → H. Change Management, with Requirements Management at the centre.</p></div>
+    <div class="box"><h4>Well-Architected (Azure / AWS)</h4><p>Azure pillars: <b>Reliability, Security, Cost Optimisation, Operational Excellence, Performance Efficiency</b>. AWS adds <b>Sustainability</b>. Use them as a design review checklist.</p></div>
+  </div>
+</section>
+
+<div class="qa-wrap">
+  <h2>⚡ Quick-fire Q&amp;A</h2>
+  <details class="qa"><summary>HLD vs LLD?</summary><p>HLD covers <i>what</i> components exist and how they interact (system view). LLD covers <i>how</i> each component is built: contracts, schemas, logic, error handling (developer view).</p></details>
+  <details class="qa"><summary>When do you write an ADR?</summary><p>For any decision that is significant, costly to reverse, or likely to be questioned later: technology choice, integration pattern, data store, security approach.</p></details>
+  <details class="qa"><summary>What makes a good architecture document?</summary><p>Clear purpose and audience, diagrams first, measurable NFRs, explicit trade-offs and decisions, linked ADRs, owner and version, and kept up to date.</p></details>
+</div>
+
+<div class="pager"><a href="13-agentic-ai.html">← 13 · Agentic AI</a><a class="next" href="15-system-design-playbook.html">15 · System Design Playbook →</a></div>
+</main>
+<footer>Tech Concepts Prep · Section 14</footer>
+<script src="assets/app.js"></script>
+<script src="assets/viz.js"></script>
+</body>
+</html>

@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02 · Networking &amp; Communication Protocols | Tech Concepts Prep</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<nav class="top"><a href="01-foundations.html">← Foundations</a><span class="here">02 · Networking &amp; Protocols</span><a href="03-scalability-reliability.html">Next: Scalability →</a></nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">Section 02</div>
+  <h1>Networking &amp; communication protocols</h1>
+  <p>How bytes move between systems: the layers, the transport (TCP/UDP), the web protocols (HTTP/1.1, 2, 3), and how to pick the right protocol for real-time, request/response, messaging or file exchange.</p>
+  <div class="toc">
+    <a href="#layers" class="added">OSI / TCP-IP layers</a>
+    <a href="#tcp-udp" class="added">TCP vs UDP</a>
+    <a href="#http" class="added">HTTP/1.1 vs 2 vs 3</a>
+    <a href="#dns" class="added">DNS</a>
+    <a href="#protocols">Communication protocols</a>
+    <a href="#realtime" class="added">Polling vs WebSocket vs SSE vs Webhook</a>
+    <a href="#formats" class="added">Data formats</a>
+  </div>
+</header>
+
+<!-- LAYERS -->
+<section class="concept" id="layers">
+  <h2><span class="num">2.1</span> OSI &amp; TCP/IP layers <span class="tag-added">Added</span></h2>
+  <p class="oneliner">A network is a stack of layers. Each layer does one job and hands off to the next.</p>
+  <div class="tablewrap"><table>
+    <tr><th>#</th><th>OSI layer</th><th>Job</th><th>Examples</th><th>TCP/IP model</th></tr>
+    <tr><td>7</td><td>Application</td><td>What the app speaks</td><td>HTTP, gRPC, SMTP, DNS, MQTT</td><td rowspan="3">Application</td></tr>
+    <tr><td>6</td><td>Presentation</td><td>Encoding, encryption</td><td>TLS, JSON, Protobuf</td></tr>
+    <tr><td>5</td><td>Session</td><td>Keep a conversation going</td><td>Sessions, RPC setup</td></tr>
+    <tr><td>4</td><td>Transport</td><td>Delivery between ports</td><td>TCP, UDP (QUIC runs on UDP)</td><td>Transport</td></tr>
+    <tr><td>3</td><td>Network</td><td>Routing between networks</td><td>IP, ICMP</td><td>Internet</td></tr>
+    <tr><td>2</td><td>Data link</td><td>Delivery on the local link</td><td>Ethernet, MAC, Wi-Fi</td><td rowspan="2">Link</td></tr>
+    <tr><td>1</td><td>Physical</td><td>Bits on wire or air</td><td>Fibre, copper, radio</td></tr>
+  </table></div>
+  <div class="remember"><ul>
+    <li>Mnemonic (7→1): <b>"All People Seem To Need Data Processing"</b>.</li>
+    <li>In system design, "L4" and "L7" come up all the time. An <b>L4 load balancer</b> sees IP and port. An <b>L7 load balancer</b> sees URLs, headers and cookies.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Layer</th><th>Library / API</th></tr>
+    <tr><td><b>7 Application</b></td><td><code>HttpClient</code> / Kestrel (HTTP), <code>Grpc.Net.Client</code>, <code>System.Net.Dns</code>, <code>MailKit</code> (SMTP), <code>MQTTnet</code></td></tr>
+    <tr><td><b>6 Presentation</b></td><td><span class="pill builtin">built-in</span> <code>SslStream</code> (<code>System.Net.Security</code>) for TLS; <code>System.Text.Json</code> / <code>Google.Protobuf</code> for encoding</td></tr>
+    <tr><td><b>4 Transport</b></td><td><span class="pill builtin">built-in</span> <code>System.Net.Sockets</code> (<code>Socket</code>, <code>TcpClient</code>, <code>UdpClient</code>); <code>System.Net.Quic</code> for QUIC</td></tr>
+    <tr><td><b>3 Network</b></td><td><span class="pill builtin">built-in</span> <code>IPAddress</code>, <code>System.Net.NetworkInformation</code> (<code>Ping</code>, <code>NetworkInterface</code>)</td></tr>
+    <tr><td><b>Fast byte handling</b></td><td><span class="pill builtin">built-in</span> <code>System.IO.Pipelines</code>: what Kestrel uses to parse protocols without extra copies</td></tr>
+  </table>
+</div>
+  </section>
+
+<!-- TCP VS UDP -->
+<section class="concept" id="tcp-udp">
+  <h2><span class="num">2.2</span> TCP vs UDP <span class="tag-added">Added</span></h2>
+  <p class="oneliner"><b>TCP</b> is a reliable, ordered phone call. <b>UDP</b> is fire-and-forget postcards: fast, but some may get lost.</p>
+  <div class="cols2">
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"TCP: 3-way handshake first","actors":[{"t":"Client","c":"blue"},{"t":"Server","c":"green"}],"colW":180,"rowH":44,
+ "steps":[
+  {"from":0,"to":1,"t":"SYN","c":"blue"},
+  {"from":1,"to":0,"t":"SYN-ACK","c":"green"},
+  {"from":0,"to":1,"t":"ACK","c":"blue"},
+  {"note":"Connected: reliable, ordered data","over":[0,1],"c":"green"},
+  {"from":0,"to":1,"t":"data (seq 1, 2, 3…)","c":"purple"},
+  {"from":1,"to":0,"t":"ACK (lost data is resent)","dash":true,"c":"green"}
+ ]}
+</script></figure>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"UDP: fire and forget","actors":[{"t":"Client","c":"blue"},{"t":"Server","c":"teal"}],"colW":180,"rowH":44,
+ "steps":[
+  {"note":"No handshake","over":[0,1],"c":"amber"},
+  {"from":0,"to":1,"t":"datagram 1","c":"blue"},
+  {"from":0,"to":1,"t":"datagram 2","sub":"lost: nobody notices","c":"red","dash":true},
+  {"from":0,"to":1,"t":"datagram 3","c":"blue"},
+  {"note":"No ack, no order, no retry","over":[0,1],"c":"red"}
+ ]}
+</script></figure>
+  </div>
+  <div class="tablewrap"><table>
+    <tr><th></th><th>TCP</th><th>UDP</th></tr>
+    <tr><td>Connection</td><td>Handshake first</td><td>None</td></tr>
+    <tr><td>Reliability</td><td>Retransmits lost packets, keeps order</td><td>No guarantee</td></tr>
+    <tr><td>Speed / overhead</td><td>Higher</td><td>Lower</td></tr>
+    <tr><td>Used by</td><td>HTTP/1.1, HTTP/2, DB connections, SFTP, AMQP</td><td>DNS, video/voice, gaming, QUIC (HTTP/3)</td></tr>
+  </table></div>
+  <div class="remember"><ul>
+    <li>TCP <b>head-of-line blocking</b>: one lost packet holds up everything behind it.</li>
+    <li>QUIC builds reliability on top of UDP, per stream, so one lost packet doesn't block the other streams.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>TcpListener / TcpClient</b></td><td><span class="pill builtin">built-in</span> <code>System.Net.Sockets</code></td><td>Reliable, ordered byte streams (custom protocols, legacy host links)</td></tr>
+    <tr><td><b>UdpClient</b></td><td><span class="pill builtin">built-in</span> <code>System.Net.Sockets</code></td><td>Fire-and-forget datagrams (metrics, discovery, streaming)</td></tr>
+    <tr><td><b>Socket</b></td><td><span class="pill builtin">built-in</span> <code>System.Net.Sockets</code></td><td>Low-level control when the helpers above are not enough</td></tr>
+    <tr><td><b>QuicListener / QuicConnection</b></td><td><span class="pill builtin">built-in</span> <code>System.Net.Quic</code></td><td>QUIC: reliable streams over UDP, the base of HTTP/3. Needs msquic (built into Windows 11 / Server 2022; a package on Linux)</td></tr>
+    <tr><td><b>Pipelines</b></td><td><span class="pill builtin">built-in</span> <code>System.IO.Pipelines</code></td><td>Parse a TCP stream into messages without buffer juggling</td></tr>
+  </table>
+<pre class="code"><code>// TCP: connect first, then a reliable ordered stream
+using var tcp = new TcpClient();
+await tcp.ConnectAsync("core-banking.internal", 9000, ct);
+await using var stream = tcp.GetStream();
+await stream.WriteAsync("PING\n"u8.ToArray(), ct);
+
+// UDP: no connection, no delivery guarantee
+using var udp = new UdpClient();
+await udp.SendAsync("payments.count:1|c"u8.ToArray(), "statsd.internal", 8125, ct);</code></pre>
+  <p class="warn">TCP is a stream, not messages: one <code>ReadAsync</code> can return half a message or two. Add framing (length prefix or delimiter), or let <code>System.IO.Pipelines</code> help.</p>
+</div>
+  </section>
+
+<!-- HTTP -->
+<section class="concept" id="http">
+  <h2><span class="num">2.3</span> HTTP/1.1 vs HTTP/2 vs HTTP/3 <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Same HTTP meaning (methods, status codes, headers), faster ways of sending it.</p>
+  <div class="grid">
+    <div class="box"><h4>HTTP/1.1 (1997)</h4><ul><li>Text-based</li><li>Keep-alive connections</li><li>One request at a time per connection, so browsers open about 6 connections</li><li>Head-of-line blocking</li></ul></div>
+    <div class="box blue"><h4>HTTP/2 (2015)</h4><ul><li>Binary framing</li><li><b>Multiplexing</b>: many streams on one TCP connection</li><li>Header compression (HPACK)</li><li>gRPC runs on it</li><li>Still blocks at the TCP level</li></ul></div>
+    <div class="box purple"><h4>HTTP/3 (2022)</h4><ul><li>Runs on <b>QUIC over UDP</b></li><li>TLS 1.3 built in, faster setup (1-RTT, 0-RTT on resume)</li><li>No TCP head-of-line blocking</li><li>Connection survives a network change (Wi-Fi → 4G)</li></ul></div>
+  </div>
+  <div class="remember"><ul>
+    <li><b>HTTPS</b> = HTTP + TLS. In production, always use TLS 1.2 or later (prefer 1.3).</li>
+    <li>CDNs and gateways often speak HTTP/2 or 3 to clients and HTTP/1.1 to backends.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Kestrel</b></td><td><span class="pill builtin">built-in</span> <code>HttpProtocols.Http1AndHttp2AndHttp3</code></td><td>Serve HTTP/1.1, 2 and 3 on one endpoint (HTTP/3 needs TLS)</td></tr>
+    <tr><td><b>HttpClient</b></td><td><span class="pill builtin">built-in</span> <code>DefaultRequestVersion</code> / <code>DefaultVersionPolicy</code></td><td>Ask for HTTP/2 or 3 and choose whether to fall back</td></tr>
+    <tr><td><b>IHttpClientFactory</b></td><td><code>Microsoft.Extensions.Http</code> (included in ASP.NET Core)</td><td>Named/typed clients with pooled, recycled handlers. The standard way to call HTTP APIs</td></tr>
+    <tr><td><b>SocketsHttpHandler</b></td><td><span class="pill builtin">built-in</span> <code>System.Net.Http</code></td><td>Connection pooling settings: <code>PooledConnectionLifetime</code>, <code>MaxConnectionsPerServer</code>, <code>EnableMultipleHttp2Connections</code></td></tr>
+  </table>
+<pre class="code"><code>builder.WebHost.ConfigureKestrel(k =&gt;
+    k.ListenAnyIP(5001, listen =&gt;
+    {
+        listen.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
+        listen.UseHttps();                      // HTTP/2 and HTTP/3 in browsers need TLS
+    }));
+
+builder.Services.AddHttpClient("payments", c =&gt;
+{
+    c.BaseAddress = new Uri("https://payments.internal/");
+    c.DefaultRequestVersion = HttpVersion.Version30;
+    c.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower; // fall back to 2 or 1.1
+});</code></pre>
+</div>
+  </section>
+
+<!-- DNS -->
+<section class="concept" id="dns">
+  <h2><span class="num">2.4</span> DNS <span class="tag-added">Added</span></h2>
+  <p class="oneliner">The internet's phone book: it turns <code>api.bank.com</code> into an IP address.</p>
+  <div class="flow">
+    <div class="n">Browser / OS cache</div><div class="ar">→</div>
+    <div class="n s">Recursive resolver<small>ISP / 8.8.8.8</small></div><div class="ar">→</div>
+    <div class="n p">Root server<small>"ask .com"</small></div><div class="ar">→</div>
+    <div class="n p">TLD server<small>"ask bank.com NS"</small></div><div class="ar">→</div>
+    <div class="n g">Authoritative<small>A → 20.1.2.3</small></div>
+  </div>
+  <div class="cols2">
+    <div><h3>Record types</h3><ul>
+      <li><b>A / AAAA</b>: name → IPv4 / IPv6</li>
+      <li><b>CNAME</b>: alias to another name</li>
+      <li><b>MX</b>: mail server</li>
+      <li><b>TXT</b>: verification, SPF/DKIM</li>
+      <li><b>NS</b>: which servers are authoritative</li>
+    </ul></div>
+    <div><h3>Points to remember</h3><ul>
+      <li><b>TTL</b> controls caching. Lower it before a migration or cutover.</li>
+      <li>DNS can load balance and route by geography (Azure Traffic Manager, Route 53).</li>
+      <li>DNS failover is slow because clients cache old answers.</li>
+      <li>Private DNS zones resolve private endpoints inside a VNet.</li>
+    </ul></div>
+  </div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Dns</b></td><td><span class="pill builtin">built-in</span> <code>System.Net.Dns</code></td><td>Resolve a name to IPs with the OS resolver (<code>GetHostAddressesAsync</code>)</td></tr>
+    <tr><td><b>DnsClient</b></td><td><code>DnsClient</code></td><td>Query any record type (MX, TXT, SRV, NS) and pick the DNS server</td></tr>
+    <tr><td><b>Connection lifetime</b></td><td><span class="pill builtin">built-in</span> <code>SocketsHttpHandler.PooledConnectionLifetime</code></td><td>Make long-lived <code>HttpClient</code> instances reconnect, so they pick up DNS changes after a failover</td></tr>
+    <tr><td><b>Manage zones</b></td><td><code>Azure.ResourceManager.Dns</code> / <code>Azure.ResourceManager.PrivateDns</code></td><td>Create and update public and private DNS records from code or a pipeline</td></tr>
+  </table>
+<pre class="code"><code>var lookup = new LookupClient();                      // DnsClient
+var result = await lookup.QueryAsync("bank.com", QueryType.MX);
+foreach (var mx in result.Answers.MxRecords())
+    Console.WriteLine($"{mx.Preference} {mx.Exchange}");
+
+// A singleton HttpClient that still follows DNS changes
+var http = new HttpClient(new SocketsHttpHandler
+{
+    PooledConnectionLifetime = TimeSpan.FromMinutes(2)
+});</code></pre>
+  <p class="warn">A static <code>HttpClient</code> without <code>PooledConnectionLifetime</code> keeps its old connections and never sees a DNS change. <code>IHttpClientFactory</code> avoids this by recycling handlers.</p>
+</div>
+  </section>
+
+<!-- PROTOCOL CATALOG -->
+<section class="concept" id="protocols">
+  <h2><span class="num">2.5</span> Communication protocols: the catalogue</h2>
+  <p class="oneliner">Pick a protocol by the interaction you need: request/response, streaming, real-time push, messaging or file transfer.</p>
+
+  <div class="tablewrap"><table>
+    <tr><th>Protocol</th><th>Pattern</th><th>Transport / format</th><th>Best for</th><th>Watch out</th></tr>
+    <tr><td><b>REST over HTTP</b></td><td>Request/response</td><td>HTTP + JSON</td><td>Public and partner APIs, CRUD</td><td>Over/under-fetching, chatty calls</td></tr>
+    <tr><td><b>SOAP</b></td><td>Request/response</td><td>HTTP/JMS + XML (WSDL)</td><td>Legacy enterprise, strict contracts, WS-Security</td><td>Verbose, heavy tooling</td></tr>
+    <tr><td><b>GraphQL</b></td><td>Query language</td><td>HTTP + JSON</td><td>Front-ends needing flexible data shapes</td><td>Caching, query cost, N+1 queries</td></tr>
+    <tr><td><b>gRPC</b></td><td>Unary + streaming RPC</td><td>HTTP/2 + Protobuf</td><td>Internal service-to-service, low latency</td><td>Browser support needs gRPC-Web</td></tr>
+    <tr><td><b>WebSocket</b></td><td>Full-duplex, persistent</td><td>Upgrade from HTTP over TCP</td><td>Chat, live trading, collaboration</td><td>Stateful connections are harder to scale</td></tr>
+    <tr><td><b>SSE</b></td><td>Server → client stream</td><td>HTTP, text/event-stream</td><td>Live feeds, notifications, LLM token streaming</td><td>One direction only</td></tr>
+    <tr><td><b>Webhooks</b></td><td>Event callback (HTTP POST)</td><td>HTTP + JSON</td><td>Notifying partners when something happens</td><td>Retries, signature verification, replay</td></tr>
+    <tr><td><b>AMQP</b></td><td>Messaging (queues/topics)</td><td>TCP, binary</td><td>RabbitMQ, Azure Service Bus</td><td>Broker operations</td></tr>
+    <tr><td><b>MQTT</b></td><td>Lightweight pub/sub</td><td>TCP, tiny headers</td><td>IoT, mobile, unreliable networks</td><td>Limited enterprise features</td></tr>
+    <tr><td><b>Kafka protocol</b></td><td>Event streaming log</td><td>TCP, binary</td><td>High-volume streams, replay</td><td>Partitions, ordering, operations</td></tr>
+    <tr><td><b>SFTP / FTPS / MFT</b></td><td>File transfer</td><td>SSH / TLS</td><td>Batch files, bank and partner exchange</td><td>Polling, partial files, latency</td></tr>
+    <tr><td><b>AS2 / AS4</b></td><td>Signed B2B messages</td><td>HTTP + S/MIME</td><td>EDI, B2B with receipts (MDN)</td><td>Certificate management</td></tr>
+    <tr><td><b>SMTP</b></td><td>Store and forward</td><td>TCP</td><td>Email notifications</td><td>Not for system integration</td></tr>
+  </table></div>
+
+  <h3>Pick by need</h3>
+  <div class="flow">
+    <div class="n">Need an answer now?<small>REST / gRPC</small></div>
+    <div class="n p">Push to a browser live?<small>WebSocket / SSE</small></div>
+    <div class="n g">Tell a partner something happened?<small>Webhook / event</small></div>
+    <div class="n a">Decouple internal systems?<small>AMQP / Kafka</small></div>
+    <div class="n t">Big daily volume?<small>SFTP batch file</small></div>
+  </div>
+
+  <div class="remember"><ul>
+    <li><b>JMS</b> is a Java API, not a wire protocol. AMQP is a wire protocol.</li>
+    <li>gRPC is great between services. REST is better for public, discoverable APIs.</li>
+    <li>For any protocol, ask: how does it authenticate, retry, order messages and get monitored?</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Protocol</th><th>Package</th><th>Notes</th></tr>
+    <tr><td><b>REST</b></td><td><span class="pill builtin">built-in</span> minimal APIs / controllers, <code>HttpClient</code>; <code>Microsoft.AspNetCore.OpenApi</code></td><td>Default choice for public and partner APIs</td></tr>
+    <tr><td><b>gRPC</b></td><td><code>Grpc.AspNetCore</code>, <code>Grpc.Net.Client</code>, <code>Grpc.Net.ClientFactory</code></td><td>Browser access: <code>Grpc.AspNetCore.Web</code>; expose as REST too: <code>Microsoft.AspNetCore.Grpc.JsonTranscoding</code></td></tr>
+    <tr><td><b>GraphQL</b></td><td><code>HotChocolate.AspNetCore</code></td><td>Server, with DataLoader to avoid N+1 queries</td></tr>
+    <tr><td><b>SOAP</b></td><td>Server: <code>CoreWCF.Http</code>. Client: <code>System.ServiceModel.Http</code> + <code>dotnet-svcutil</code></td><td>svcutil generates the client from the WSDL</td></tr>
+    <tr><td><b>WebSocket / SSE</b></td><td><span class="pill builtin">built-in</span> <code>UseWebSockets</code>, <code>TypedResults.ServerSentEvents</code>; SignalR (built-in)</td><td>See 2.6 for details</td></tr>
+    <tr><td><b>AMQP / Kafka / MQTT</b></td><td><code>Azure.Messaging.ServiceBus</code>, <code>RabbitMQ.Client</code>, <code>Confluent.Kafka</code>, <code>MQTTnet</code></td><td>Messaging and event streaming clients</td></tr>
+    <tr><td><b>SFTP / FTPS / SMTP</b></td><td><code>SSH.NET</code>, <code>FluentFTP</code>, <code>MailKit</code></td><td>File transfer and email. Don't use the old <code>SmtpClient</code>; Microsoft recommends MailKit</td></tr>
+  </table>
+  <p class="warn">AS2/AS4 has no well-known free .NET library. It is usually handled by an MFT or B2B gateway product, not app code.</p>
+</div>
+  <div class="post">
+    <p>REST, gRPC, GraphQL, WebSocket, SSE, Webhooks, AMQP, Kafka, SFTP… which one? 🤔</p>
+    <p>Ask one question: what interaction do I need?</p>
+    <p>✅ Answer now → REST / gRPC ✅ Live push → WebSocket / SSE ✅ "Something happened" → Webhook / Event ✅ Decouple → Queue ✅ Bulk → File</p>
+    <p>The protocol follows the interaction, not the hype.</p>
+    <p>#Integration #APIs #Architecture</p>
+  </div>
+</section>
+
+<!-- REALTIME -->
+<section class="concept" id="realtime">
+  <h2><span class="num">2.6</span> Short polling vs Long polling vs SSE vs WebSocket vs Webhook <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Five ways to get updates from a server, from "keep asking" to "the server calls you".</p>
+  <div class="cols2">
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Short polling: wasteful","actors":[{"t":"Client","c":"blue"},{"t":"Server","c":"green"}],"colW":200,"minWidth":400,"rowH":40,"stepMs":700,
+ "steps":[
+  {"from":0,"to":1,"t":"any news?"},
+  {"from":1,"to":0,"t":"no","dash":true},
+  {"note":"wait 5 s, ask again","over":[0,0],"c":"amber"},
+  {"from":0,"to":1,"t":"any news?"},
+  {"from":1,"to":0,"t":"no","dash":true},
+  {"from":0,"to":1,"t":"any news?"},
+  {"from":1,"to":0,"t":"yes!","c":"green"},
+  {"note":"wasteful: most calls get nothing","over":[0,1],"c":"red"}
+ ]}
+</script></figure>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Long polling","actors":[{"t":"Client","c":"blue"},{"t":"Server","c":"green"}],"colW":200,"minWidth":400,"rowH":40,
+ "steps":[
+  {"from":0,"to":1,"t":"any news?"},
+  {"note":"server holds the request…","over":[1,1],"c":"amber"},
+  {"note":"…until there is news","over":[1,1],"c":"amber"},
+  {"from":1,"to":0,"t":"yes!","c":"green"},
+  {"from":0,"to":1,"t":"re-ask straight away"},
+  {"note":"held open again","over":[1,1],"c":"amber"}
+ ]}
+</script></figure>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"SSE: one-way push","actors":[{"t":"Client","c":"blue"},{"t":"Server","c":"green"}],"colW":200,"minWidth":400,"rowH":40,"stepMs":750,
+ "steps":[
+  {"from":0,"to":1,"t":"GET /stream (open once)"},
+  {"from":1,"to":0,"t":"event","c":"green"},
+  {"from":1,"to":0,"t":"event","c":"green"},
+  {"from":1,"to":0,"t":"event","c":"green"},
+  {"note":"one-way push: server → client","over":[0,1],"c":"green"}
+ ]}
+</script></figure>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"WebSocket: two-way","actors":[{"t":"Client","c":"blue"},{"t":"Server","c":"green"}],"colW":200,"minWidth":400,"rowH":40,"stepMs":750,
+ "steps":[
+  {"from":0,"to":1,"t":"HTTP Upgrade"},
+  {"from":1,"to":0,"t":"101 Switching Protocols","dash":true},
+  {"note":"one persistent connection","over":[0,1],"c":"purple"},
+  {"from":0,"to":1,"t":"message","c":"purple"},
+  {"from":1,"to":0,"t":"message","c":"green"},
+  {"from":1,"to":0,"t":"message","c":"green"},
+  {"from":0,"to":1,"t":"message","c":"purple"},
+  {"note":"two-way: both sides send any time","over":[0,1],"c":"green"}
+ ]}
+</script></figure>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Webhook: event push (server-to-server)","actors":[{"t":"Provider","c":"purple"},{"t":"Your API","c":"blue"}],"colW":200,"minWidth":400,"rowH":46,
+ "steps":[
+  {"from":0,"to":0,"t":"event happens"},
+  {"from":0,"to":1,"t":"HTTP POST /callback","c":"purple","sub":"signed with HMAC"},
+  {"from":1,"to":0,"t":"2xx straight away","dash":true,"c":"green"},
+  {"note":"do the real work async","over":[1,1],"c":"amber"},
+  {"note":"event push: no polling at all","over":[0,1],"c":"green"}
+ ]}
+</script></figure>
+  </div>
+  <div class="remember"><ul>
+    <li>Webhooks need <b>HMAC signature checks</b>, <b>retries with backoff</b>, <b>idempotent handlers</b> and fast 2xx replies (do the work async).</li>
+    <li>WebSockets and SSE need sticky connections or a pub/sub backplane (for example Redis or Azure SignalR) to scale out.</li>
+    <li>SSE reconnects automatically, which makes it great for streaming LLM tokens.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Technique</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Polling</b></td><td><span class="pill builtin">built-in</span> minimal API endpoint + ETag / 304</td><td>Plain GET. Return 304 when nothing changed</td></tr>
+    <tr><td><b>SSE (server)</b></td><td><span class="pill builtin">built-in</span> <code>TypedResults.ServerSentEvents</code> (new in ASP.NET Core 10)</td><td>Stream any <code>IAsyncEnumerable&lt;T&gt;</code> as <code>text/event-stream</code></td></tr>
+    <tr><td><b>SSE (client)</b></td><td><code>System.Net.ServerSentEvents</code> (<code>SseParser</code>)</td><td>Read an SSE stream from .NET (e.g. LLM token streams)</td></tr>
+    <tr><td><b>WebSocket</b></td><td><span class="pill builtin">built-in</span> <code>app.UseWebSockets()</code>, <code>ClientWebSocket</code></td><td>Raw two-way messages; you handle reconnects and scale-out</td></tr>
+    <tr><td><b>SignalR</b></td><td><span class="pill builtin">built-in</span> ASP.NET Core SignalR; scale-out: <code>Microsoft.Azure.SignalR</code> or <code>Microsoft.AspNetCore.SignalR.StackExchangeRedis</code></td><td>Picks WebSocket / SSE / long polling for you, adds groups and reconnects</td></tr>
+    <tr><td><b>Webhook</b></td><td><span class="pill builtin">built-in</span> <code>HMACSHA256</code> + <code>CryptographicOperations.FixedTimeEquals</code></td><td>Verify the signature before trusting the payload</td></tr>
+  </table>
+<pre class="code"><code>// SSE: push price updates to the browser
+app.MapGet("/prices", (PriceFeed feed, CancellationToken ct) =&gt;
+    TypedResults.ServerSentEvents(feed.StreamAsync(ct), eventType: "price"));
+
+// Webhook: verify the HMAC signature, reply 2xx fast, process later
+app.MapPost("/webhooks/payments", async (HttpRequest req, IConfiguration cfg, Channel&lt;byte[]&gt; inbox) =&gt;
+{
+    using var ms = new MemoryStream();
+    await req.Body.CopyToAsync(ms);
+    var body = ms.ToArray();
+    var expected = HMACSHA256.HashData(Encoding.UTF8.GetBytes(cfg["Webhook:Secret"]!), body);
+    var given = Convert.FromHexString(req.Headers["X-Signature"].ToString());
+    if (!CryptographicOperations.FixedTimeEquals(expected, given))
+        return Results.Unauthorized();
+    await inbox.Writer.WriteAsync(body);         // a worker does the real work
+    return Results.Ok();
+});</code></pre>
+  <p class="warn">Compare signatures with <code>FixedTimeEquals</code>, never <code>==</code> or <code>SequenceEqual</code>, which leak timing. Also check a timestamp header to block replays.</p>
+</div>
+  </section>
+
+<!-- FORMATS -->
+<section class="concept" id="formats">
+  <h2><span class="num">2.7</span> Data formats &amp; financial message standards <span class="tag-added">Added</span></h2>
+  <p class="oneliner">The protocol carries the message. The format defines what the message looks like.</p>
+  <div class="tablewrap"><table>
+    <tr><th>Format</th><th>Type</th><th>Notes</th></tr>
+    <tr><td>JSON</td><td>Text</td><td>Default for web APIs. Validate with JSON Schema</td></tr>
+    <tr><td>XML</td><td>Text</td><td>SOAP, legacy systems, XSD validation</td></tr>
+    <tr><td>Protobuf</td><td>Binary</td><td>gRPC. Small and fast, schema in <code>.proto</code></td></tr>
+    <tr><td>Avro</td><td>Binary</td><td>Kafka + Schema Registry, handles schema changes well</td></tr>
+    <tr><td>Parquet</td><td>Columnar</td><td>Analytics, data lakes</td></tr>
+    <tr><td>CSV / fixed-width</td><td>Text</td><td>Batch files. Agree on headers, encoding, control totals</td></tr>
+    <tr><td><b>ISO 20022</b></td><td>XML financial messaging</td><td>Payments (pacs, pain, camt). Replacing SWIFT MT; used in Australia's NPP</td></tr>
+    <tr><td><b>ISO 8583</b></td><td>Binary card messaging</td><td>Card authorisations, ATM/POS</td></tr>
+  </table></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Format</th><th>Package</th><th>Notes</th></tr>
+    <tr><td><b>JSON</b></td><td><span class="pill builtin">built-in</span> <code>System.Text.Json</code></td><td>Use source generation for speed and Native AOT. <code>JsonSchemaExporter</code> creates a JSON Schema from a type</td></tr>
+    <tr><td><b>XML / ISO 20022</b></td><td><span class="pill builtin">built-in</span> <code>System.Xml</code> (<code>XmlSerializer</code>, <code>XmlReader</code> + <code>XmlSchemaSet</code>)</td><td>Generate classes from the ISO 20022 XSDs (pacs, pain, camt) with <code>xsd.exe</code> or <code>dotnet-xscgen</code>, then validate against the XSD</td></tr>
+    <tr><td><b>Protobuf</b></td><td><code>Google.Protobuf</code> + <code>Grpc.Tools</code></td><td><code>Grpc.Tools</code> generates C# from <code>.proto</code> files at build time</td></tr>
+    <tr><td><b>Avro</b></td><td><code>Apache.Avro</code> + <code>Confluent.SchemaRegistry.Serdes.Avro</code></td><td>Kafka messages with schemas checked by Schema Registry</td></tr>
+    <tr><td><b>Parquet / CSV</b></td><td><code>Parquet.Net</code>, <code>CsvHelper</code></td><td>Analytics files and batch files</td></tr>
+  </table>
+<pre class="code"><code>// System.Text.Json source generation: no reflection, AOT-safe, faster
+[JsonSerializable(typeof(Payment))]
+[JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
+internal partial class AppJsonContext : JsonSerializerContext { }
+
+var json = JsonSerializer.Serialize(payment, AppJsonContext.Default.Payment);
+
+// ISO 20022: validate the XML against the official XSD before using it
+var settings = new XmlReaderSettings { ValidationType = ValidationType.Schema };
+settings.Schemas.Add(null, "pacs.008.001.08.xsd");
+using var reader = XmlReader.Create(stream, settings);    // throws on an invalid message
+var doc = (Document)new XmlSerializer(typeof(Document)).Deserialize(reader)!;</code></pre>
+  <p class="warn">ISO 8583 (cards) has no standard Microsoft or widely used open-source .NET library. It is normally handled by the card switch or a vendor SDK.</p>
+</div>
+  </section>
+
+<div class="qa-wrap">
+  <h2>⚡ Quick-fire Q&amp;A</h2>
+  <details class="qa"><summary>Why is gRPC faster than REST/JSON?</summary><p>Binary Protobuf payloads, HTTP/2 multiplexing, persistent connections and generated client stubs.</p></details>
+  <details class="qa"><summary>WebSocket or SSE for a live dashboard?</summary><p>SSE if data only flows server → client (simpler, plain HTTP, auto-reconnect). WebSocket if the client also sends frequent messages.</p></details>
+  <details class="qa"><summary>How do you secure webhooks?</summary><p>HTTPS only, an HMAC signature with a shared secret (or mTLS), timestamps to block replays, an allowlist, idempotent processing and a quick 2xx acknowledgement.</p></details>
+</div>
+
+<div class="pager"><a href="01-foundations.html">← 01 · Foundations</a><a class="next" href="03-scalability-reliability.html">03 · Scalability &amp; Reliability →</a></div>
+</main>
+<footer>Tech Concepts Prep · Section 02</footer>
+<script src="assets/app.js"></script>
+<script src="assets/viz.js"></script>
+</body>
+</html>

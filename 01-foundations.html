@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>01 · Foundations | Tech Concepts Prep</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<nav class="top"><a href="index.html">🏠 Roadmap</a><span class="here">01 · Foundations</span><a href="02-networking-protocols.html">Next: Protocols →</a></nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">Section 01 · Start here</div>
+  <h1>Foundations: how programs run &amp; wait</h1>
+  <p>Before system design, get the basics clear: what actually runs on a CPU, how work is shared, and what "waiting" costs. Every later topic (async APIs, queues, scaling) builds on these.</p>
+  <div class="toc">
+    <a href="#process-thread">Process vs Thread</a>
+    <a href="#concurrency" class="added">Concurrency vs Parallelism</a>
+    <a href="#sync-async">Sync vs Async</a>
+    <a href="#latency" class="added">Latency vs Throughput</a>
+    <a href="#estimation" class="added">Back-of-the-envelope numbers</a>
+  </div>
+  <div class="legend">Dashed chips = concepts added to your list.</div>
+</header>
+
+<!-- PROCESS VS THREAD -->
+<section class="concept" id="process-thread">
+  <h2><span class="num">1.1</span> Process vs Thread</h2>
+  <p class="oneliner">A <b>process</b> is a running program with its own memory. A <b>thread</b> is a worker inside a process that shares that memory.</p>
+
+  <h3>Visual</h3>
+<div class="svgwrap">
+<svg viewBox="0 0 660 300" width="660" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, sans-serif" role="img" aria-label="Process A with three threads sharing one heap; Process B separate, talking over IPC">
+  <rect x="14" y="14" width="400" height="270" rx="16" fill="#eff6ff" stroke="#2563eb" stroke-width="2.5"/>
+  <text x="214" y="40" text-anchor="middle" font-size="15" font-weight="700" fill="#1e3a8a">Process A · own memory space</text>
+  <rect x="34" y="56" width="360" height="62" rx="10" fill="#d1fae5" stroke="#059669" stroke-width="2"/>
+  <text x="214" y="83" text-anchor="middle" font-size="14" font-weight="700" fill="#065f46">Shared heap · globals · open files</text>
+  <text x="214" y="103" text-anchor="middle" font-size="12" font-weight="700" fill="#dc2626">all threads read and write it at once → needs locks</text>
+  <g font-size="13" text-anchor="middle">
+    <rect x="34" y="186" width="108" height="80" rx="10" fill="#fff" stroke="#7c3aed" stroke-width="2"/>
+    <text x="88" y="210" font-weight="700">Thread 1</text><text x="88" y="230" font-size="11.5" fill="#64748b">own stack</text><text x="88" y="247" font-size="11.5" fill="#64748b">own registers</text>
+    <rect x="160" y="186" width="108" height="80" rx="10" fill="#fff" stroke="#7c3aed" stroke-width="2"/>
+    <text x="214" y="210" font-weight="700">Thread 2</text><text x="214" y="230" font-size="11.5" fill="#64748b">own stack</text><text x="214" y="247" font-size="11.5" fill="#64748b">own registers</text>
+    <rect x="286" y="186" width="108" height="80" rx="10" fill="#fff" stroke="#7c3aed" stroke-width="2"/>
+    <text x="340" y="210" font-weight="700">Thread 3</text><text x="340" y="230" font-size="11.5" fill="#64748b">own stack</text><text x="340" y="247" font-size="11.5" fill="#64748b">own registers</text>
+  </g>
+  <g stroke="#7c3aed" stroke-width="2" stroke-dasharray="4 4"><line x1="88" y1="184" x2="88" y2="120"/><line x1="214" y1="184" x2="214" y2="120"/><line x1="340" y1="184" x2="340" y2="120"/></g>
+  <circle r="6" fill="#7c3aed"><animateMotion dur="1.8s" repeatCount="indefinite" path="M88,184 L88,122 L88,184"/></circle>
+  <circle r="6" fill="#7c3aed"><animateMotion dur="1.8s" begin="0.6s" repeatCount="indefinite" path="M214,184 L214,122 L214,184"/></circle>
+  <circle r="6" fill="#7c3aed"><animateMotion dur="1.8s" begin="1.2s" repeatCount="indefinite" path="M340,184 L340,122 L340,184"/></circle>
+  <rect x="470" y="14" width="176" height="270" rx="16" fill="#f8fafc" stroke="#64748b" stroke-width="2.5"/>
+  <text x="558" y="40" text-anchor="middle" font-size="15" font-weight="700" fill="#334155">Process B</text>
+  <text x="558" y="58" text-anchor="middle" font-size="11.5" fill="#64748b">separate memory</text>
+  <rect x="490" y="186" width="136" height="80" rx="10" fill="#fff" stroke="#64748b" stroke-width="2"/>
+  <text x="558" y="222" text-anchor="middle" font-size="13" font-weight="700">Thread 1</text>
+  <text x="558" y="242" text-anchor="middle" font-size="11.5" fill="#64748b">can't see A's heap</text>
+  <line x1="416" y1="140" x2="468" y2="140" stroke="#d97706" stroke-width="2.5" stroke-dasharray="5 4"/>
+  <text x="442" y="128" text-anchor="middle" font-size="11.5" font-weight="700" fill="#b45309">IPC</text>
+  <rect width="16" height="11" rx="2" fill="#f59e0b" y="-5.5" x="-8"><animateMotion dur="2.4s" repeatCount="indefinite" path="M418,140 L466,140 L418,140"/></rect>
+  <text x="558" y="120" text-anchor="middle" font-size="11.5" fill="#b45309">pipes · sockets ·</text>
+  <text x="558" y="136" text-anchor="middle" font-size="11.5" fill="#b45309">message queues</text>
+</svg>
+</div>
+
+  <h3>How it works</h3>
+  <ul>
+    <li>The OS gives each process an <b>isolated address space</b>. One process can't read another's memory.</li>
+    <li>Threads in the same process share heap, globals and file handles. Each thread has its own <b>stack</b> and <b>registers</b>.</li>
+    <li>The OS scheduler switches threads on CPU cores (a <b>context switch</b>). Switching between processes costs more because memory mappings change.</li>
+    <li>Threads talk through shared memory, which needs locks. Processes talk through <b>IPC</b>: pipes, sockets, message queues, shared memory.</li>
+  </ul>
+
+  <div class="tablewrap"><table>
+    <tr><th></th><th>Process</th><th>Thread</th></tr>
+    <tr><td>Memory</td><td>Isolated</td><td>Shared within process</td></tr>
+    <tr><td>Creation cost</td><td>Heavy</td><td>Light</td></tr>
+    <tr><td>Communication</td><td>IPC (slower, safer)</td><td>Shared variables (fast, needs locks)</td></tr>
+    <tr><td>Crash impact</td><td>Only that process dies</td><td>One bad thread can crash the whole process</td></tr>
+    <tr><td>Example</td><td>Each Chrome tab, each container</td><td>Web server thread pool handling requests</td></tr>
+  </table></div>
+
+  <div class="remember"><ul>
+    <li>Shared memory brings <b>race conditions</b>, <b>deadlocks</b> and <b>starvation</b>. Use locks, mutexes, semaphores or immutable data.</li>
+    <li>Thread pools reuse threads, so you don't pay the cost of creating one per request.</li>
+    <li>Python's <b>GIL</b> lets only one thread run Python code at a time. For CPU-bound work, use multiple processes.</li>
+    <li>Node.js runs your JavaScript on <b>one thread</b> with an event loop and uses a background pool for I/O.</li>
+    <li>Lightweight "green" threads exist too: Go goroutines, Java 21 virtual threads, .NET async tasks. You can run millions of them.</li>
+    <li>A container is just an isolated <b>process</b>, not a VM.</li>
+  </ul></div>
+
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Process</b></td><td><span class="pill builtin">built-in</span> <code>System.Diagnostics</code></td><td>Start, watch and stop other processes (<code>Process.Start</code>, <code>WaitForExitAsync</code>)</td></tr>
+    <tr><td><b>Thread / ThreadPool</b></td><td><span class="pill builtin">built-in</span> <code>System.Threading</code></td><td>Raw threads are rare. <code>Task</code> runs work on the shared thread pool for you</td></tr>
+    <tr><td><b>Lock, SemaphoreSlim, Interlocked</b></td><td><span class="pill builtin">built-in</span> <code>System.Threading</code></td><td>Protect shared memory: <code>Lock</code> (dedicated lock type, .NET 9+), <code>SemaphoreSlim</code> (async-friendly, limits concurrency), <code>Interlocked</code> (lock-free counters)</td></tr>
+    <tr><td><b>Concurrent collections</b></td><td><span class="pill builtin">built-in</span> <code>System.Collections.Concurrent</code></td><td><code>ConcurrentDictionary</code>, <code>ConcurrentQueue</code>: thread-safe without your own locks</td></tr>
+    <tr><td><b>IPC between processes</b></td><td><span class="pill builtin">built-in</span> <code>System.IO.Pipes</code>, <code>System.IO.MemoryMappedFiles</code></td><td>Named pipes for messages; memory-mapped files to share a block of memory</td></tr>
+    <tr><td><b>gRPC on the same machine</b></td><td><code>Grpc.AspNetCore</code> + Kestrel <code>ListenNamedPipe</code> / <code>ListenUnixSocket</code></td><td>Typed, fast calls between local processes without opening a TCP port</td></tr>
+  </table>
+<pre class="code"><code>public sealed class Account
+{
+    private readonly Lock _gate = new();   // .NET 9+ dedicated lock type
+    private decimal _balance;
+    private long _requests;
+
+    public void Deposit(decimal amount)
+    {
+        Interlocked.Increment(ref _requests);   // lock-free counter
+        lock (_gate) { _balance += amount; }    // one thread at a time
+    }
+}</code></pre>
+  <p class="warn">Never hold a <code>lock</code> across an <code>await</code> (the compiler blocks it). Use <code>SemaphoreSlim.WaitAsync</code> when async code needs mutual exclusion.</p>
+</div>
+  <div class="post">
+    <p>Process vs Thread in one picture 🧵</p>
+    <p>🏠 Process = a house (own walls, own kitchen). 👨‍👩‍👧 Threads = people in the house sharing the kitchen.</p>
+    <p>Sharing is fast, but two people grabbing the same knife = race condition. That's why we need locks.</p>
+    <p>#SystemDesign #SoftwareEngineering #Backend</p>
+  </div>
+</section>
+
+<!-- CONCURRENCY VS PARALLELISM -->
+<section class="concept" id="concurrency">
+  <h2><span class="num">1.2</span> Concurrency vs Parallelism <span class="tag-added">Added</span></h2>
+  <p class="oneliner"><b>Concurrency</b> means juggling many tasks by switching between them. <b>Parallelism</b> means doing many tasks at the same instant on multiple cores.</p>
+
+  <h3>Visual</h3>
+<figure class="viz" data-viz="lanes"><script type="application/json">
+{"title":"Concurrency interleaves · Parallelism runs at the same time","max":8,"labelW":190,"axis":"time →",
+ "rows":[
+  {"label":"Concurrency · 1 core","blocks":[{"s":0,"e":1,"t":"A","c":"blue"},{"s":1,"e":2,"t":"B","c":"purple"},{"s":2,"e":3,"t":"A","c":"blue"},{"s":3,"e":4,"t":"C","c":"amber"},{"s":4,"e":5,"t":"B","c":"purple"},{"s":5,"e":6,"t":"A","c":"blue"},{"s":6,"e":7,"t":"C","c":"amber"},{"s":7,"e":8,"t":"B","c":"purple"}]},
+  {"label":"Parallelism · core 1","blocks":[{"s":0,"e":2,"t":"A","c":"blue"},{"s":2,"e":4,"t":"A","c":"blue"},{"s":4,"e":6,"t":"A","c":"blue"},{"s":6,"e":8,"t":"A","c":"blue"}]},
+  {"label":"Parallelism · core 2","blocks":[{"s":0,"e":2,"t":"B","c":"purple"},{"s":2,"e":4,"t":"B","c":"purple"},{"s":4,"e":6,"t":"B","c":"purple"},{"s":6,"e":8,"t":"B","c":"purple"}]}
+ ]}
+</script></figure>
+  <p class="tip">"Concurrency is about <b>dealing with</b> lots of things at once. Parallelism is about <b>doing</b> lots of things at once." (Rob Pike)</p>
+
+  <div class="remember"><ul>
+    <li>You can have concurrency without parallelism (a single-core event loop) and parallelism without much concurrency (a GPU running the same math on many items).</li>
+    <li><b>I/O-bound</b> work (waiting on network or DB) gains most from concurrency and async.</li>
+    <li><b>CPU-bound</b> work (encryption, image processing) gains from parallelism across cores.</li>
+    <li>Amdahl's law: the part of the job that can't run in parallel limits the total speed-up.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Task + async/await</b></td><td><span class="pill builtin">built-in</span> <code>System.Threading.Tasks</code></td><td>Concurrency for I/O: many calls in flight, few threads. <code>Task.WhenAll</code> to fan out</td></tr>
+    <tr><td><b>Parallel.ForEachAsync</b></td><td><span class="pill builtin">built-in</span> <code>System.Threading.Tasks</code></td><td>Process a list concurrently with a cap (<code>MaxDegreeOfParallelism</code>)</td></tr>
+    <tr><td><b>PLINQ / Parallel.For</b></td><td><span class="pill builtin">built-in</span> <code>System.Linq</code> (<code>AsParallel</code>)</td><td>True parallelism for CPU-bound work across all cores</td></tr>
+    <tr><td><b>Channels</b></td><td><span class="pill builtin">built-in</span> <code>System.Threading.Channels</code></td><td>Producer/consumer queues between tasks, with back-pressure (bounded channels)</td></tr>
+    <tr><td><b>TPL Dataflow</b></td><td><code>System.Threading.Tasks.Dataflow</code></td><td>Multi-step pipelines where each block has its own parallelism and buffer</td></tr>
+  </table>
+<pre class="code"><code>// Concurrency (I/O-bound): up to 8 calls in flight at once
+await Parallel.ForEachAsync(accountIds,
+    new ParallelOptions { MaxDegreeOfParallelism = 8, CancellationToken = ct },
+    async (id, token) =&gt; await client.RefreshBalanceAsync(id, token));
+
+// Parallelism (CPU-bound): spread the work across cores
+var totals = transactions.AsParallel()
+    .GroupBy(t =&gt; t.AccountId)
+    .Select(g =&gt; (Account: g.Key, Total: g.Sum(t =&gt; t.Amount)))
+    .ToList();</code></pre>
+  <p class="warn">Don't wrap I/O calls in <code>Task.Run</code> or PLINQ to "make them parallel". Async I/O is already concurrent; extra threads only add overhead.</p>
+</div>
+  </section>
+
+<!-- SYNC VS ASYNC -->
+<section class="concept" id="sync-async">
+  <h2><span class="num">1.3</span> Sync vs Async</h2>
+  <p class="oneliner"><b>Synchronous</b>: the caller waits for the answer before moving on. <b>Asynchronous</b>: the caller moves on and gets the result later.</p>
+
+  <h3>Two levels, same idea</h3>
+  <div class="cols2">
+    <div class="box blue"><h4>In code</h4>
+      <ul><li><b>Blocking I/O</b>: the thread sits idle while waiting for the DB.</li>
+      <li><b>Non-blocking / async-await</b>: the thread is released while waiting, then picks up again when data arrives.</li>
+      <li>Result: one thread can serve many requests.</li></ul></div>
+    <div class="box purple"><h4>Between systems</h4>
+      <ul><li><b>Sync</b>: HTTP request/response. The client waits for 200 OK.</li>
+      <li><b>Async</b>: send a message to a queue or event bus, return immediately. A consumer processes it later.</li>
+      <li>Result: services are decoupled in time.</li></ul></div>
+  </div>
+
+  <h3>Visual</h3>
+  <div class="cols2">
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Synchronous","actors":[{"t":"Client","c":"blue"},{"t":"Service","c":"purple"},{"t":"Database","c":"teal"}],"colW":150,
+ "steps":[
+  {"from":0,"to":1,"t":"request"},
+  {"note":"Client waits… ⏳","over":[0,0],"c":"amber"},
+  {"from":1,"to":2,"t":"query"},
+  {"from":2,"to":1,"t":"rows","dash":true},
+  {"from":1,"to":0,"t":"200 OK + result","c":"green"},
+  {"note":"Only now can the client continue","over":[0,1],"c":"green"}
+ ]}
+</script></figure>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Asynchronous (queue / event)","actors":[{"t":"Client","c":"blue"},{"t":"Queue","c":"amber"},{"t":"Worker","c":"green"}],"colW":150,
+ "steps":[
+  {"from":0,"to":1,"t":"send message"},
+  {"from":1,"to":0,"t":"202 Accepted","dash":true,"c":"green"},
+  {"note":"Client continues immediately ✓","over":[0,0],"c":"green"},
+  {"from":1,"to":2,"t":"deliver later"},
+  {"note":"processes at its own pace","over":[2,2],"c":"purple"},
+  {"from":2,"to":0,"t":"webhook: done","dash":true,"c":"purple"}
+ ]}
+</script></figure>
+  </div>
+
+  <h3>Async request-reply pattern (for long jobs)</h3>
+  <div class="flow">
+    <div class="n">POST /reports</div><div class="ar">→</div>
+    <div class="n g">202 Accepted<small>Location: /reports/42/status</small></div><div class="ar">→</div>
+    <div class="n a">Poll GET /status<small>or receive webhook</small></div><div class="ar">→</div>
+    <div class="n p">200 + result URL</div>
+  </div>
+
+  <div class="tablewrap"><table>
+    <tr><th></th><th>Synchronous</th><th>Asynchronous</th></tr>
+    <tr><td>Coupling</td><td>Tight. Both must be up at the same time</td><td>Loose. The consumer can be down for a while</td></tr>
+    <tr><td>Simplicity</td><td>Easy to code, debug and trace</td><td>Harder: correlation IDs, retries, ordering</td></tr>
+    <tr><td>Consistency</td><td>Immediate result</td><td>Eventual consistency</td></tr>
+    <tr><td>Load spikes</td><td>Caller feels every slowdown</td><td>The queue absorbs spikes (load levelling)</td></tr>
+    <tr><td>Best for</td><td>Queries, validation, "need answer now"</td><td>Long jobs, notifications, fan-out, integration</td></tr>
+  </table></div>
+
+  <div class="remember"><ul>
+    <li>Async doesn't make one request faster. It improves <b>throughput</b>, <b>resilience</b> and <b>decoupling</b>.</li>
+    <li>Always carry a <b>correlation ID</b> so you can trace a message end to end.</li>
+    <li>Async consumers must be <b>idempotent</b> because messages can arrive twice.</li>
+    <li>Calling sync services in a chain multiplies latency and failure: A→B→C means each call adds risk.</li>
+    <li>Interview answer: "Use sync when the user needs the answer to continue. Use async when the work can finish later or fan out."</li>
+  </ul></div>
+
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Level</th><th>Library / API</th><th>Use it for</th></tr>
+    <tr><td><b>In code</b></td><td><span class="pill builtin">built-in</span> <code>async</code> / <code>await</code>, <code>IAsyncEnumerable&lt;T&gt;</code></td><td>Release the thread while waiting for I/O; stream results as they arrive</td></tr>
+    <tr><td><b>Background work</b></td><td><span class="pill builtin">built-in</span> <code>BackgroundService</code> / <code>IHostedService</code></td><td>Long-running workers inside the same app</td></tr>
+    <tr><td><b>Async HTTP API</b></td><td><span class="pill builtin">built-in</span> <code>TypedResults.Accepted</code></td><td>Return 202 + a status URL, then do the work later</td></tr>
+    <tr><td><b>In-process queue</b></td><td><span class="pill builtin">built-in</span> <code>System.Threading.Channels</code></td><td>Hand work from the request to the background worker (lost if the process dies)</td></tr>
+    <tr><td><b>Between systems</b></td><td><code>Azure.Messaging.ServiceBus</code></td><td>Durable queue/topic, so work survives restarts and other services can consume it</td></tr>
+  </table>
+<pre class="code"><code>builder.Services.AddSingleton(Channel.CreateBounded&lt;ReportJob&gt;(100));
+builder.Services.AddHostedService&lt;ReportWorker&gt;();
+
+app.MapPost("/reports", async (ReportRequest req, Channel&lt;ReportJob&gt; queue) =&gt;
+{
+    var job = new ReportJob(Guid.NewGuid(), req);
+    await queue.Writer.WriteAsync(job);
+    return TypedResults.Accepted($"/reports/{job.Id}", new { job.Id });   // 202 + where to poll
+});
+
+public sealed class ReportWorker(Channel&lt;ReportJob&gt; queue) : BackgroundService
+{
+    protected override async Task ExecuteAsync(CancellationToken ct)
+    {
+        await foreach (var job in queue.Reader.ReadAllAsync(ct))
+            await BuildReportAsync(job, ct);
+    }
+}</code></pre>
+  <p class="warn">Never block on async code with <code>.Result</code> or <code>.Wait()</code>. It ties up thread-pool threads and can starve the whole server under load.</p>
+</div>
+  <div class="post">
+    <p>Sync vs Async explained with coffee ☕</p>
+    <p>Sync: you stand at the counter until your coffee is ready.</p>
+    <p>Async: you get a buzzer (202 Accepted), sit down, and it buzzes when ready (webhook).</p>
+    <p>Same coffee, but the café serves 5x more people. That's async: better throughput, not faster coffee.</p>
+    <p>#SystemDesign #APIs #Integration</p>
+  </div>
+</section>
+
+<!-- LATENCY VS THROUGHPUT -->
+<section class="concept" id="latency">
+  <h2><span class="num">1.4</span> Latency vs Throughput vs Bandwidth <span class="tag-added">Added</span></h2>
+  <p class="oneliner"><b>Latency</b> = how long one request takes. <b>Throughput</b> = how many requests finish per second. <b>Bandwidth</b> = the maximum the pipe can carry.</p>
+
+  <div class="grid">
+    <div class="box blue"><h4>⏱ Latency</h4><p>Time for one trip, in ms. Like how long one car takes on the highway.</p></div>
+    <div class="box green"><h4>🚚 Throughput</h4><p>Work done per unit of time (req/s, TPS, MB/s). Like cars arriving per hour.</p></div>
+    <div class="box purple"><h4>🛣 Bandwidth</h4><p>The theoretical max capacity. Like the number of lanes.</p></div>
+  </div>
+
+  <div class="remember"><ul>
+    <li>Report <b>percentiles</b>, not averages: p50 (typical), p95, p99 (tail). One slow dependency hurts p99.</li>
+    <li><b>Little's Law</b>: <code>L = λ × W</code>. Requests in the system = arrival rate × time each spends. Example: 200 req/s × 0.5 s = 100 requests in flight, so you need about 100 concurrent workers.</li>
+    <li>Batching raises throughput but can add latency. That trade-off shows up everywhere.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Stopwatch</b></td><td><span class="pill builtin">built-in</span> <code>System.Diagnostics</code></td><td>Time one operation: <code>Stopwatch.GetTimestamp()</code> + <code>Stopwatch.GetElapsedTime(start)</code> (no allocation)</td></tr>
+    <tr><td><b>Histogram / Counter</b></td><td><span class="pill builtin">built-in</span> <code>System.Diagnostics.Metrics</code></td><td>Record latency (histogram, for p95/p99) and throughput (counter)</td></tr>
+    <tr><td><b>http.server.request.duration</b></td><td><span class="pill builtin">built-in</span> ASP.NET Core metric</td><td>Request latency and request rate for every endpoint, for free</td></tr>
+    <tr><td><b>dotnet-counters</b></td><td>.NET global tool</td><td>Watch request rate, latency, GC and thread-pool queue live on a running process</td></tr>
+    <tr><td><b>Response compression</b></td><td><span class="pill builtin">built-in</span> <code>AddResponseCompression</code></td><td>Send fewer bytes when bandwidth is the bottleneck</td></tr>
+  </table>
+<pre class="code"><code>public sealed class PaymentMetrics(IMeterFactory meterFactory)
+{
+    private readonly Histogram&lt;double&gt; _duration = meterFactory.Create("Bank.Payments")
+        .CreateHistogram&lt;double&gt;("payments.duration", unit: "s");
+
+    public async Task&lt;T&gt; TimeAsync&lt;T&gt;(Func&lt;Task&lt;T&gt;&gt; work)
+    {
+        var start = Stopwatch.GetTimestamp();
+        try { return await work(); }
+        finally { _duration.Record(Stopwatch.GetElapsedTime(start).TotalSeconds); }
+    }
+}</code></pre>
+</div>
+  </section>
+
+<!-- ESTIMATION -->
+<section class="concept" id="estimation">
+  <h2><span class="num">1.5</span> Back-of-the-envelope numbers <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Quick estimates of traffic, storage and latency let you size a design in an interview, or sanity-check one at work.</p>
+
+  <div class="cols2">
+    <div>
+      <h3>Latency ladder (approximate)</h3>
+      <table>
+        <tr><th>Operation</th><th>Time</th></tr>
+        <tr><td>L1 cache reference</td><td>~1 ns</td></tr>
+        <tr><td>Main memory (RAM) read</td><td>~100 ns</td></tr>
+        <tr><td>SSD random read</td><td>~16–100 µs</td></tr>
+        <tr><td>Round trip within a data centre</td><td>~0.5 ms</td></tr>
+        <tr><td>Redis GET over network</td><td>~0.5–1 ms</td></tr>
+        <tr><td>Simple indexed DB query</td><td>~1–10 ms</td></tr>
+        <tr><td>Sydney ⇄ US West round trip</td><td>~150 ms</td></tr>
+      </table>
+    </div>
+    <div>
+      <h3>Handy conversions</h3>
+      <ul>
+        <li>1 day ≈ <b>86,400 s</b>, about 10⁵ s</li>
+        <li>1M requests/day ≈ <b>12 req/s</b> on average</li>
+        <li>Peak ≈ <b>2–5×</b> average</li>
+        <li>2¹⁰ ≈ 1 thousand (KB), 2²⁰ ≈ 1 million (MB), 2³⁰ ≈ 1 billion (GB)</li>
+        <li>Availability: 99.9% ≈ 8.8 h downtime/year</li>
+      </ul>
+      <h3>Worked example</h3>
+      <p>10M users × 5 calls/day = 50M/day ÷ 86,400 ≈ <b>580 req/s avg</b>, about <b>1,700 req/s peak</b>. 1 KB per record × 50M/day ≈ 50 GB/day ≈ 18 TB/year.</p>
+    </div>
+  </div>
+  <div class="remember"><ul>
+    <li>Memory is about 1,000× faster than a network hop, and a network hop within a region is about 100× faster than going across the world. That's <b>why caching and data locality matter</b>.</li>
+    <li>Round your numbers. Interviewers care about orders of magnitude, not decimals.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / tool</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>BenchmarkDotNet</b></td><td><code>BenchmarkDotNet</code></td><td>Measure the real cost of one operation (time and allocations) to replace a guess</td></tr>
+    <tr><td><b>NBomber</b></td><td><code>NBomber</code> <span class="pill lic">commercial licence</span></td><td>Load tests written in C#. Free for personal use only; an organisation needs a paid licence</td></tr>
+    <tr><td><b>k6 / Azure Load Testing</b></td><td>Not .NET (JavaScript / JMeter / Locust)</td><td>Free or managed alternatives to drive req/s at your API and check the estimate</td></tr>
+    <tr><td><b>dotnet-counters</b></td><td>.NET global tool</td><td>Watch CPU, GC, thread pool and request rate during the test, to see which resource runs out first</td></tr>
+  </table>
+</div>
+  </section>
+
+<div class="qa-wrap">
+  <h2>⚡ Quick-fire Q&amp;A</h2>
+  <details class="qa"><summary>Why are threads cheaper than processes?</summary><p>They share the parent's memory and resources, so creating and switching them needs no new address space.</p></details>
+  <details class="qa"><summary>Is async always better?</summary><p>No. It adds complexity (ordering, retries, eventual consistency). Use it when decoupling, spike absorption or long-running work justify it.</p></details>
+  <details class="qa"><summary>Why does p99 latency matter more than average?</summary><p>If one page calls 10 services, most users hit at least one tail-latency call. The average hides the pain.</p></details>
+</div>
+
+<div class="pager"><a href="index.html">← Roadmap</a><a class="next" href="02-networking-protocols.html">02 · Networking &amp; Protocols →</a></div>
+</main>
+<footer>Tech Concepts Prep · Section 01</footer>
+<script src="assets/app.js"></script>
+<script src="assets/viz.js"></script>
+</body>
+</html>

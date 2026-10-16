@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>10 · Security &amp; IAM | Tech Concepts Prep</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<nav class="top"><a href="09-architecture-patterns.html">← Architecture</a><span class="here">10 · Security &amp; IAM</span><a href="11-devops-deployment-observability.html">Next: DevOps →</a></nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">Section 10</div>
+  <h1>Security, IAM &amp; cryptography</h1>
+  <p>Who can access what (IAM), how data is kept secret and tamper-proof (cryptography, TLS, keys), and the mindset (Zero Trust, OWASP) that ties it together.</p>
+  <div class="toc">
+    <a href="#authn-authz" class="added">AuthN vs AuthZ</a>
+    <a href="#iam">IAM</a>
+    <a href="#sso" class="added">SSO: SAML vs OAuth vs OIDC</a>
+    <a href="#keys">Symmetric vs Asymmetric keys</a>
+    <a href="#hashing" class="added">Hashing vs Encryption vs Encoding vs Tokenisation</a>
+    <a href="#tls" class="added">TLS, mTLS &amp; PKI</a>
+    <a href="#secrets" class="added">Secrets &amp; key management</a>
+    <a href="#zerotrust" class="added">Zero Trust</a>
+    <a href="#owasp" class="added">OWASP API Top 10</a>
+  </div>
+</header>
+
+<!-- AUTHN AUTHZ -->
+<section class="concept" id="authn-authz">
+  <h2><span class="num">10.1</span> Authentication vs Authorization <span class="tag-added">Added</span></h2>
+  <div class="flow">
+    <div class="n">User / service</div><div class="ar">→</div>
+    <div class="n p">Authentication<small>"Who are you?" password · MFA · cert</small></div><div class="ar">→</div>
+    <div class="n g">Authorization<small>"What can you do?" roles · scopes · policies</small></div><div class="ar">→</div>
+    <div class="n">Resource</div>
+  </div>
+  <div class="remember"><ul><li>Authentication always comes first. Failure → <b>401</b>. Authorization failure → <b>403</b>.</li><li>Think <b>AAA</b>: Authentication, Authorization, Accounting (auditing).</li></ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Authentication handlers</b></td><td><code>Microsoft.AspNetCore.Authentication.JwtBearer</code>, <code>.OpenIdConnect</code>, <code>.Certificate</code>; cookies are <span class="pill builtin">built-in</span></td><td>AuthN: validate a bearer token, an OIDC login, a client certificate or a cookie, and build the <code>ClaimsPrincipal</code></td></tr>
+    <tr><td><b>Authorization policies</b></td><td><span class="pill builtin">built-in</span> <code>AddAuthorizationBuilder</code>, <code>RequireAuthorization</code>, <code>[Authorize]</code></td><td>AuthZ: named rules such as <code>RequireRole</code>, <code>RequireClaim</code> or custom requirements</td></tr>
+    <tr><td><b>Resource-based checks</b></td><td><span class="pill builtin">built-in</span> <code>IAuthorizationService</code> + <code>AuthorizationHandler&lt;TReq, TResource&gt;</code></td><td>"Can this user edit <i>this</i> order?" Decided after you load the record</td></tr>
+    <tr><td><b>Auditing (accounting)</b></td><td><span class="pill builtin">built-in</span> <code>ILogger</code> / OpenTelemetry</td><td>Log who did what, with the user id from the claims</td></tr>
+  </table>
+<pre class="code"><code>builder.Services.AddAuthentication().AddJwtBearer(); // settings from "Authentication:Schemes:Bearer"
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy("orders.write", p =&gt; p.RequireRole("Orders.Writer"))
+    .AddPolicy("finance", p =&gt; p.RequireClaim("department", "Finance"));
+
+var app = builder.Build();
+app.UseAuthentication();   // who are you?  no or bad token -&gt; 401 (challenge)
+app.UseAuthorization();    // what can you do?  policy fails -&gt; 403 (forbid)
+
+app.MapPost("/orders", CreateOrder).RequireAuthorization("orders.write");</code></pre>
+</div>
+  </section>
+
+<!-- IAM -->
+<section class="concept" id="iam">
+  <h2><span class="num">10.2</span> IAM: Identity &amp; Access Management</h2>
+  <p class="oneliner">The policies, processes and tools that make sure the <b>right identities</b> get the <b>right access</b> to the <b>right resources</b>, at the right time, for the right reasons.</p>
+  <div class="flow">
+    <div class="n">User / app</div><div class="ar">→<small>login</small></div>
+    <div class="n fill">Identity provider (IdP)<small>Entra ID · Okta · Ping</small></div><div class="ar">→<small>token (claims, roles)</small></div>
+    <div class="n g">Applications / APIs / cloud<small>enforce access</small></div>
+  </div>
+  <div class="grid wide">
+    <div class="box blue"><h4>👤 Identities</h4><ul><li>Human: employees, customers (CIAM), partners (B2B)</li><li>Non-human: service principals, <b>managed identities</b>, workload identities, API clients</li></ul></div>
+    <div class="box purple"><h4>🔑 Authentication</h4><ul><li>Passwords + <b>MFA</b></li><li>Passwordless: FIDO2, passkeys, Windows Hello</li><li>Certificates, federated tokens</li><li><b>Conditional access</b> (device, location, risk)</li></ul></div>
+    <div class="box green"><h4>🛂 Authorization models</h4><ul><li><b>RBAC</b>: roles (Reader, Contributor)</li><li><b>ABAC</b>: attributes (dept=Finance AND region=AU)</li><li><b>PBAC</b>: central policy engine (OPA)</li><li><b>ReBAC</b>: relationships (owner of the doc)</li><li>ACLs on resources</li></ul></div>
+    <div class="box amber"><h4>🔄 Lifecycle &amp; governance (IGA)</h4><ul><li><b>Joiner-Mover-Leaver</b> process</li><li>Automated provisioning (<b>SCIM</b>)</li><li>Access reviews / recertification</li><li><b>Segregation of duties</b> (SoD)</li></ul></div>
+    <div class="box red"><h4>👑 Privileged access (PAM / PIM)</h4><ul><li><b>Just-in-time</b> elevation with approval</li><li>Time-bound admin roles</li><li>Session recording, break-glass accounts</li><li>CyberArk, Entra PIM</li></ul></div>
+    <div class="box teal"><h4>🌐 Federation &amp; SSO</h4><ul><li>One login, many apps</li><li>Trust between organisations' IdPs</li><li>SAML, OIDC, WS-Fed</li></ul></div>
+  </div>
+  <div class="remember"><ul>
+    <li><b>Principle of least privilege</b>: give the minimum access, for the minimum time.</li>
+    <li>Prefer <b>managed identities</b> over secrets for service-to-service access in the cloud.</li>
+    <li>Leavers must be de-provisioned immediately. Orphaned accounts are a top audit finding.</li>
+    <li>Cloud IAM scope hierarchy (Azure): Management group → Subscription → Resource group → Resource. Assign roles at the lowest scope that works.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Microsoft.Identity.Web</b></td><td><code>Microsoft.Identity.Web</code></td><td>Sign users in to web apps and protect APIs with Entra ID; call downstream APIs on the user's behalf</td></tr>
+    <tr><td><b>MSAL</b></td><td><code>Microsoft.Identity.Client</code></td><td>Get tokens in desktop, mobile, console and daemon apps</td></tr>
+    <tr><td><b>Azure.Identity</b></td><td><code>Azure.Identity</code></td><td>Non-human identities with no secrets: <code>DefaultAzureCredential</code>, <code>ManagedIdentityCredential</code>, <code>WorkloadIdentityCredential</code> (AKS)</td></tr>
+    <tr><td><b>Microsoft Graph</b></td><td><code>Microsoft.Graph</code></td><td>Automate joiner-mover-leaver: users, groups, app role assignments</td></tr>
+    <tr><td><b>ASP.NET Core Identity</b></td><td><span class="pill builtin">built-in</span> <code>Microsoft.AspNetCore.Identity.EntityFrameworkCore</code></td><td>Your own user store (CIAM-style): passwords, MFA, lockout, and passkeys (new in .NET 10)</td></tr>
+    <tr><td><b>Run your own IdP</b></td><td><code>OpenIddict.AspNetCore</code> (free) or <code>Duende.IdentityServer</code> <span class="pill lic">commercial licence</span></td><td>Issue OAuth/OIDC tokens yourself when Entra ID / Okta isn't an option</td></tr>
+  </table>
+<pre class="code"><code>// Protect an API with Entra ID (reads TenantId, ClientId from the "AzureAd" section)
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"));
+
+// Service-to-service with a managed identity: no passwords or secrets in config
+var blobs = new BlobServiceClient(
+    new Uri("https://mystore.blob.core.windows.net"), new DefaultAzureCredential());</code></pre>
+  <p class="warn">PIM / just-in-time access, access reviews and conditional access are Entra platform features with no client library. Configure them in the portal or with Graph.</p>
+</div>
+  <div class="post">
+    <p>IAM in 4 words: right access, right time ⏰🔑</p>
+    <p>👤 Who are you? (authentication + MFA)</p>
+    <p>🛂 What can you do? (RBAC / ABAC)</p>
+    <p>⏳ For how long? (just-in-time, access reviews)</p>
+    <p>🚪 What happens when you leave? (automated de-provisioning)</p>
+    <p>Most breaches aren't hacks. They're logins with too much access.</p>
+    <p>#IAM #CyberSecurity #ZeroTrust</p>
+  </div>
+</section>
+
+<!-- SSO -->
+<section class="concept" id="sso">
+  <h2><span class="num">10.3</span> SSO protocols: SAML vs OAuth 2.0 vs OIDC <span class="tag-added">Added</span></h2>
+  <p class="oneliner">SAML and OIDC log users in (single sign-on). OAuth 2.0 grants an app limited access to an API.</p>
+  <div class="tablewrap"><table>
+    <tr><th></th><th>SAML 2.0</th><th>OAuth 2.0</th><th>OpenID Connect</th></tr>
+    <tr><td>Purpose</td><td>Authentication / SSO</td><td><b>Authorization</b> (delegated access)</td><td>Authentication on top of OAuth2</td></tr>
+    <tr><td>Token</td><td>XML assertion</td><td>Access token (JWT or opaque)</td><td>ID token (JWT) + access token</td></tr>
+    <tr><td>Typical use</td><td>Enterprise web SSO (legacy SaaS)</td><td>API access</td><td>Modern web and mobile login, SSO</td></tr>
+    <tr><td>Mobile / SPA friendly</td><td>Poor</td><td>Yes</td><td>Yes</td></tr>
+  </table></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Protocol</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>OIDC</b></td><td><code>Microsoft.AspNetCore.Authentication.OpenIdConnect</code></td><td>Generic OIDC login with any IdP (Entra ID, Okta, Ping, Auth0)</td></tr>
+    <tr><td><b>OIDC with Entra ID</b></td><td><code>Microsoft.Identity.Web</code> (<code>AddMicrosoftIdentityWebApp</code>)</td><td>Easier setup for Entra, plus token caching for calling APIs</td></tr>
+    <tr><td><b>OAuth 2.0 (API side)</b></td><td><code>Microsoft.AspNetCore.Authentication.JwtBearer</code></td><td>Validate the access token on every API call</td></tr>
+    <tr><td><b>SAML 2.0</b></td><td><code>Sustainsys.Saml2.AspNetCore2</code> or <code>ITfoxtec.Identity.Saml2.MvcCore</code> (both free, open source)</td><td>Microsoft doesn't ship a SAML handler for ASP.NET Core. Often simpler: let Entra ID federate the SAML IdP and your app speaks OIDC only</td></tr>
+  </table>
+<pre class="code"><code>builder.Services.AddAuthentication(o =&gt;
+{
+    o.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;          // session
+    o.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;  // login
+})
+.AddCookie()
+.AddOpenIdConnect(o =&gt;
+{
+    o.Authority = "https://login.microsoftonline.com/{tenant-id}/v2.0";
+    o.ClientId = builder.Configuration["Oidc:ClientId"];
+    o.ClientSecret = builder.Configuration["Oidc:ClientSecret"];
+    o.ResponseType = "code";   // authorization code flow (PKCE is on by default)
+    o.SaveTokens = true;
+});</code></pre>
+</div>
+  </section>
+
+<!-- KEYS -->
+<section class="concept" id="keys">
+  <h2><span class="num">10.4</span> Symmetric vs Asymmetric keys</h2>
+  <p class="oneliner"><b>Symmetric</b>: one shared secret key locks and unlocks. <b>Asymmetric</b>: a key pair. What the public key locks, only the private key can unlock.</p>
+  <div class="cols2">
+    <div class="flow v"><div class="cap">Symmetric</div>
+      <div class="n">Plain text</div><div class="ar">↓ encrypt with 🔑 K</div><div class="n a">Cipher text</div><div class="ar">↓ decrypt with the SAME 🔑 K</div><div class="n">Plain text</div></div>
+    <div class="flow v"><div class="cap">Asymmetric</div>
+      <div class="n">Plain text</div><div class="ar">↓ encrypt with Bob's 🔓 public key</div><div class="n a">Cipher text</div><div class="ar">↓ decrypt with Bob's 🔐 private key</div><div class="n">Plain text</div></div>
+  </div>
+  <div class="tablewrap"><table>
+    <tr><th></th><th>Symmetric</th><th>Asymmetric</th></tr>
+    <tr><td>Keys</td><td>1 shared secret</td><td>Public + private pair</td></tr>
+    <tr><td>Speed</td><td>Very fast (bulk data)</td><td>Slow (100–1000× slower)</td></tr>
+    <tr><td>Key sizes</td><td>AES-128 / AES-256</td><td>RSA 2048–4096, ECC P-256 (≈ RSA 3072)</td></tr>
+    <tr><td>Algorithms</td><td>AES-GCM, ChaCha20-Poly1305</td><td>RSA, ECDSA, ECDH, Ed25519</td></tr>
+    <tr><td>Big problem</td><td>How to share the key safely?</td><td>Performance. Need to trust that a public key really is theirs (PKI)</td></tr>
+    <tr><td>Used for</td><td>Data at rest, bulk encryption, TLS session data</td><td>Key exchange, digital signatures, certificates, JWT RS256</td></tr>
+  </table></div>
+  <h3>Digital signatures: asymmetric in reverse</h3>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Digital signature: sign with the private key, verify with the public key","actors":[{"t":"Sender","c":"purple"},{"t":"Receiver","c":"teal"}],"colW":300,"stepMs":1000,
+ "steps":[
+  {"from":0,"to":0,"t":"hash(message) → digest"},
+  {"from":0,"to":0,"t":"sign with 🔐 PRIVATE key → signature","c":"red"},
+  {"from":0,"to":1,"t":"message + signature","sub":"anyone can read it; nobody can forge it","c":"purple"},
+  {"note":"verify signature with sender's 🔓 PUBLIC key","over":[1,1],"c":"blue"},
+  {"note":"re-hash message → digests match?","over":[1,1],"c":"slate"},
+  {"note":"✓ authentic (who sent it) + ✓ integrity (not changed)","over":[0,1],"c":"green"}
+ ]}
+</script></figure>
+  <p class="tip"><b>Encrypt</b> → use the RECEIVER's public key &nbsp;|&nbsp; <b>Sign</b> → use the SENDER's private key</p>
+  <h3>Hybrid encryption (how TLS actually works)</h3>
+  <div class="flow"><div class="n p">Asymmetric (ECDHE)<small>securely agree a session key</small></div><div class="ar">→</div><div class="n g">Symmetric (AES-GCM)<small>encrypt all the data fast</small></div></div>
+  <div class="remember"><ul>
+    <li>Best of both: asymmetric to <b>exchange</b> keys and <b>sign</b>, symmetric to <b>encrypt</b> the data.</li>
+    <li>JWT: <b>HS256</b> = symmetric (shared secret). <b>RS256 / ES256</b> = asymmetric (the API only needs the public key, which is better).</li>
+    <li>Post-quantum crypto (e.g. ML-KEM) is coming, and that work is mostly about asymmetric algorithms.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>AesGcm</b>, <b>ChaCha20Poly1305</b></td><td><span class="pill builtin">built-in</span> <code>System.Security.Cryptography</code></td><td>Symmetric authenticated encryption: secret <i>and</i> tamper-evident</td></tr>
+    <tr><td><b>RSA</b>, <b>ECDsa</b>, <b>ECDiffieHellman</b></td><td><span class="pill builtin">built-in</span> <code>System.Security.Cryptography</code></td><td>Asymmetric: RSA-OAEP encryption, signatures, key agreement</td></tr>
+    <tr><td><b>RandomNumberGenerator</b></td><td><span class="pill builtin">built-in</span></td><td>Generate keys and nonces. Never use <code>System.Random</code> for crypto</td></tr>
+    <tr><td><b>Post-quantum</b>: <code>MLKem</code>, <code>MLDsa</code>, <code>SlhDsa</code>, <code>CompositeMLDsa</code></td><td><span class="pill builtin">built-in</span> (.NET 10)</td><td>ML-KEM key exchange and PQC signatures. Need OpenSSL 3.5+ (Linux) or Windows with PQC support; check <code>IsSupported</code>. <code>SlhDsa</code> and <code>CompositeMLDsa</code> (and some members of the others) are <code>[Experimental]</code> (SYSLIB5006)</td></tr>
+    <tr><td><b>Key Vault keys</b></td><td><code>Azure.Security.KeyVault.Keys</code> (<code>CryptographyClient</code>)</td><td>Sign, encrypt or wrap keys with a private key that never leaves the vault / HSM</td></tr>
+  </table>
+<pre class="code"><code>// Symmetric: AES-256-GCM
+byte[] key   = RandomNumberGenerator.GetBytes(32);
+byte[] nonce = RandomNumberGenerator.GetBytes(12);   // unique per message, never reuse with the same key
+byte[] plain = "pay 100 to Bob"u8.ToArray();
+byte[] cipher = new byte[plain.Length];
+byte[] tag    = new byte[16];
+using (var aes = new AesGcm(key, tagSizeInBytes: 16))
+    aes.Encrypt(nonce, plain, cipher, tag);          // store nonce + cipher + tag
+// aes.Decrypt(nonce, cipher, tag, output) throws if anything was changed
+
+// Asymmetric: sign with the private key, verify with the public key
+using var ecdsa = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+byte[] signature = ecdsa.SignData(plain, HashAlgorithmName.SHA256);
+bool valid = ecdsa.VerifyData(plain, signature, HashAlgorithmName.SHA256);</code></pre>
+</div>
+  <div class="post">
+    <p>Symmetric vs Asymmetric encryption, using padlocks 🔐</p>
+    <p>Symmetric: you and I have copies of the same key. Fast, but how do I get you the key safely?</p>
+    <p>Asymmetric: I hand out open padlocks (public key). Anyone can lock a box for me, but only my private key opens it.</p>
+    <p>TLS uses both: padlocks to swap a shared key, then the shared key for speed.</p>
+    <p>#Cryptography #CyberSecurity #TLS</p>
+  </div>
+</section>
+
+<!-- HASHING -->
+<section class="concept" id="hashing">
+  <h2><span class="num">10.5</span> Hashing vs Encryption vs Encoding vs Tokenisation <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Four ways to transform data. Only encryption is meant to be reversed with a key.</p>
+  <div class="tablewrap"><table>
+    <tr><th></th><th>Reversible?</th><th>Purpose</th><th>Examples</th></tr>
+    <tr><td><b>Encoding</b></td><td>Yes, by anyone</td><td>Format compatibility. <b>Not</b> security</td><td>Base64, URL encoding</td></tr>
+    <tr><td><b>Encryption</b></td><td>Yes, with the key</td><td>Confidentiality</td><td>AES, RSA</td></tr>
+    <tr><td><b>Hashing</b></td><td>No (one-way)</td><td>Integrity, password storage</td><td>SHA-256. Passwords: bcrypt, scrypt, Argon2 + salt</td></tr>
+    <tr><td><b>HMAC</b></td><td>No</td><td>Integrity + authenticity with a shared secret</td><td>HMAC-SHA256 (webhooks)</td></tr>
+    <tr><td><b>Tokenisation</b></td><td>Only through the token vault</td><td>Replace sensitive data with a meaningless token</td><td>Card PAN → token (cuts PCI DSS scope)</td></tr>
+    <tr><td><b>Masking</b></td><td>No</td><td>Display or test data</td><td>**** **** **** 1234</td></tr>
+  </table></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Transform</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Encoding</b></td><td><span class="pill builtin">built-in</span> <code>Convert.ToBase64String</code>, <code>Base64Url</code>, <code>Uri.EscapeDataString</code></td><td>Format only. Anyone can decode it</td></tr>
+    <tr><td><b>Hashing / HMAC</b></td><td><span class="pill builtin">built-in</span> <code>SHA256.HashData</code>, <code>HMACSHA256.HashData</code>, <code>CryptographicOperations.FixedTimeEquals</code></td><td>Integrity checks and webhook signatures. Compare in constant time</td></tr>
+    <tr><td><b>Password hashing</b></td><td><span class="pill builtin">built-in</span> <code>PasswordHasher&lt;TUser&gt;</code> (ASP.NET Core Identity), <code>Rfc2898DeriveBytes.Pbkdf2</code>; OSS: <code>BCrypt.Net-Next</code>, <code>Konscious.Security.Cryptography.Argon2</code></td><td>Slow, salted hashes. Never plain SHA-256 for passwords</td></tr>
+    <tr><td><b>Encryption (app level)</b></td><td><span class="pill builtin">built-in</span> Data Protection (<code>IDataProtector</code>), <code>AesGcm</code></td><td>Reversible protection for cookies, tokens and fields. Data Protection handles keys and rotation for you</td></tr>
+    <tr><td><b>Tokenisation</b></td><td>No standard library</td><td>Call a token vault (payment provider, card vault service). Your system stores only the token</td></tr>
+  </table>
+<pre class="code"><code>// Verify a webhook signature (HMAC) in constant time
+byte[] expected = HMACSHA256.HashData(webhookSecret, requestBody);
+bool valid = CryptographicOperations.FixedTimeEquals(expected, Convert.FromHexString(signatureHeader));
+
+// Password storage: salted, slow key derivation
+byte[] salt = RandomNumberGenerator.GetBytes(16);
+byte[] hash = Rfc2898DeriveBytes.Pbkdf2(password, salt, 600_000, HashAlgorithmName.SHA256, 32);</code></pre>
+</div>
+  </section>
+
+<!-- TLS -->
+<section class="concept" id="tls">
+  <h2><span class="num">10.6</span> TLS, mTLS &amp; PKI <span class="tag-added">Added</span></h2>
+  <p class="oneliner">TLS encrypts data in transit and proves the server's identity with a certificate. mTLS makes the client prove its identity too.</p>
+  <div class="cols2">
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"TLS 1.3 handshake (1 round trip)","actors":[{"t":"Client","c":"blue"},{"t":"Server","c":"green"}],"colW":220,"rowH":54,"stepMs":1000,
+ "steps":[
+  {"from":0,"to":1,"t":"ClientHello","sub":"supported ciphers + key share"},
+  {"from":1,"to":0,"t":"ServerHello + Certificate + Finished","sub":"server key share","c":"green","dash":true},
+  {"note":"verify cert chain: trusted CA? name matches? not expired?","over":[0,0],"c":"amber"},
+  {"note":"both derive the same session keys (ECDHE)","over":[0,1],"c":"purple"},
+  {"from":0,"to":1,"t":"🔒 application data","sub":"encrypted with AES-GCM","c":"green"},
+  {"from":1,"to":0,"t":"🔒 response","sub":"encrypted with AES-GCM","c":"green","dash":true}
+ ]}
+</script></figure>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"mTLS: the client proves its identity too","actors":[{"t":"Client","c":"blue"},{"t":"Server","c":"green"}],"colW":220,"rowH":54,"stepMs":1000,
+ "steps":[
+  {"from":0,"to":1,"t":"ClientHello","sub":"ciphers + key share"},
+  {"from":1,"to":0,"t":"ServerHello + Certificate","sub":"+ CertificateRequest (mTLS extra)","c":"amber","dash":true},
+  {"note":"client verifies the server's cert chain","over":[0,0],"c":"slate"},
+  {"from":0,"to":1,"t":"client's OWN certificate","sub":"+ CertificateVerify (proves the key)","c":"amber"},
+  {"note":"server verifies the client cert chain","over":[1,1],"c":"amber"},
+  {"from":0,"to":1,"t":"🔒 application data","sub":"both sides authenticated","c":"green"}
+ ]}
+</script></figure>
+  </div>
+  <div class="flow"><div class="cap">Chain of trust</div><div class="n r">Root CA<small>in OS/browser trust store</small></div><div class="ar">→ signs</div><div class="n a">Intermediate CA</div><div class="ar">→ signs</div><div class="n g">Leaf cert<small>api.bank.com</small></div></div>
+  <div class="remember"><ul>
+    <li>Use TLS 1.2+ (prefer 1.3). Disable old ciphers.</li>
+    <li>Certificate expiry causes many outages. Automate renewal (Key Vault, cert-manager, ACME) and monitor expiry dates.</li>
+    <li>mTLS is common for B2B, open banking and service meshes.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Kestrel HTTPS</b></td><td><span class="pill builtin">built-in</span> <code>ConfigureHttpsDefaults</code>, <code>ClientCertificateMode</code></td><td>Server TLS; <code>RequireCertificate</code> turns on mTLS</td></tr>
+    <tr><td><b>Certificate authentication</b></td><td><code>Microsoft.AspNetCore.Authentication.Certificate</code></td><td>Validate the client cert and turn it into a <code>ClaimsPrincipal</code></td></tr>
+    <tr><td><b>X509 APIs</b></td><td><span class="pill builtin">built-in</span> <code>X509CertificateLoader</code> (.NET 9+), <code>X509Chain</code>, <code>CertificateRequest</code></td><td>Load certs, check the chain of trust, create CSRs and self-signed test certs</td></tr>
+    <tr><td><b>Outbound mTLS</b></td><td><span class="pill builtin">built-in</span> <code>SocketsHttpHandler.SslOptions</code> with <code>IHttpClientFactory</code>; <code>SslStream</code> for raw TCP</td><td>Present a client certificate to a partner API</td></tr>
+    <tr><td><b>Certificate lifecycle</b></td><td><code>Azure.Security.KeyVault.Certificates</code></td><td>Issue, auto-renew and fetch certificates from Key Vault</td></tr>
+  </table>
+<pre class="code"><code>// Server: TLS 1.2+ and require a client certificate (mTLS)
+builder.WebHost.ConfigureKestrel(k =&gt; k.ConfigureHttpsDefaults(h =&gt;
+{
+    h.SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13;
+    h.ClientCertificateMode = ClientCertificateMode.RequireCertificate;
+}));
+builder.Services.AddAuthentication(CertificateAuthenticationDefaults.AuthenticationScheme)
+    .AddCertificate(o =&gt; o.AllowedCertificateTypes = CertificateTypes.Chained);
+
+// Client: send our certificate to a partner API
+var cert = X509CertificateLoader.LoadPkcs12FromFile("client.pfx", pfxPassword);
+builder.Services.AddHttpClient("partner").ConfigurePrimaryHttpMessageHandler(() =&gt;
+{
+    var handler = new SocketsHttpHandler();
+    handler.SslOptions.ClientCertificates = new X509CertificateCollection { cert };
+    return handler;
+});</code></pre>
+  <p class="warn">Behind a load balancer or App Service, TLS often ends before your app. The client cert then arrives in a header; use <code>AddCertificateForwarding</code> to read it.</p>
+</div>
+  </section>
+
+<!-- SECRETS -->
+<section class="concept" id="secrets">
+  <h2><span class="num">10.7</span> Secrets &amp; key management <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Never hard-code secrets. Store them in a vault, access them by identity, rotate them, and audit every use.</p>
+  <div class="flow"><div class="cap">Envelope encryption</div>
+    <div class="n">Data</div><div class="ar">→ encrypted by</div><div class="n a">DEK<small>data encryption key</small></div><div class="ar">→ encrypted by</div><div class="n r">KEK<small>key encryption key, in HSM / Key Vault</small></div>
+  </div>
+  <ul>
+    <li>Vaults: Azure Key Vault (Managed HSM), HashiCorp Vault, AWS KMS / Secrets Manager.</li>
+    <li><b>HSM</b>: tamper-resistant hardware. Keys never leave it (FIPS 140-2/3).</li>
+    <li>Customer-managed keys (CMK / BYOK) for regulatory control.</li>
+    <li>Rotate automatically. Scan repos for leaked secrets (GitHub secret scanning, Gitleaks).</li>
+  </ul>
+  <h3>Data protection states</h3>
+  <div class="grid"><div class="box"><h4>At rest</h4><p>Disk, DB (TDE), blob encryption.</p></div><div class="box"><h4>In transit</h4><p>TLS / mTLS everywhere, including internal traffic.</p></div><div class="box"><h4>In use</h4><p>Confidential computing (secure enclaves), column-level encryption.</p></div></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Key Vault config provider</b></td><td><code>Azure.Extensions.AspNetCore.Configuration.Secrets</code></td><td>Load vault secrets into <code>IConfiguration</code>, using a managed identity</td></tr>
+    <tr><td><b>Key Vault clients</b></td><td><code>Azure.Security.KeyVault.Secrets</code>, <code>.Keys</code>, <code>.Certificates</code></td><td>Read secrets; <code>CryptographyClient.WrapKeyAsync</code> / <code>UnwrapKeyAsync</code> for envelope encryption with an HSM-backed KEK</td></tr>
+    <tr><td><b>User secrets</b></td><td><span class="pill builtin">built-in</span> <code>dotnet user-secrets</code></td><td>Local development only. Keeps secrets out of the repo</td></tr>
+    <tr><td><b>HashiCorp Vault</b></td><td><code>VaultSharp</code></td><td>Secrets, dynamic DB credentials and the Transit (encryption) engine</td></tr>
+    <tr><td><b>Column encryption</b></td><td><code>Microsoft.Data.SqlClient</code> + <code>Microsoft.Data.SqlClient.AlwaysEncrypted.AzureKeyVaultProvider</code></td><td>SQL Always Encrypted: data stays encrypted in the DB; the column master key lives in Key Vault</td></tr>
+  </table>
+<pre class="code"><code>var credential = new DefaultAzureCredential();   // managed identity in Azure, your login locally
+builder.Configuration.AddAzureKeyVault(new Uri("https://my-vault.vault.azure.net/"), credential);
+
+// Envelope encryption: a local DEK protected by a KEK that never leaves Key Vault
+var kek = new CryptographyClient(new Uri(keyId), credential);
+byte[] dek = RandomNumberGenerator.GetBytes(32);           // encrypt the data with this (AesGcm)
+WrapResult wrapped = await kek.WrapKeyAsync(KeyWrapAlgorithm.RsaOaep256, dek);
+// store wrapped.EncryptedKey next to the data; UnwrapKeyAsync gives the DEK back</code></pre>
+</div>
+  </section>
+
+<!-- ZERO TRUST -->
+<section class="concept" id="zerotrust">
+  <h2><span class="num">10.8</span> Zero Trust <span class="tag-added">Added</span></h2>
+  <p class="oneliner">"Never trust, always verify." Being inside the network doesn't make you trusted.</p>
+  <div class="grid">
+    <div class="box blue"><h4>1. Verify explicitly</h4><p>Authenticate and authorise every request using identity, device health, location and risk.</p></div>
+    <div class="box green"><h4>2. Least privilege</h4><p>Just-in-time and just-enough access. Time-bound.</p></div>
+    <div class="box red"><h4>3. Assume breach</h4><p>Micro-segmentation, encrypt everything, monitor, limit the blast radius.</p></div>
+  </div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Principle</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Verify explicitly</b></td><td><code>Microsoft.AspNetCore.Authentication.JwtBearer</code> / <code>Microsoft.Identity.Web</code></td><td>Every service validates the token on every call, even "internal" ones</td></tr>
+    <tr><td><b>Workload identity</b></td><td><code>Azure.Identity</code> (<code>ManagedIdentityCredential</code>, <code>WorkloadIdentityCredential</code>)</td><td>Services prove who they are without shared secrets</td></tr>
+    <tr><td><b>Least privilege</b></td><td><span class="pill builtin">built-in</span> authorization policies + resource-based handlers</td><td>Check scopes/roles per endpoint and ownership per record</td></tr>
+    <tr><td><b>Encrypt everywhere</b></td><td><span class="pill builtin">built-in</span> Kestrel mTLS, <code>Microsoft.AspNetCore.Authentication.Certificate</code></td><td>mTLS between services (or let a service mesh do it)</td></tr>
+    <tr><td><b>Assume breach</b></td><td>OpenTelemetry + audit logging</td><td>Log and trace every access so you can spot misuse. Private endpoints and network rules are platform settings</td></tr>
+  </table>
+</div>
+  </section>
+
+<!-- OWASP -->
+<section class="concept" id="owasp">
+  <h2><span class="num">10.9</span> OWASP API Security Top 10 (2023) <span class="tag-added">Added</span></h2>
+  <p class="oneliner">The ten most critical API security risks, according to OWASP.</p>
+  <div class="tablewrap"><table>
+    <tr><th>#</th><th>Risk</th><th>In plain words / fix</th></tr>
+    <tr><td>API1</td><td>Broken Object Level Authorization (BOLA)</td><td>Changing <code>/accounts/42</code> to <code>/43</code> shows someone else's data. Check ownership on every object</td></tr>
+    <tr><td>API2</td><td>Broken Authentication</td><td>Weak tokens or login flows. Use a standard IdP, MFA, validated JWTs</td></tr>
+    <tr><td>API3</td><td>Broken Object Property Level Authorization</td><td>Exposing or allowing edits to fields you shouldn't (mass assignment). Allowlist fields</td></tr>
+    <tr><td>API4</td><td>Unrestricted Resource Consumption</td><td>No limits → DoS and big bills. Rate limits, quotas, payload size caps</td></tr>
+    <tr><td>API5</td><td>Broken Function Level Authorization</td><td>Normal user calls admin endpoints. Role checks per function</td></tr>
+    <tr><td>API6</td><td>Unrestricted Access to Sensitive Business Flows</td><td>Bots abusing flows (ticket scalping). Bot detection, flow limits</td></tr>
+    <tr><td>API7</td><td>Server-Side Request Forgery (SSRF)</td><td>API fetches an attacker-supplied URL. Validate and allowlist destinations</td></tr>
+    <tr><td>API8</td><td>Security Misconfiguration</td><td>Verbose errors, open CORS, missing TLS. Harden and scan</td></tr>
+    <tr><td>API9</td><td>Improper Inventory Management</td><td>Forgotten old or shadow APIs. Keep an API inventory, retire old versions</td></tr>
+    <tr><td>API10</td><td>Unsafe Consumption of APIs</td><td>Blindly trusting third-party API data. Validate and sanitise</td></tr>
+  </table></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Risk</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>BOLA / BFLA</b> (API1, API5)</td><td><span class="pill builtin">built-in</span> <code>IAuthorizationService.AuthorizeAsync(user, resource, policy)</code></td><td>Check ownership of each record, and policies on each endpoint</td></tr>
+    <tr><td><b>Resource consumption</b> (API4)</td><td><span class="pill builtin">built-in</span> <code>AddRateLimiter</code>, Kestrel <code>MaxRequestBodySize</code></td><td>Rate limits, size limits, and paging caps on list endpoints</td></tr>
+    <tr><td><b>Property-level auth / mass assignment</b> (API3)</td><td><span class="pill builtin">built-in</span> request/response DTOs + <code>AddValidation()</code> (.NET 10 minimal APIs); OSS: <code>FluentValidation</code></td><td>Never bind straight to EF entities. Return only the fields the caller may see</td></tr>
+    <tr><td><b>SSRF</b> (API7)</td><td><span class="pill builtin">built-in</span> <code>IHttpClientFactory</code> named clients</td><td>Fixed base addresses and an allow-list of hosts. Never fetch a URL the user supplied</td></tr>
+    <tr><td><b>Misconfiguration / inventory</b> (API8, API9)</td><td><code>NetEscapades.AspNetCore.SecurityHeaders</code>, <code>Microsoft.AspNetCore.OpenApi</code>, NuGet audit on <code>dotnet restore</code></td><td>Security headers, an OpenAPI document for every API, and warnings for vulnerable packages</td></tr>
+  </table>
+<pre class="code"><code>builder.Services.AddRateLimiter(o =&gt;
+{
+    o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    o.AddFixedWindowLimiter("api", w =&gt; { w.PermitLimit = 100; w.Window = TimeSpan.FromMinutes(1); });
+});
+builder.Services.AddValidation();   // DataAnnotations on minimal API parameters
+
+var app = builder.Build();
+app.UseRateLimiter();
+
+app.MapGet("/orders/{id:int}", async (int id, ClaimsPrincipal user,
+    IAuthorizationService auth, AppDbContext db) =&gt;
+{
+    var order = await db.Orders.FindAsync(id);
+    if (order is null) return Results.NotFound();
+    var result = await auth.AuthorizeAsync(user, order, "OrderOwner");   // BOLA check
+    return result.Succeeded ? Results.Ok(order.ToDto()) : Results.Forbid();
+}).RequireAuthorization().RequireRateLimiting("api");</code></pre>
+</div>
+  </section>
+
+<div class="qa-wrap">
+  <h2>⚡ Quick-fire Q&amp;A</h2>
+  <details class="qa"><summary>Why not encrypt passwords instead of hashing?</summary><p>Encrypted passwords can be decrypted if the key leaks. Slow, salted hashes (bcrypt/Argon2) can't be reversed, and they make brute force expensive.</p></details>
+  <details class="qa"><summary>RBAC vs ABAC?</summary><p>RBAC grants access by role and is simple, but leads to role explosion. ABAC uses attributes and context, which is flexible and fine-grained but more complex to govern.</p></details>
+  <details class="qa"><summary>What does a managed identity solve?</summary><p>It removes credentials from code and config. The cloud platform issues and rotates tokens for the workload automatically.</p></details>
+</div>
+
+<div class="pager"><a href="09-architecture-patterns.html">← 09 · Architecture Patterns</a><a class="next" href="11-devops-deployment-observability.html">11 · DevOps &amp; Deployment →</a></div>
+</main>
+<footer>Tech Concepts Prep · Section 10</footer>
+<script src="assets/app.js"></script>
+<script src="assets/viz.js"></script>
+</body>
+</html>

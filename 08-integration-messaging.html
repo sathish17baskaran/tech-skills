@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>08 · Integration &amp; Messaging | Tech Concepts Prep</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<nav class="top"><a href="07-apim.html">← APIM</a><span class="here">08 · Integration &amp; Messaging</span><a href="09-architecture-patterns.html">Next: Architecture Patterns →</a></nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">Section 08</div>
+  <h1>Integration &amp; messaging</h1>
+  <p>How systems talk to each other: real-time, near-real-time or batch; queues or events; orchestration or choreography; and the patterns that keep messages from getting lost, duplicated or stuck.</p>
+  <div class="toc">
+    <a href="#types">Real-time vs Near-RT vs Batch</a>
+    <a href="#styles" class="added">Integration styles &amp; approaches</a>
+    <a href="#queue-event">Queue vs Event-driven</a>
+    <a href="#guarantees" class="added">Delivery guarantees</a>
+    <a href="#eip" class="added">Messaging patterns (EIP)</a>
+    <a href="#orch" class="added">Orchestration vs Choreography</a>
+    <a href="#batch" class="added">Batch &amp; file integration</a>
+  </div>
+</header>
+
+<!-- TYPES -->
+<section class="concept" id="types">
+  <h2><span class="num">8.1</span> Types of integration: real-time, near-real-time &amp; batch</h2>
+  <p class="oneliner">Choose by <b>how fresh</b> the data must be and <b>how much</b> of it there is.</p>
+<div class="svgwrap">
+<svg viewBox="0 0 880 222" width="880" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, sans-serif" role="img" aria-label="Freshness spectrum: real-time (milliseconds to 2 seconds, sync API call, check balance now), near real-time (seconds to minutes, events, CDC, streaming, micro-batch, send fraud alert or update CRM), batch (hours to daily, scheduled files or ETL, end-of-day statements)">
+  <defs><linearGradient id="fresh-grad" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#059669"/><stop offset="0.5" stop-color="#d97706"/><stop offset="1" stop-color="#64748b"/></linearGradient></defs>
+  <text x="30" y="18" font-size="12" font-weight="700" fill="#059669">◄ fresher</text>
+  <text x="850" y="18" text-anchor="end" font-size="12" font-weight="700" fill="#475569">staler, bigger volume ►</text>
+  <text x="440" y="18" text-anchor="middle" font-size="12" font-weight="700" fill="#64748b">FRESHNESS</text>
+  <text x="150" y="46" text-anchor="middle" font-size="14" font-weight="800" fill="#047857">REAL-TIME <tspan font-weight="600">(ms–2 s)</tspan></text>
+  <text x="440" y="46" text-anchor="middle" font-size="14" font-weight="800" fill="#b45309">NEAR REAL-TIME <tspan font-weight="600">(secs–mins)</tspan></text>
+  <text x="730" y="46" text-anchor="middle" font-size="14" font-weight="800" fill="#475569">BATCH <tspan font-weight="600">(hours–daily)</tspan></text>
+  <rect x="30" y="58" width="820" height="26" rx="13" fill="url(#fresh-grad)"/>
+  <g stroke="#fff" stroke-width="3"><line x1="277" y1="58" x2="277" y2="84"/><line x1="602" y1="58" x2="602" y2="84"/></g>
+  <g>
+    <rect x="26" y="100" width="248" height="104" rx="15" fill="none" stroke="#059669" stroke-width="5" opacity="1"><animate attributeName="opacity" values="1;0;1" keyTimes="0;0.2;0.98" calcMode="discrete" dur="7.5s" repeatCount="indefinite"/></rect>
+    <rect x="281" y="100" width="318" height="104" rx="15" fill="none" stroke="#d97706" stroke-width="5" opacity="0"><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.3333;0.5333" calcMode="discrete" dur="7.5s" repeatCount="indefinite"/></rect>
+    <rect x="606" y="100" width="248" height="104" rx="15" fill="none" stroke="#64748b" stroke-width="5" opacity="0"><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.6667;0.8667" calcMode="discrete" dur="7.5s" repeatCount="indefinite"/></rect>
+  </g>
+  <rect x="30" y="104" width="240" height="96" rx="12" fill="#d1fae5" stroke="#059669" stroke-width="2"/>
+  <rect x="285" y="104" width="310" height="96" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+  <rect x="610" y="104" width="240" height="96" rx="12" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+  <g text-anchor="middle">
+    <text x="150" y="140" font-size="14" font-weight="700" fill="#1e293b">sync API call</text>
+    <text x="150" y="170" font-size="13" font-style="italic" fill="#065f46">"check balance now"</text>
+    <text x="440" y="140" font-size="14" font-weight="700" fill="#1e293b">events · CDC · streaming · micro-batch</text>
+    <text x="440" y="170" font-size="13" font-style="italic" fill="#92400e">"send fraud alert / update CRM"</text>
+    <text x="730" y="140" font-size="14" font-weight="700" fill="#1e293b">scheduled files / ETL</text>
+    <text x="730" y="170" font-size="13" font-style="italic" fill="#334155">"end-of-day statements"</text>
+  </g>
+  <circle r="11" fill="#fff" stroke="#1e293b" stroke-width="3"><animateMotion path="M150,71 L440,71 L730,71 L150,71" keyPoints="0;0;0.25;0.25;0.5;0.5;1" keyTimes="0;0.2;0.3333;0.5333;0.6667;0.8667;1" calcMode="linear" dur="7.5s" repeatCount="indefinite"/></circle>
+</svg>
+</div>
+  <div class="tablewrap"><table>
+    <tr><th></th><th>Real-time</th><th>Near-real-time</th><th>Batch</th></tr>
+    <tr><td>Latency</td><td>Milliseconds, user waits</td><td>Seconds to minutes</td><td>Hours, scheduled</td></tr>
+    <tr><td>Trigger</td><td>Request</td><td>Event or change</td><td>Time (cron) or file arrival</td></tr>
+    <tr><td>Volume per call</td><td>One record</td><td>One or a few records per event</td><td>Millions per run</td></tr>
+    <tr><td>Coupling</td><td>Tight (both up)</td><td>Loose (broker in between)</td><td>Loosest</td></tr>
+    <tr><td>Tech</td><td>REST, gRPC, SOAP via APIM</td><td>Kafka, Service Bus, Event Grid, CDC, webhooks</td><td>SFTP/MFT, ETL (ADF, SSIS), Spark</td></tr>
+    <tr><td>Banking example</td><td>Payment authorisation, balance enquiry</td><td>Transaction notifications, fraud scoring, CRM sync</td><td>Statements, GL posting, regulatory reports, reconciliation</td></tr>
+    <tr><td>Failure handling</td><td>Caller retries or fails fast</td><td>Retry, DLQ, replay</td><td>Restart from checkpoint, rerun</td></tr>
+  </table></div>
+  <div class="remember"><ul>
+    <li>Don't make everything real-time. It's the most expensive and most tightly coupled option. Ask: "What decision needs this data, and how fast?"</li>
+    <li><b>Micro-batch</b> (every 1–5 min) is a practical middle ground.</li>
+    <li>Many real flows are hybrid: a real-time API for the user, an event for downstream systems, and batch reconciliation at end of day.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Type</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Real-time</b></td><td><span class="pill builtin">built-in</span> ASP.NET Core minimal APIs / <code>Grpc.AspNetCore</code>; <code>IHttpClientFactory</code> + <code>Microsoft.Extensions.Http.Resilience</code></td><td>Serve and call sync APIs. Add timeouts, retries and a circuit breaker on every outbound call</td></tr>
+    <tr><td><b>Near-real-time</b></td><td><code>Azure.Messaging.ServiceBus</code>, <code>Azure.Messaging.EventHubs.Processor</code>, <code>Azure.Messaging.EventGrid</code>, <code>Confluent.Kafka</code></td><td>Queues, topics, event streams and push events through a broker</td></tr>
+    <tr><td><b>CDC</b></td><td><code>Microsoft.Azure.Cosmos</code> change feed processor</td><td>React to every insert or update in Cosmos DB. For SQL Server, use Debezium or Fabric mirroring outside .NET</td></tr>
+    <tr><td><b>Micro-batch</b></td><td><span class="pill builtin">built-in</span> <code>BackgroundService</code> + <code>PeriodicTimer</code></td><td>Wake every 1&ndash;5 minutes and process what has arrived since the last checkpoint</td></tr>
+    <tr><td><b>Batch</b></td><td><code>Quartz.Extensions.Hosting</code>, <code>Hangfire.Core</code> <span class="pill lic">check licence</span>, Azure Functions timer trigger</td><td>Cron-style scheduling. Hangfire core is LGPL; Hangfire Pro (batches, extra features) is commercial</td></tr>
+  </table>
+</div>
+  <div class="post">
+    <p>Real-time, near-real-time or batch? Three questions decide it ⏱</p>
+    <p>1️⃣ Who is waiting? A human → real-time API</p>
+    <p>2️⃣ Must others react soon? → events / CDC (near-real-time)</p>
+    <p>3️⃣ Is it big, periodic, and fine by tomorrow? → batch</p>
+    <p>Most good architectures use all three for the same business process.</p>
+    <p>#Integration #Architecture #EventDriven</p>
+  </div>
+</section>
+
+<!-- STYLES -->
+<section class="concept" id="styles">
+  <h2><span class="num">8.2</span> Integration styles &amp; architecture approaches <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Hohpe &amp; Woolf's four styles (file transfer, shared DB, RPC, messaging), and how enterprises organise integration at scale.</p>
+  <div class="grid">
+    <div class="box"><h4>📁 File transfer</h4><p>Systems exchange files. Simple, batch, loosely coupled.</p></div>
+    <div class="box red"><h4>🗄 Shared database</h4><p>Systems read and write the same DB. Tight coupling. Avoid it.</p></div>
+    <div class="box"><h4>📞 Remote procedure call</h4><p>Sync APIs (REST, SOAP, gRPC).</p></div>
+    <div class="box green"><h4>✉️ Messaging</h4><p>Async through a broker. Decoupled and reliable.</p></div>
+  </div>
+  <div class="grid wide">
+    <div class="box red"><h4>🍝 Point-to-point</h4><p>Every system connects directly to every other. n systems ⇒ up to n(n−1)/2 links. Becomes spaghetti.</p></div>
+    <div class="box amber"><h4>🎡 Hub-and-spoke / ESB</h4><p>A central bus does routing and transformation. Fewer links, but the bus can become a bottleneck and a monolith.</p></div>
+    <div class="box blue"><h4>🧱 API-led connectivity</h4><p>Three layers: <b>System APIs</b> (unlock core systems) → <b>Process APIs</b> (business logic) → <b>Experience APIs</b> (per channel). Built for reuse.</p></div>
+    <div class="box green"><h4>⚡ Event-driven / event mesh</h4><p>Producers publish events. Any consumer subscribes. Most decoupled.</p></div>
+    <div class="box purple"><h4>☁️ iPaaS</h4><p>Cloud integration platform with connectors: MuleSoft, Boomi, Azure Integration Services (Logic Apps + APIM + Service Bus + Event Grid + Functions).</p></div>
+  </div>
+  <div class="flow v">
+    <div class="cap">API-led connectivity</div>
+    <div class="n p">Experience APIs<small>Mobile API · Web API · Partner API</small></div><div class="ar">↓</div>
+    <div class="n">Process APIs<small>Onboard Customer · Make Payment</small></div><div class="ar">↓</div>
+    <div class="n g">System APIs<small>Core Banking · CRM · Card System · Mainframe</small></div>
+  </div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Style</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>RPC / APIs</b></td><td><span class="pill builtin">built-in</span> ASP.NET Core + <code>Microsoft.AspNetCore.OpenApi</code>; <code>Grpc.AspNetCore</code>; <code>CoreWCF.Http</code></td><td>REST with built-in OpenAPI docs, gRPC for service-to-service, CoreWCF to host SOAP services on modern .NET</td></tr>
+    <tr><td><b>Messaging</b></td><td><code>WolverineFx</code>, <code>Rebus</code>, <code>Paramore.Brighter</code></td><td>Free messaging frameworks: handlers, retries, outbox and broker transports on top of the raw SDKs</td></tr>
+    <tr><td><b>Messaging</b></td><td><code>MassTransit</code> <span class="pill lic">commercial licence</span> (v9+; v8 is OSS), <code>NServiceBus</code> <span class="pill lic">commercial licence</span></td><td>Mature, feature-rich frameworks with sagas and tooling. MassTransit v8 gets patches only until the end of 2026</td></tr>
+    <tr><td><b>Event-driven</b></td><td><code>CloudNative.CloudEvents</code> (+ <code>.SystemTextJson</code>)</td><td>A standard event envelope (id, source, type, time) so any consumer can read your events</td></tr>
+    <tr><td><b>Event contracts</b></td><td><code>Neuroglia.AsyncApi.AspNetCore</code> or <code>Saunter</code></td><td>Generate and serve AsyncAPI docs for your channels and messages (the event version of OpenAPI)</td></tr>
+    <tr><td><b>Hub / iPaaS</b></td><td>Azure Logic Apps, API Management, Service Bus</td><td>Mostly configuration. .NET code plugs in as Functions or custom connectors</td></tr>
+  </table>
+</div>
+  </section>
+
+<!-- QUEUE VS EVENT -->
+<section class="concept" id="queue-event">
+  <h2><span class="num">8.3</span> Queue vs Event-driven (pub/sub &amp; streaming)</h2>
+  <p class="oneliner">A <b>queue</b> delivers each message (usually a command, "do this") to <b>one</b> consumer. An <b>event</b> ("this happened") goes to <b>every</b> interested subscriber.</p>
+  <div class="cols2">
+    <div class="flow"><div class="cap">Queue: point-to-point</div><div class="n">Producer</div><div class="ar">→</div><div class="n a">Queue<small>▓▓▓</small></div><div class="ar">→</div>
+      <div style="display:flex;flex-direction:column;gap:6px"><div class="n g">Worker 1</div><div class="n g">Worker 2<small>each message → ONE worker</small></div></div></div>
+    <div class="flow"><div class="cap">Pub/Sub: topic</div><div class="n">Publisher</div><div class="ar">→</div><div class="n p">Topic</div><div class="ar">→</div>
+      <div style="display:flex;flex-direction:column;gap:6px"><div class="n g">Fraud svc</div><div class="n g">Notify svc</div><div class="n g">Analytics<small>each gets a COPY</small></div></div></div>
+  </div>
+  <div class="flow"><div class="cap">Event streaming: an append-only log you can replay</div>
+    <div class="n">Producers</div><div class="ar">→</div>
+    <div class="n fill">Topic partitions<small>P0: e1 e2 e3 e4 … · P1: e1 e2 e3 … (retained for days)</small></div><div class="ar">→</div>
+    <div class="n g">Consumer groups<small>each tracks its own offset</small></div>
+  </div>
+  <div class="tablewrap"><table>
+    <tr><th></th><th>Message queue</th><th>Pub/sub (event broker)</th><th>Event streaming</th></tr>
+    <tr><td>Delivery</td><td>One consumer per message</td><td>All subscribers</td><td>All consumer groups, replayable</td></tr>
+    <tr><td>After consumption</td><td>Message removed</td><td>Removed per subscription</td><td>Kept until retention expires</td></tr>
+    <tr><td>Intent</td><td>Command / work item</td><td>Notification of a fact</td><td>History of facts</td></tr>
+    <tr><td>Ordering</td><td>FIFO, sessions</td><td>Usually not guaranteed</td><td>Per partition (by key)</td></tr>
+    <tr><td>Examples</td><td>Azure Service Bus queue, RabbitMQ, SQS, IBM MQ</td><td>Service Bus topics, Event Grid, SNS</td><td>Kafka, Azure Event Hubs, Kinesis</td></tr>
+    <tr><td>Use for</td><td>Load levelling, background jobs, reliable hand-off</td><td>Fan-out to many services</td><td>High volume, analytics, event sourcing, CDC</td></tr>
+  </table></div>
+  <div class="grid">
+    <div class="box"><h4>Command</h4><p>"CreateAccount": tells one handler to act. Can be rejected.</p></div>
+    <div class="box"><h4>Event</h4><p>"AccountCreated": a past fact, broadcast. Can't be rejected.</p></div>
+    <div class="box"><h4>Event notification vs event-carried state</h4><p>A thin event says "id 42 changed, call back for details". A fat event carries all the data, so no callback is needed.</p></div>
+  </div>
+  <div class="remember"><ul>
+    <li>Queues give <b>load levelling</b>: the producer can burst while consumers process at their own pace.</li>
+    <li>Events invert dependencies: the producer doesn't know or care who listens. Add consumers without changing the producer.</li>
+    <li>Version event schemas carefully. Use a <b>schema registry</b> and backward-compatible changes.</li>
+    <li>Event-driven systems are eventually consistent and harder to debug, so invest in correlation IDs and tracing.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Model</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Queue</b></td><td><code>Azure.Messaging.ServiceBus</code> (<code>ServiceBusProcessor</code>); <code>RabbitMQ.Client</code></td><td>Point-to-point work queues. RabbitMQ.Client v7 is async-first (<code>CreateConnectionAsync</code>, <code>IChannel</code>)</td></tr>
+    <tr><td><b>Pub/sub</b></td><td>Service Bus topics + subscriptions; <code>Azure.Messaging.EventGrid</code></td><td>Each subscription gets its own copy. Event Grid pushes events to webhooks, Functions and queues</td></tr>
+    <tr><td><b>Streaming</b></td><td><code>Confluent.Kafka</code>; <code>Azure.Messaging.EventHubs.Processor</code> (<code>EventProcessorClient</code>)</td><td>Partitioned, replayable logs. Consumer groups track their own offsets. Event Hubs also speaks the Kafka protocol</td></tr>
+    <tr><td><b>Schemas</b></td><td><code>Confluent.SchemaRegistry.Serdes.Avro</code> (or <code>.Json</code> / <code>.Protobuf</code>)</td><td>Serialize with a schema registry and enforce backward-compatible changes</td></tr>
+    <tr><td><b>In-process queue</b></td><td><span class="pill builtin">built-in</span> <code>System.Threading.Channels</code></td><td>A fast producer/consumer queue inside one app. Not durable, so it's lost on restart</td></tr>
+  </table>
+<pre class="code"><code>// Kafka consumer: each consumer group gets every event and tracks its own offset
+var config = new ConsumerConfig
+{
+    BootstrapServers = "localhost:9092",
+    GroupId = "fraud-service",
+    AutoOffsetReset = AutoOffsetReset.Earliest,
+    EnableAutoCommit = false            // commit only after we've handled the event
+};
+using var consumer = new ConsumerBuilder&lt;string, string&gt;(config).Build();
+consumer.Subscribe("payments");
+
+while (!ct.IsCancellationRequested)
+{
+    var result = consumer.Consume(ct);  // blocks until a record arrives
+    await HandleAsync(result.Message.Key, result.Message.Value, ct);
+    consumer.Commit(result);            // move this group's offset forward
+}</code></pre>
+</div>
+  <div class="post">
+    <p>Queue vs Event: the difference in one line 📬📢</p>
+    <p>Queue = a to-do list. Each task is done by ONE worker. ("Process payment #42")</p>
+    <p>Event = a public announcement. EVERYONE interested hears it. ("Payment #42 completed")</p>
+    <p>Streaming (Kafka) = announcements recorded on tape, so you can replay them later.</p>
+    <p>#EventDriven #Kafka #Integration #Architecture</p>
+  </div>
+</section>
+
+<!-- GUARANTEES -->
+<section class="concept" id="guarantees">
+  <h2><span class="num">8.4</span> Delivery guarantees &amp; ordering <span class="tag-added">Added</span></h2>
+  <p class="oneliner">The three delivery guarantees, the ordering options, and what happens to messages that keep failing.</p>
+  <div class="grid">
+    <div class="box red"><h4>At-most-once</h4><p>Fire and forget. May lose messages, never duplicates. Fine for metrics.</p></div>
+    <div class="box amber"><h4>At-least-once ⭐ default</h4><p>Retries until acknowledged. No loss, but <b>duplicates are possible</b>, so consumers must be idempotent.</p></div>
+    <div class="box green"><h4>Exactly-once</h4><p>Hard end to end. In practice it's "effectively once" = at-least-once + idempotent consumer (or Kafka transactions inside Kafka).</p></div>
+  </div>
+  <ul>
+    <li><b>Ordering</b>: global order kills scale. Order per key instead (Kafka partition key, Service Bus sessions), e.g. per account ID.</li>
+    <li><b>Dead-letter queue (DLQ)</b>: messages that fail N times move aside for investigation and replay, so they don't block the queue.</li>
+    <li><b>Poison message</b>: a message that always fails. Detect it with a delivery count and move it to the DLQ.</li>
+    <li><b>Peek-lock / ack</b>: the message is only removed after successful processing.</li>
+  </ul>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Need</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>At-least-once</b></td><td>Service Bus <code>PeekLock</code> + <code>CompleteMessageAsync</code> / <code>AbandonMessageAsync</code></td><td>The message stays locked until you settle it. <code>ReceiveAndDelete</code> mode gives at-most-once</td></tr>
+    <tr><td><b>Dead-letter</b></td><td><code>DeadLetterMessageAsync</code>, queue <code>MaxDeliveryCount</code>, <code>SubQueue.DeadLetter</code></td><td>Service Bus dead-letters automatically after N deliveries. Read the DLQ with a receiver on the sub-queue</td></tr>
+    <tr><td><b>Ordering</b></td><td><code>ServiceBusSessionProcessor</code> (<code>SessionId</code> = account id); Kafka message key</td><td>Order per key, not globally</td></tr>
+    <tr><td><b>Dedup</b></td><td>Service Bus duplicate detection (set <code>MessageId</code>); EF Core unique index on <code>MessageId</code></td><td>Broker dedup works only within its time window. The idempotent consumer is your real safety net</td></tr>
+    <tr><td><b>Kafka "exactly-once"</b></td><td><code>Confluent.Kafka</code>: <code>EnableIdempotence</code>, <code>TransactionalId</code>, <code>SendOffsetsToTransaction</code></td><td>Exactly-once only for read-process-write inside Kafka. External side effects still need idempotency</td></tr>
+  </table>
+<pre class="code"><code>var processor = client.CreateProcessor("payments", new ServiceBusProcessorOptions
+{
+    AutoCompleteMessages = false,   // peek-lock: we settle each message ourselves
+    MaxConcurrentCalls = 8
+});
+processor.ProcessMessageAsync += async args =&gt;
+{
+    var msg = args.Message;
+    var payment = msg.Body.ToObjectFromJson&lt;PaymentDto&gt;();
+    if (payment is null)            // poison message: never retry it
+    {
+        await args.DeadLetterMessageAsync(msg, "InvalidBody", "Could not parse payment");
+        return;
+    }
+    await using var scope = scopes.CreateAsyncScope();
+    var db = scope.ServiceProvider.GetRequiredService&lt;AppDbContext&gt;();
+    if (!await db.ProcessedMessages.AnyAsync(p =&gt; p.Id == msg.MessageId))
+    {
+        db.ProcessedMessages.Add(new ProcessedMessage(msg.MessageId)); // unique key
+        db.Payments.Add(Payment.From(payment));
+        await db.SaveChangesAsync(args.CancellationToken);  // one transaction
+    }
+    await args.CompleteMessageAsync(msg);  // ack only after the DB commit
+};
+processor.ProcessErrorAsync += args =&gt; Task.CompletedTask; // log args.Exception
+await processor.StartProcessingAsync();</code></pre>
+</div>
+  </section>
+
+<!-- EIP -->
+<section class="concept" id="eip">
+  <h2><span class="num">8.5</span> Messaging &amp; Enterprise Integration Patterns <span class="tag-added">Added</span></h2>
+  <p class="oneliner">A shared vocabulary for designing message flows (from <i>Enterprise Integration Patterns</i>, Hohpe &amp; Woolf).</p>
+  <div class="grid">
+    <div class="box"><h4>Competing consumers</h4><p>Many workers read one queue to scale processing.</p></div>
+    <div class="box"><h4>Request-reply</h4><p>Send on a request queue, reply on a reply queue, matched by correlation ID.</p></div>
+    <div class="box"><h4>Content-based router</h4><p>Route by message content (e.g. AU vs NZ payments).</p></div>
+    <div class="box"><h4>Message filter</h4><p>Drop messages a consumer doesn't care about.</p></div>
+    <div class="box"><h4>Splitter / Aggregator</h4><p>Split a batch into items. Aggregate results back together.</p></div>
+    <div class="box"><h4>Scatter-gather</h4><p>Ask many (e.g. FX quotes), collect and pick the best.</p></div>
+    <div class="box"><h4>Message translator / canonical model</h4><p>Map to a shared format so N systems don't need N² mappings.</p></div>
+    <div class="box"><h4>Claim check</h4><p>Store the big payload in blob storage and send only a reference.</p></div>
+    <div class="box"><h4>Idempotent receiver</h4><p>Deduplicate by message ID.</p></div>
+    <div class="box green"><h4>Transactional outbox ⭐</h4><p>Write business data + an "outbox" row in <b>one DB transaction</b>. A relay publishes the outbox to the broker. No lost or phantom events.</p></div>
+    <div class="box"><h4>Queue-based load levelling</h4><p>A queue between a spiky producer and a steady consumer.</p></div>
+    <div class="box"><h4>Priority queue</h4><p>Urgent messages get processed first.</p></div>
+  </div>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Transactional Outbox","actors":[{"t":"Service","c":"blue"},{"t":"Database","c":"teal"},{"t":"Outbox relay / CDC","c":"purple"},{"t":"Broker","c":"amber"},{"t":"Consumers","c":"green"}],"colW":170,"rowH":48,"stepMs":900,
+ "steps":[
+  {"from":0,"to":1,"t":"BEGIN TX"},
+  {"from":0,"to":1,"t":"INSERT order","sub":"orders table","c":"blue"},
+  {"from":0,"to":1,"t":"INSERT \"OrderCreated\"","sub":"outbox table","c":"blue"},
+  {"from":0,"to":1,"t":"COMMIT ✓","c":"green"},
+  {"note":"one transaction: both rows saved, or neither","over":[0,1],"c":"green"},
+  {"from":2,"to":1,"t":"read new outbox rows","dash":true,"c":"purple"},
+  {"from":1,"to":2,"t":"\"OrderCreated\"","dash":true,"c":"teal"},
+  {"from":2,"to":3,"t":"publish","sub":"Kafka / Service Bus","c":"purple"},
+  {"from":3,"to":4,"t":"deliver OrderCreated","c":"amber"},
+  {"note":"Solves the \"dual write\" problem: DB commit and event publish can never disagree","over":[0,4],"c":"teal"}
+ ]}
+</script></figure>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Pattern</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Transactional outbox</b></td><td><code>WolverineFx.EntityFrameworkCore</code>; MassTransit EF Core outbox <span class="pill lic">commercial licence</span> (v9+); or a hand-rolled outbox table</td><td>Save the business row and the outgoing message in one EF Core transaction, then relay it</td></tr>
+    <tr><td><b>Competing consumers</b></td><td><code>ServiceBusProcessor</code> (<code>MaxConcurrentCalls</code>) on several instances</td><td>Scale out by adding instances that read the same queue</td></tr>
+    <tr><td><b>Request-reply</b></td><td><code>ServiceBusMessage.ReplyTo</code>, <code>ReplyToSessionId</code>, <code>CorrelationId</code></td><td>The requester waits on a session-enabled reply queue for its own session id</td></tr>
+    <tr><td><b>Router / filter</b></td><td>Service Bus subscription SQL and correlation filters (<code>CreateRuleOptions</code>)</td><td>Let the broker route AU vs NZ payments, so consumers only get what they need</td></tr>
+    <tr><td><b>Claim check</b></td><td><code>Azure.Storage.Blobs</code></td><td>Upload the big payload, send only the blob name or a short-lived SAS URL</td></tr>
+    <tr><td><b>Many EIPs at once</b></td><td><code>WolverineFx</code>, <code>Paramore.Brighter</code>, <code>NServiceBus</code> <span class="pill lic">commercial licence</span></td><td>Routing, retries, idempotent receivers, scatter-gather and outbox built in</td></tr>
+  </table>
+<pre class="code"><code>// 1. One SaveChanges = one transaction: the order AND its outbox row
+db.Orders.Add(order);
+db.Outbox.Add(new OutboxMessage { Id = Guid.NewGuid(), Type = "OrderCreated",
+    Payload = JsonSerializer.Serialize(new OrderCreated(order.Id)) });
+await db.SaveChangesAsync(ct);
+
+// 2. Relay: publish unsent rows to the broker, then mark them sent
+public sealed class OutboxRelay(IServiceScopeFactory scopes, ServiceBusSender sender)
+    : BackgroundService
+{
+    protected override async Task ExecuteAsync(CancellationToken ct)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
+        while (await timer.WaitForNextTickAsync(ct))
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService&lt;AppDbContext&gt;();
+            var batch = await db.Outbox.Where(m =&gt; m.SentAt == null)
+                .OrderBy(m =&gt; m.CreatedAt).Take(100).ToListAsync(ct);
+            foreach (var m in batch)
+            {
+                await sender.SendMessageAsync(new ServiceBusMessage(m.Payload)
+                    { MessageId = m.Id.ToString(), Subject = m.Type }, ct);
+                m.SentAt = DateTime.UtcNow;
+            }
+            await db.SaveChangesAsync(ct);
+        }
+    }
+}</code></pre>
+  <p class="warn">The relay can crash after sending but before saving <code>SentAt</code>, so a message may go out twice. Reuse the outbox id as the <code>MessageId</code> and keep consumers idempotent.</p>
+</div>
+  </section>
+
+<!-- ORCH VS CHOREO -->
+<section class="concept" id="orch">
+  <h2><span class="num">8.6</span> Orchestration vs Choreography <span class="tag-added">Added</span></h2>
+  <p class="oneliner"><b>Orchestration</b>: a conductor tells each service what to do. <b>Choreography</b>: each service reacts to events on its own, like dancers who know the routine.</p>
+  <div class="cols2">
+    <div class="flow v"><div class="cap">Orchestration</div>
+      <div class="n fill">Orchestrator<small>Logic Apps / Durable Functions / Temporal / Camunda</small></div>
+      <div class="ar">↓ ↓ ↓</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center"><div class="n g">Payment</div><div class="n g">Inventory</div><div class="n g">Shipping</div></div></div>
+    <div class="flow v"><div class="cap">Choreography</div>
+      <div class="n g">Order svc</div><div class="ar">↓ OrderPlaced</div><div class="n g">Payment svc</div><div class="ar">↓ PaymentDone</div><div class="n g">Shipping svc</div></div>
+  </div>
+  <div class="tablewrap"><table>
+    <tr><th></th><th>Orchestration</th><th>Choreography</th></tr>
+    <tr><td>Control</td><td>Central, explicit workflow</td><td>Decentralised, emergent</td></tr>
+    <tr><td>Visibility</td><td>Easy to see state and debug</td><td>Hard to see the end-to-end flow</td></tr>
+    <tr><td>Coupling</td><td>Orchestrator knows all services</td><td>Services only know events</td></tr>
+    <tr><td>Best for</td><td>Complex flows, compensation, SLAs, human steps</td><td>Simple flows, high autonomy, many listeners</td></tr>
+  </table></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Durable Functions</b></td><td><code>Microsoft.Azure.Functions.Worker.Extensions.DurableTask</code></td><td>Code-first orchestrations on Azure Functions (isolated worker): chaining, fan-out/fan-in, timers, human approval</td></tr>
+    <tr><td><b>Durable Task SDK</b></td><td><code>Microsoft.DurableTask.Worker.AzureManaged</code> + <code>.Client.AzureManaged</code></td><td>The same orchestration model in any host (ASP.NET Core, containers), backed by the managed Durable Task Scheduler</td></tr>
+    <tr><td><b>Temporal</b></td><td><code>Temporalio</code></td><td>Durable workflows on a Temporal cluster (self-hosted or Temporal Cloud)</td></tr>
+    <tr><td><b>Dapr Workflow</b></td><td><code>Dapr.Workflow</code></td><td>Workflows that run on the Dapr sidecar, portable across clouds</td></tr>
+    <tr><td><b>Elsa Workflows</b></td><td><code>Elsa</code></td><td>Visual designer + code workflows embedded in your own app</td></tr>
+    <tr><td><b>Choreography</b></td><td><code>Azure.Messaging.ServiceBus</code> topics, or <code>WolverineFx</code> handlers</td><td>Each service subscribes to events and publishes the next one. No central controller</td></tr>
+  </table>
+<pre class="code"><code>public static class OrderWorkflow
+{
+    [Function(nameof(RunOrder))]
+    public static async Task&lt;string&gt; RunOrder(
+        [OrchestrationTrigger] TaskOrchestrationContext context)
+    {
+        var order = context.GetInput&lt;Order&gt;()!;
+        // The orchestrator calls each step in order. State is checkpointed
+        // after every await, so it survives restarts.
+        await context.CallActivityAsync("TakePayment", order);
+        await context.CallActivityAsync("ReserveStock", order);
+        return await context.CallActivityAsync&lt;string&gt;("BookShipping", order);
+    }
+
+    [Function("TakePayment")]
+    public static Task TakePayment([ActivityTrigger] Order order) =&gt; Task.CompletedTask;
+}
+
+// Start it from an HTTP function or API:
+// await client.ScheduleNewOrchestrationInstanceAsync(nameof(OrderWorkflow.RunOrder), order);</code></pre>
+  <p class="warn">Orchestrator code must be deterministic: no <code>DateTime.UtcNow</code>, <code>Guid.NewGuid()</code> or direct I/O. Use <code>context.CurrentUtcDateTime</code> and do I/O in activities.</p>
+</div>
+  </section>
+
+<!-- BATCH -->
+<section class="concept" id="batch">
+  <h2><span class="num">8.7</span> Batch &amp; file integration done right <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Controls that make file and batch integrations reliable, auditable and safe to rerun.</p>
+  <div class="flow">
+    <div class="n">Source extract</div><div class="ar">→</div><div class="n t">SFTP / MFT<small>PGP-encrypted</small></div><div class="ar">→</div>
+    <div class="n a">Validate<small>schema · checksum · control totals</small></div><div class="ar">→</div>
+    <div class="n p">Transform &amp; load<small>chunks + checkpoints</small></div><div class="ar">→</div>
+    <div class="n g">Reconcile &amp; report</div>
+  </div>
+  <div class="remember"><ul>
+    <li><b>Control totals</b> (record count, sum of amounts) in a header or trailer, or a separate control file.</li>
+    <li>Avoid reading half-written files: use a <code>.tmp</code> → rename convention or a "done" marker file.</li>
+    <li><b>Idempotent and restartable</b>: process in chunks with checkpoints, and make reruns safe.</li>
+    <li>Schedulers: Control-M, Autosys, ADF triggers, cron. Track dependencies and SLAs.</li>
+    <li>Keep an audit trail and archive files under your retention policy.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Step</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Transfer</b></td><td><code>SSH.NET</code> (SFTP), <code>FluentFTP</code> (FTP/FTPS)</td><td>List, download, upload and rename files on the MFT server</td></tr>
+    <tr><td><b>Encrypt / sign</b></td><td><code>PgpCore</code></td><td>PGP encrypt, decrypt, sign and verify files and streams</td></tr>
+    <tr><td><b>Validate</b></td><td><span class="pill builtin">built-in</span> <code>SHA256.HashDataAsync(stream)</code>; <code>CsvHelper</code></td><td>Checksums, then stream records one by one to check schema and control totals</td></tr>
+    <tr><td><b>Big files</b></td><td><span class="pill builtin">built-in</span> <code>System.IO.Pipelines</code></td><td>Parse huge fixed-width or custom files with low memory use</td></tr>
+    <tr><td><b>Load</b></td><td><code>SqlBulkCopy</code> (<code>Microsoft.Data.SqlClient</code>); EF Core <code>ExecuteUpdateAsync</code></td><td>Bulk insert in chunks, then set-based updates. Record the last chunk in a checkpoint table</td></tr>
+    <tr><td><b>Schedule</b></td><td><code>Quartz.Extensions.Hosting</code>, <code>Hangfire.Core</code> <span class="pill lic">check licence</span>, Functions timer trigger</td><td>Cron triggers with persistence and retries (Hangfire Pro is commercial)</td></tr>
+  </table>
+<pre class="code"><code>using var sftp = new SftpClient(host, "svc-batch", new PrivateKeyFile(keyPath));
+sftp.Connect();
+
+foreach (var file in sftp.ListDirectory("/inbound").Where(f =&gt; f.Name.EndsWith(".csv")))
+{
+    // Only pick up files the sender has finished writing
+    if (!sftp.Exists(file.FullName + ".done")) continue;
+
+    var local = Path.Combine(workDir, file.Name);
+    using (var output = File.Create(local))
+        sftp.DownloadFile(file.FullName, output);
+
+    await ProcessWithCheckpointsAsync(local, ct);           // validate, load, reconcile
+    sftp.RenameFile(file.FullName, $"/archive/{file.Name}"); // never process it twice
+}</code></pre>
+</div>
+  </section>
+
+<div class="qa-wrap">
+  <h2>⚡ Quick-fire Q&amp;A</h2>
+  <details class="qa"><summary>Service Bus or Event Hubs?</summary><p>Service Bus for enterprise messaging (commands, transactions, sessions, DLQ, ordered workflows). Event Hubs for high-throughput event streaming and telemetry with replay.</p></details>
+  <details class="qa"><summary>How do you guarantee an event is published when the DB commits?</summary><p>Transactional outbox, or CDC on the outbox table. Never "write the DB, then publish" as two separate steps.</p></details>
+  <details class="qa"><summary>How do you handle duplicates with at-least-once delivery?</summary><p>Idempotent consumers: deduplicate by message ID or business key, use upserts, and use version checks.</p></details>
+</div>
+
+<div class="pager"><a href="07-apim.html">← 07 · APIM</a><a class="next" href="09-architecture-patterns.html">09 · Architecture Patterns →</a></div>
+</main>
+<footer>Tech Concepts Prep · Section 08</footer>
+<script src="assets/app.js"></script>
+<script src="assets/viz.js"></script>
+</body>
+</html>

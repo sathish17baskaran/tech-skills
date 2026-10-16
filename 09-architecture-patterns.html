@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>09 · Architecture Patterns | Tech Concepts Prep</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<nav class="top"><a href="08-integration-messaging.html">← Integration</a><span class="here">09 · Architecture Patterns</span><a href="10-security-iam.html">Next: Security &amp; IAM →</a></nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">Section 09</div>
+  <h1>Architecture styles, microservice patterns &amp; serverless</h1>
+  <p>The shapes systems take, from monoliths to microservices to serverless, and the proven patterns for splitting services, sharing data, communicating and surviving failure.</p>
+  <div class="toc">
+    <a href="#styles">Architecture patterns (styles)</a>
+    <a href="#mono-micro" class="added">Monolith vs Microservices</a>
+    <a href="#ms-patterns">Microservice patterns</a>
+    <a href="#saga" class="added">Saga</a>
+    <a href="#cqrs" class="added">CQRS &amp; Event Sourcing</a>
+    <a href="#strangler" class="added">Strangler Fig</a>
+    <a href="#mesh" class="added">Sidecar &amp; Service Mesh</a>
+    <a href="#ddd" class="added">DDD essentials</a>
+    <a href="#serverless">Serverless architecture</a>
+    <a href="#twelve" class="added">12-Factor App</a>
+  </div>
+</header>
+
+<!-- STYLES -->
+<section class="concept" id="styles">
+  <h2><span class="num">9.1</span> Different types of architecture patterns</h2>
+  <p class="oneliner">An architecture style is the overall shape of a system: how it's split into parts and how those parts talk.</p>
+  <div class="grid">
+    <div class="box"><h4>🧱 Monolith</h4><p>One deployable unit. Simple to build, test and deploy at first. Grows into a "big ball of mud".</p></div>
+    <div class="box"><h4>🍰 Layered / N-tier</h4><p>Presentation → Business → Data. Classic enterprise style. Watch out for "sinkhole" layers that only pass calls through.</p></div>
+    <div class="box green"><h4>📦 Modular monolith</h4><p>One deployable, with strict module boundaries inside. A great default before microservices.</p></div>
+    <div class="box"><h4>🔗 SOA</h4><p>Coarse-grained shared services, often through an ESB. The predecessor of microservices.</p></div>
+    <div class="box blue"><h4>🧩 Microservices</h4><p>Small, independently deployable services, each owning one business capability and its data.</p></div>
+    <div class="box purple"><h4>⚡ Event-driven</h4><p>Components communicate through events (broker or mediator topology). Highly decoupled.</p></div>
+    <div class="box teal"><h4>☁️ Serverless</h4><p>Functions and managed services. No servers to manage, pay per use.</p></div>
+    <div class="box"><h4>⬡ Hexagonal / Clean / Onion</h4><p>Domain at the centre. Ports and adapters isolate it from DBs, UIs and frameworks. Very testable.</p></div>
+    <div class="box"><h4>🔌 Microkernel (plug-in)</h4><p>Core system + plug-ins (IDEs, rules engines, browsers).</p></div>
+    <div class="box"><h4>🌌 Space-based</h4><p>In-memory data grid and processing units, for extreme, spiky scale.</p></div>
+    <div class="box"><h4>🖼 Micro-frontends</h4><p>The UI split by domain, each part owned by its own team.</p></div>
+    <div class="box"><h4>🧫 Cell-based</h4><p>Copies of the full stack ("cells"), each serving a slice of users, so one failure has a limited blast radius.</p></div>
+  </div>
+<div class="svgwrap">
+<svg viewBox="0 0 880 320" width="880" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, sans-serif" role="img" aria-label="Hexagonal architecture: REST API, Queue and CLI/Test call inbound adapters, which enter the domain core through inbound ports. The core calls outbound ports, implemented by adapters for SQL DB, Kafka and a 3rd-party API. The core has no framework dependencies.">
+  <text x="440" y="22" text-anchor="middle" font-size="15" font-weight="700" fill="#1e293b">Hexagonal (Ports &amp; Adapters)</text>
+  <text x="150" y="62" text-anchor="middle" font-size="12.5" font-weight="700" fill="#1d4ed8">Inbound (driving) adapters</text>
+  <text x="730" y="62" text-anchor="middle" font-size="12.5" font-weight="700" fill="#047857">Outbound (driven) adapters</text>
+  <g stroke="#94a3b8" stroke-width="2" fill="none">
+    <path d="M140,110 H180 M280,110 L357.5,122.4"/><path d="M140,170 H180 M280,170 H330"/><path d="M140,230 H180 M280,230 L357.5,217.6"/>
+    <path d="M522.5,122.4 L600,110 M700,110 H740"/><path d="M550,170 H600 M700,170 H740"/><path d="M522.5,217.6 L600,230 M700,230 H740"/>
+  </g>
+  <polygon points="550,170 495,74.7 385,74.7 330,170 385,265.3 495,265.3" fill="#ede9fe" stroke="#7c3aed" stroke-width="3"/>
+  <text x="440" y="160" text-anchor="middle" font-size="17" font-weight="800" fill="#5b21b6">◆ DOMAIN CORE ◆</text>
+  <text x="440" y="190" text-anchor="middle" font-size="12.5" font-weight="700" fill="#6d28d9">(no framework dependencies)</text>
+  <g fill="#fff" stroke="#7c3aed" stroke-width="2.5">
+    <circle cx="357.5" cy="122.4" r="6"/><circle cx="330" cy="170" r="6"/><circle cx="357.5" cy="217.6" r="6"/>
+    <circle cx="522.5" cy="122.4" r="6"/><circle cx="550" cy="170" r="6"/><circle cx="522.5" cy="217.6" r="6"/>
+  </g>
+  <g font-size="13" font-weight="700" text-anchor="middle" fill="#1e293b">
+    <rect x="20" y="90" width="120" height="40" rx="10" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/><text x="80" y="115">REST API</text>
+    <rect x="20" y="150" width="120" height="40" rx="10" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/><text x="80" y="175">Queue</text>
+    <rect x="20" y="210" width="120" height="40" rx="10" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/><text x="80" y="235">CLI / Test</text>
+    <rect x="180" y="92" width="100" height="36" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="230" y="115">Adapter</text>
+    <rect x="180" y="152" width="100" height="36" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="230" y="175">Adapter</text>
+    <rect x="180" y="212" width="100" height="36" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="230" y="235">Adapter</text>
+    <rect x="600" y="92" width="100" height="36" rx="10" fill="#d1fae5" stroke="#059669" stroke-width="2"/><text x="650" y="115">Adapter</text>
+    <rect x="600" y="152" width="100" height="36" rx="10" fill="#d1fae5" stroke="#059669" stroke-width="2"/><text x="650" y="175">Adapter</text>
+    <rect x="600" y="212" width="100" height="36" rx="10" fill="#d1fae5" stroke="#059669" stroke-width="2"/><text x="650" y="235">Adapter</text>
+    <rect x="740" y="90" width="120" height="40" rx="10" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/><text x="800" y="115">SQL DB</text>
+    <rect x="740" y="150" width="120" height="40" rx="10" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/><text x="800" y="175">Kafka</text>
+    <rect x="740" y="210" width="120" height="40" rx="10" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/><text x="800" y="235">3rd-party API</text>
+  </g>
+  <g fill="#f59e0b" stroke="#fff" stroke-width="1.5">
+    <circle r="6"><animateMotion path="M140,110 H180 M280,110 L357.5,122.4" dur="2.4s" repeatCount="indefinite"/></circle>
+    <circle r="6"><animateMotion path="M140,170 H180 M280,170 H330" dur="2.4s" begin="-0.8s" repeatCount="indefinite"/></circle>
+    <circle r="6"><animateMotion path="M140,230 H180 M280,230 L357.5,217.6" dur="2.4s" begin="-1.6s" repeatCount="indefinite"/></circle>
+  </g>
+  <g fill="#059669" stroke="#fff" stroke-width="1.5">
+    <circle r="6"><animateMotion path="M522.5,122.4 L600,110 M700,110 H740" dur="2.4s" begin="-0.4s" repeatCount="indefinite"/></circle>
+    <circle r="6"><animateMotion path="M550,170 H600 M700,170 H740" dur="2.4s" begin="-1.2s" repeatCount="indefinite"/></circle>
+    <circle r="6"><animateMotion path="M522.5,217.6 L600,230 M700,230 H740" dur="2.4s" begin="-2s" repeatCount="indefinite"/></circle>
+  </g>
+  <text x="300" y="296" text-anchor="middle" font-size="12.5" font-weight="700" fill="#5b21b6">○ inbound ports</text>
+  <text x="580" y="296" text-anchor="middle" font-size="12.5" font-weight="700" fill="#5b21b6">outbound ports ○</text>
+</svg>
+</div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Style</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Layered / monolith</b></td><td><span class="pill builtin">built-in</span> ASP.NET Core + EF Core</td><td>One project per layer, wired together with dependency injection</td></tr>
+    <tr><td><b>Modular monolith</b></td><td><span class="pill builtin">built-in</span> separate class library per module + <code>internal</code> types; <code>WolverineFx</code> for in-process messages</td><td>Modules expose a small public contract and talk via interfaces or in-process events</td></tr>
+    <tr><td><b>Hexagonal / Clean</b></td><td><span class="pill builtin">built-in</span> interfaces (ports) + DI (adapters)</td><td>The domain project references no framework packages. Adapters live in outer projects</td></tr>
+    <tr><td><b>Enforce boundaries</b></td><td><code>NetArchTest.Rules</code> or <code>TngTech.ArchUnitNET</code></td><td>Unit tests that fail the build when a layer or module uses something it shouldn't</td></tr>
+    <tr><td><b>Microkernel</b></td><td><span class="pill builtin">built-in</span> <code>AssemblyLoadContext</code></td><td>Load plug-in assemblies at runtime (and unload them if the context is collectible)</td></tr>
+    <tr><td><b>Event-driven</b></td><td>See 8.3: Service Bus, Event Hubs, Kafka, Wolverine</td><td>Broker topology in .NET means the messaging SDKs and frameworks from section 8</td></tr>
+  </table>
+<pre class="code"><code>// xUnit + NetArchTest: the domain must not depend on infrastructure or EF Core
+[Fact]
+public void Domain_has_no_infrastructure_dependencies()
+{
+    var result = Types.InAssembly(typeof(Account).Assembly)
+        .That().ResideInNamespace("Bank.Domain")
+        .ShouldNot().HaveDependencyOnAny("Bank.Infrastructure", "Microsoft.EntityFrameworkCore")
+        .GetResult();
+
+    Assert.True(result.IsSuccessful);
+}</code></pre>
+</div>
+  </section>
+
+<!-- MONO VS MICRO -->
+<section class="concept" id="mono-micro">
+  <h2><span class="num">9.2</span> Monolith vs Microservices <span class="tag-added">Added</span></h2>
+  <div class="tablewrap"><table>
+    <tr><th></th><th>Monolith</th><th>Microservices</th></tr>
+    <tr><td>Deploy</td><td>Everything together</td><td>Each service on its own</td></tr>
+    <tr><td>Scaling</td><td>Whole app</td><td>Per service</td></tr>
+    <tr><td>Data</td><td>One shared DB</td><td>DB per service</td></tr>
+    <tr><td>Team</td><td>Works for one team</td><td>Many autonomous teams</td></tr>
+    <tr><td>Complexity</td><td>Inside the code</td><td>In the network: distributed systems, ops, observability</td></tr>
+    <tr><td>Failure</td><td>One bug can take everything down</td><td>Isolated, if designed with resilience patterns</td></tr>
+    <tr><td>Transactions</td><td>ACID, easy</td><td>Sagas, eventual consistency</td></tr>
+  </table></div>
+  <div class="remember"><ul>
+    <li><b>Conway's Law</b>: systems mirror the communication structure of the organisation. Design teams and services together.</li>
+    <li>"Don't start with microservices." Start with a modular monolith, then extract services once boundaries are proven and scaling or team needs demand it.</li>
+    <li>Watch for the <b>distributed monolith</b> anti-pattern: services that must be deployed together or share a DB.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Aspire</b></td><td><code>Aspire.Hosting.AppHost</code> (Aspire AppHost SDK)</td><td>Describe and run all services, databases and brokers locally with one command, plus a telemetry dashboard. Formerly ".NET Aspire"</td></tr>
+    <tr><td><b>Service defaults</b></td><td><code>Microsoft.Extensions.ServiceDiscovery</code>, <code>Microsoft.Extensions.Http.Resilience</code>, OpenTelemetry</td><td>The same discovery, resilience, health and telemetry setup in every service</td></tr>
+    <tr><td><b>YARP</b></td><td><code>Yarp.ReverseProxy</code></td><td>A .NET reverse proxy / gateway in front of the services</td></tr>
+    <tr><td><b>Dapr</b></td><td><code>Dapr.AspNetCore</code>, <code>Dapr.Client</code></td><td>Sidecar building blocks: service invocation, pub/sub, state, secrets</td></tr>
+    <tr><td><b>Modular monolith</b></td><td><span class="pill builtin">built-in</span> class libraries + <code>internal</code>; <code>WolverineFx</code></td><td>Keep one deployable but module boundaries ready to extract later</td></tr>
+  </table>
+<pre class="code"><code>// AppHost/Program.cs: the whole system in one place
+var builder = DistributedApplication.CreateBuilder(args);
+
+var sql = builder.AddSqlServer("sql");
+var accountsDb = sql.AddDatabase("accountsdb");     // database per service
+var paymentsDb = sql.AddDatabase("paymentsdb");
+
+var accounts = builder.AddProject&lt;Projects.Accounts_Api&gt;("accounts")
+    .WithReference(accountsDb).WaitFor(accountsDb);
+
+builder.AddProject&lt;Projects.Payments_Api&gt;("payments")
+    .WithReference(paymentsDb)
+    .WithReference(accounts);                       // service discovery by name
+
+builder.Build().Run();</code></pre>
+</div>
+  <div class="post">
+    <p>Microservices don't remove complexity. They move it 🚚</p>
+    <p>From: tangled code in one app</p>
+    <p>To: network calls, retries, sagas, tracing, 40 pipelines and eventual consistency</p>
+    <p>Worth it when you have many teams, different scaling needs and clear domain boundaries. Otherwise, a modular monolith wins.</p>
+    <p>#Microservices #SoftwareArchitecture #SystemDesign</p>
+  </div>
+</section>
+
+<!-- MS PATTERNS -->
+<section class="concept" id="ms-patterns">
+  <h2><span class="num">9.3</span> Microservice architecture patterns (map)</h2>
+  <p class="oneliner">The common patterns, grouped by the problem each one solves.</p>
+  <div class="grid wide">
+    <div class="box blue"><h4>✂️ Decomposition</h4><ul><li>By business capability</li><li>By subdomain (DDD bounded context)</li><li>Strangler fig (migrate gradually)</li></ul></div>
+    <div class="box green"><h4>🗄 Data management</h4><ul><li>Database per service</li><li>Saga (distributed transactions)</li><li>CQRS</li><li>Event sourcing</li><li>API composition</li><li>Transactional outbox</li></ul></div>
+    <div class="box purple"><h4>📡 Communication</h4><ul><li>API gateway</li><li>Backend for Frontend (BFF)</li><li>Service discovery (client- or server-side)</li><li>Async messaging</li><li>Service mesh / sidecar</li></ul></div>
+    <div class="box red"><h4>🛡 Reliability</h4><ul><li>Circuit breaker</li><li>Bulkhead</li><li>Retry + backoff, timeout</li><li>Health check API</li></ul></div>
+    <div class="box amber"><h4>🔭 Observability</h4><ul><li>Log aggregation</li><li>Distributed tracing</li><li>Application metrics</li><li>Correlation IDs</li><li>Audit logging</li></ul></div>
+    <div class="box teal"><h4>🚀 Deployment &amp; cross-cutting</h4><ul><li>Service per container</li><li>Serverless deployment</li><li>Externalised config</li><li>Anti-corruption layer</li><li>Ambassador / sidecar</li></ul></div>
+  </div>
+  <h3>API gateway &amp; BFF</h3>
+  <div class="flow">
+    <div style="display:flex;flex-direction:column;gap:6px"><div class="n">📱 Mobile</div><div class="n">💻 Web</div><div class="n">🤝 Partner</div></div>
+    <div class="ar">→</div>
+    <div style="display:flex;flex-direction:column;gap:6px"><div class="n p">Mobile BFF</div><div class="n p">Web BFF</div><div class="n p">Partner API</div></div>
+    <div class="ar">→</div>
+    <div class="n fill">API Gateway</div><div class="ar">→</div>
+    <div style="display:flex;flex-direction:column;gap:6px"><div class="n g">Accounts svc + DB</div><div class="n g">Payments svc + DB</div><div class="n g">Customers svc + DB</div></div>
+  </div>
+  <div class="remember"><ul>
+    <li><b>Database per service</b> keeps services independent. Share data through APIs or events, never through each other's tables.</li>
+    <li><b>Anti-corruption layer (ACL)</b>: a translation layer that stops a legacy model from leaking into your new domain.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Pattern</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>API gateway / BFF</b></td><td><code>Yarp.ReverseProxy</code>; <code>Duende.BFF</code> <span class="pill lic">commercial licence</span></td><td>Routing, auth and aggregation per channel. Duende BFF adds secure cookie-based SPA auth (free community edition)</td></tr>
+    <tr><td><b>Service discovery</b></td><td><code>Microsoft.Extensions.ServiceDiscovery</code> (+ <code>.Yarp</code>)</td><td>Resolve <code>https+http://accounts</code> from config, Aspire or Kubernetes DNS</td></tr>
+    <tr><td><b>Resilience</b></td><td><code>Microsoft.Extensions.Http.Resilience</code> (Polly v8)</td><td>Retry with backoff, timeout, circuit breaker and bulkhead on HttpClient</td></tr>
+    <tr><td><b>Health check API</b></td><td><span class="pill builtin">built-in</span> <code>AddHealthChecks</code> / <code>MapHealthChecks</code>; <code>AspNetCore.HealthChecks.*</code></td><td>Liveness and readiness endpoints, with community checks for SQL, Redis, Service Bus</td></tr>
+    <tr><td><b>Observability</b></td><td><code>OpenTelemetry.Extensions.Hosting</code> + instrumentation; <code>Azure.Monitor.OpenTelemetry.AspNetCore</code></td><td>Distributed traces, metrics and logs with correlation IDs across services</td></tr>
+    <tr><td><b>Database per service</b></td><td>EF Core, one <code>DbContext</code> and schema per service</td><td>Share data via APIs or events, never another service's tables</td></tr>
+  </table>
+<pre class="code"><code>builder.Services.AddServiceDiscovery();
+builder.Services.ConfigureHttpClientDefaults(http =&gt;
+{
+    http.AddStandardResilienceHandler();  // retry, timeout, circuit breaker
+    http.AddServiceDiscovery();           // resolve logical service names
+});
+builder.Services.AddHttpClient&lt;AccountsClient&gt;(c =&gt;
+    c.BaseAddress = new("https+http://accounts"));
+builder.Services.AddHealthChecks();
+
+var app = builder.Build();
+app.MapHealthChecks("/health");</code></pre>
+</div>
+  </section>
+
+<!-- SAGA -->
+<section class="concept" id="saga">
+  <h2><span class="num">9.4</span> Saga pattern <span class="tag-added">Added</span></h2>
+  <p class="oneliner">A long business transaction split into local transactions. If one step fails, <b>compensating actions</b> undo the earlier steps.</p>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Payment saga","interval":2600,
+ "frames":[
+  {"label":"Happy path","caption":"Each step is a local transaction. All four succeed ✓","rows":[
+   [{"t":"Reserve funds","c":"green"},{"k":"arrow","g":"→"},{"t":"Debit account","c":"green"},{"k":"arrow","g":"→"},{"t":"Send payment","c":"green"},{"k":"arrow","g":"→"},{"t":"Notify","c":"green"},{"k":"text","t":"✓ done","c":"green"}]]},
+  {"label":"Failure","caption":"<b>Send payment fails.</b> Funds are already reserved and the account is already debited.","rows":[
+   [{"t":"Reserve funds","c":"green"},{"k":"arrow","g":"→"},{"t":"Debit account","c":"green"},{"k":"arrow","g":"→"},{"t":"Send payment ✗","sub":"failed","c":"red"},{"k":"arrow","g":"→"},{"t":"Notify","sub":"not run","c":"off"},{"k":"text","t":"✗ failed","c":"red"}]]},
+  {"label":"Compensate 1","caption":"Compensations run in reverse. First undo the debit: <b>Credit back</b>.","rows":[
+   [{"t":"Reserve funds","c":"green"},{"k":"arrow","g":"←","t":"undo"},{"t":"Credit back","sub":"undo debit","c":"amber"},{"k":"arrow","g":"←","t":"undo"},{"t":"Send payment ✗","sub":"failed","c":"red"},{"k":"arrow","g":"→"},{"t":"Notify","sub":"not run","c":"off"},{"k":"text","t":"undoing…","c":"amber"}]]},
+  {"label":"Compensate 2","caption":"Then <b>Release funds</b>. Undo in reverse order until the system is consistent again.","ms":3200,"rows":[
+   [{"t":"Release funds","sub":"undo reserve","c":"amber"},{"k":"arrow","g":"←","t":"undo"},{"t":"Credit back","sub":"undo debit","c":"amber"},{"k":"arrow","g":"←","t":"undo"},{"t":"Send payment ✗","sub":"failed","c":"red"},{"k":"arrow","g":"→"},{"t":"Notify","sub":"not run","c":"off"},{"k":"text","t":"undo in reverse ✓","c":"amber"}]]}
+ ]}
+</script></figure>
+  <ul>
+    <li><b>Choreography saga</b>: each service listens for events and emits the next one.</li>
+    <li><b>Orchestration saga</b>: a central orchestrator calls each step and triggers compensation.</li>
+    <li>Sagas give <b>eventual</b> consistency, not ACID isolation. Use semantic locks or "pending" states.</li>
+  </ul>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Durable Functions</b></td><td><code>Microsoft.Azure.Functions.Worker.Extensions.DurableTask</code></td><td>Orchestration sagas as plain C#: try the steps, compensate in <code>catch</code></td></tr>
+    <tr><td><b>Temporal</b></td><td><code>Temporalio</code></td><td>Durable workflow sagas with retries and compensation on a Temporal cluster</td></tr>
+    <tr><td><b>Wolverine sagas</b></td><td><code>WolverineFx</code></td><td>Message-driven sagas with state stored in Marten or EF Core</td></tr>
+    <tr><td><b>MassTransit state machines</b></td><td><code>MassTransit</code> <span class="pill lic">commercial licence</span> (v9+)</td><td>Event-driven saga state machines with many persistence options</td></tr>
+    <tr><td><b>NServiceBus sagas</b></td><td><code>NServiceBus</code> <span class="pill lic">commercial licence</span></td><td>Long-running processes with timeouts and strong tooling</td></tr>
+  </table>
+<pre class="code"><code>[Function(nameof(PaymentSaga))]
+public static async Task PaymentSaga([OrchestrationTrigger] TaskOrchestrationContext ctx)
+{
+    var payment = ctx.GetInput&lt;Payment&gt;()!;
+    var undo = new Stack&lt;string&gt;();
+    try
+    {
+        await ctx.CallActivityAsync("ReserveFunds", payment); undo.Push("ReleaseFunds");
+        await ctx.CallActivityAsync("DebitAccount", payment); undo.Push("CreditBack");
+        await ctx.CallActivityAsync("SendPayment", payment);
+        await ctx.CallActivityAsync("Notify", payment);
+    }
+    catch (TaskFailedException)
+    {
+        while (undo.TryPop(out var step))       // compensate in reverse order
+            await ctx.CallActivityAsync(step, payment);
+        throw;
+    }
+}</code></pre>
+  <p class="warn">Compensating activities must be idempotent and should not fail. Give them their own retry policy.</p>
+</div>
+  </section>
+
+<!-- CQRS -->
+<section class="concept" id="cqrs">
+  <h2><span class="num">9.5</span> CQRS &amp; Event Sourcing <span class="tag-added">Added</span></h2>
+  <p class="oneliner"><b>CQRS</b>: separate the write model (commands) from the read model (queries). <b>Event sourcing</b>: store every change as an event and rebuild state from them.</p>
+  <div class="flow">
+    <div class="n">Command<small>"Transfer $100"</small></div><div class="ar">→</div><div class="n p">Write model<small>validates rules</small></div><div class="ar">→</div>
+    <div class="n a">Event store<small>Deposited · Withdrawn · …</small></div><div class="ar">→<small>project</small></div>
+    <div class="n g">Read models<small>balance view, statement view, search</small></div><div class="ar">←</div><div class="n">Query</div>
+  </div>
+  <div class="cols2">
+    <div class="box green"><h4>➕ Benefits</h4><ul><li>Read and write sides scale independently</li><li>Read models tuned for each screen</li><li>Full audit trail and time travel (event sourcing)</li></ul></div>
+    <div class="box red"><h4>➖ Costs</h4><ul><li>Eventual consistency between write and read</li><li>More moving parts</li><li>Event versioning, snapshots needed for long streams</li></ul></div>
+  </div>
+  <div class="remember"><ul><li>CQRS doesn't require event sourcing, and you shouldn't apply either to simple CRUD domains.</li></ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Plain handlers</b></td><td><span class="pill builtin">built-in</span> your own <code>ICommandHandler&lt;T&gt;</code> / <code>IQueryHandler&lt;T,R&gt;</code> + DI</td><td>CQRS needs no library: separate command and query classes is enough</td></tr>
+    <tr><td><b>Mediator</b></td><td><code>Mediator.SourceGenerator</code> + <code>Mediator.Abstractions</code></td><td>Free, source-generated mediator (martinothamar). Fast, no reflection</td></tr>
+    <tr><td><b>MediatR</b></td><td><code>MediatR</code> <span class="pill lic">commercial licence</span> (v13+)</td><td>The classic mediator. Paid licence, with a free community tier for small companies</td></tr>
+    <tr><td><b>Wolverine</b></td><td><code>WolverineFx</code></td><td>Command/query handlers plus messaging, outbox and Marten integration</td></tr>
+    <tr><td><b>Event store</b></td><td><code>Marten</code> (PostgreSQL); <code>KurrentDB.Client</code> (KurrentDB, formerly EventStoreDB)</td><td>Append-only event streams, projections and snapshots</td></tr>
+    <tr><td><b>Read models</b></td><td>EF Core with <code>AsNoTracking()</code>, or Dapper</td><td>Denormalised tables built by projections, tuned per screen</td></tr>
+  </table>
+<pre class="code"><code>public record Deposited(decimal Amount);
+public record Withdrawn(decimal Amount);
+
+public sealed class Account                 // state is rebuilt from events
+{
+    public Guid Id { get; set; }
+    public decimal Balance { get; set; }
+    public void Apply(Deposited e) =&gt; Balance += e.Amount;
+    public void Apply(Withdrawn e) =&gt; Balance -= e.Amount;
+}
+
+// Write side (Marten): append an event to the account's stream
+await using var session = store.LightweightSession();
+session.Events.Append(accountId, new Withdrawn(100m));
+await session.SaveChangesAsync(ct);
+
+// Read side: fold the stream into current state (or query a projected view)
+var account = await session.Events.AggregateStreamAsync&lt;Account&gt;(accountId);</code></pre>
+</div>
+  </section>
+
+<!-- STRANGLER -->
+<section class="concept" id="strangler">
+  <h2><span class="num">9.6</span> Strangler Fig pattern <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Modernise a legacy system bit by bit: put a façade in front, route one feature at a time to new services, and retire the old system once it's empty.</p>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Strangler fig migration","interval":2600,
+ "frames":[
+  {"label":"Phase 1","caption":"Put a façade in front. All traffic still goes to the legacy system.","rows":[
+   [{"t":"Clients","c":"slate"},{"k":"arrow","g":"→"},{"t":"Façade / APIM","c":"purple","big":true},{"k":"arrow","g":"→","t":"A B C D"},{"t":"LEGACY","sub":"A B C D","c":"red","w":120}],
+   {"label":"façade → new services","items":[{"t":"A","c":"off"},{"t":"B","c":"off"},{"t":"C","c":"off"},{"t":"D","c":"off"}]}]},
+  {"label":"Phase 2","caption":"Route feature A to a new service. Legacy keeps B, C and D.","rows":[
+   [{"t":"Clients","c":"slate"},{"k":"arrow","g":"→"},{"t":"Façade / APIM","c":"purple","big":true},{"k":"arrow","g":"→","t":"B C D"},{"t":"LEGACY","sub":"B C D","c":"red","w":120}],
+   {"label":"façade → new services","items":[{"t":"new A","c":"green"},{"t":"B","c":"off"},{"t":"C","c":"off"},{"t":"D","c":"off"}]}]},
+  {"label":"Phase 3","caption":"A, B and C now run on new services. Only D is left in the legacy system.","rows":[
+   [{"t":"Clients","c":"slate"},{"k":"arrow","g":"→"},{"t":"Façade / APIM","c":"purple","big":true},{"k":"arrow","g":"→","t":"D"},{"t":"LEGACY","sub":"D","c":"amber","w":120}],
+   {"label":"façade → new services","items":[{"t":"new A","c":"green"},{"t":"new B","c":"green"},{"t":"new C","c":"green"},{"t":"D","c":"off"}]}]},
+  {"label":"Phase 4","caption":"All traffic goes to new services. <b>Legacy retired 🎉</b>","ms":3400,"rows":[
+   [{"t":"Clients","c":"slate"},{"k":"arrow","g":"→"},{"t":"Façade / APIM","c":"purple","big":true},{"k":"arrow","g":"✕"},{"t":"LEGACY","sub":"retired 🎉","c":"off","w":120}],
+   {"label":"façade → new services","items":[{"t":"new A","c":"green"},{"t":"new B","c":"green"},{"t":"new C","c":"green"},{"t":"new D","c":"green"}]}]}
+ ]}
+</script></figure>
+  <div class="remember"><ul><li>Pairs well with CDC (to keep data in sync), an anti-corruption layer, and feature flags for routing.</li></ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>YARP</b></td><td><code>Yarp.ReverseProxy</code></td><td>The fa&ccedil;ade: route each path to the new service or the legacy app</td></tr>
+    <tr><td><b>System.Web adapters</b></td><td><code>Microsoft.AspNetCore.SystemWebAdapters</code> (+ <code>.CoreServices</code> / <code>.FrameworkServices</code>)</td><td>Migrate ASP.NET Framework to ASP.NET Core route by route, sharing session and auth between both apps</td></tr>
+    <tr><td><b>Feature flags</b></td><td><code>Microsoft.FeatureManagement.AspNetCore</code></td><td>Switch a route to the new implementation gradually, and back again if needed</td></tr>
+    <tr><td><b>Anti-corruption layer</b></td><td><span class="pill builtin">built-in</span> an adapter class + typed <code>HttpClient</code></td><td>Translate the legacy model into your new domain model at the boundary</td></tr>
+  </table>
+<pre class="code"><code>var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddHttpForwarder();
+var app = builder.Build();
+
+// Features already migrated are handled by the new app...
+app.MapGet("/api/accounts/{id}", GetAccount);
+
+// ...everything else still goes to the legacy system (lowest-priority route)
+app.MapForwarder("/{**catch-all}", "https://legacy.bank.internal")
+   .Add(b =&gt; ((RouteEndpointBuilder)b).Order = int.MaxValue);
+
+app.Run();</code></pre>
+</div>
+  </section>
+
+<!-- MESH -->
+<section class="concept" id="mesh">
+  <h2><span class="num">9.7</span> Sidecar &amp; Service Mesh <span class="tag-added">Added</span></h2>
+  <p class="oneliner">A <b>sidecar</b> is a helper container that runs next to your service. A <b>service mesh</b> puts a sidecar proxy next to every service to handle networking concerns.</p>
+  <div class="flow">
+    <div class="n g">Service A</div><div class="ar">⇄</div><div class="n p">Envoy proxy</div>
+    <div class="ar">═ mTLS ═</div>
+    <div class="n p">Envoy proxy</div><div class="ar">⇄</div><div class="n g">Service B</div>
+  </div>
+  <p>The proxies are managed by a control plane (Istio, Linkerd). They give you <b>mTLS, retries, timeouts, traffic splitting (canary), and metrics and traces</b> without changing service code.</p>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Service mesh</b></td><td>No package: Istio, Linkerd or the Container Apps / AKS add-ons</td><td>mTLS, retries and traffic splitting happen in the proxy. Your .NET code stays unchanged</td></tr>
+    <tr><td><b>Dapr</b></td><td><code>Dapr.AspNetCore</code>, <code>Dapr.Client</code></td><td>A sidecar that gives you service invocation, pub/sub, state and secrets through one API</td></tr>
+    <tr><td><b>gRPC</b></td><td><code>Grpc.AspNetCore</code>, <code>Grpc.Net.Client</code></td><td>Efficient HTTP/2 calls between services. Meshes understand and balance gRPC</td></tr>
+    <tr><td><b>Telemetry</b></td><td><code>OpenTelemetry.Extensions.Hosting</code></td><td>Propagate trace context so mesh traces and app traces join up</td></tr>
+  </table>
+<pre class="code"><code>builder.Services.AddDaprClient();
+var app = builder.Build();
+app.UseCloudEvents();
+app.MapSubscribeHandler();   // tells the sidecar which topics we subscribe to
+
+// Publish: the sidecar talks to the real broker (Service Bus, Kafka, Redis...)
+app.MapPost("/payments", async (Payment p, DaprClient dapr) =&gt;
+{
+    await dapr.PublishEventAsync("pubsub", "payments", p);
+    return Results.Accepted();
+});
+
+// Subscribe: the sidecar delivers events here
+app.MapPost("/on-payment", (Payment p) =&gt; Results.Ok())
+   .WithTopic("pubsub", "payments");</code></pre>
+  <p class="warn">If the mesh already retries, don't stack aggressive app-level retries on top. You'll multiply load during an outage.</p>
+</div>
+  </section>
+
+<!-- DDD -->
+<section class="concept" id="ddd">
+  <h2><span class="num">9.8</span> Domain-Driven Design essentials <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Model software around the business domain, and draw service boundaries where the business language changes.</p>
+  <div class="grid">
+    <div class="box"><h4>Bounded context</h4><p>A boundary inside which a model and its terms have one meaning. "Account" in Lending ≠ "Account" in Login.</p></div>
+    <div class="box"><h4>Ubiquitous language</h4><p>Business and tech use the same words in conversation and in code.</p></div>
+    <div class="box"><h4>Subdomains</h4><p><b>Core</b> (your edge, so build it), <b>supporting</b>, <b>generic</b> (buy it).</p></div>
+    <div class="box"><h4>Aggregate</h4><p>A cluster of objects changed as one unit with one root (e.g. an Order and its OrderLines).</p></div>
+    <div class="box"><h4>Entity vs value object</h4><p>An entity has an identity (Customer #42). A value object is defined by its values (Money, Address).</p></div>
+    <div class="box"><h4>Domain events &amp; context map</h4><p>Events link contexts. The context map shows relationships (ACL, shared kernel, customer/supplier).</p></div>
+  </div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Concept</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Value object</b></td><td><span class="pill builtin">built-in</span> C# <code>record</code> / <code>readonly record struct</code></td><td>Value equality and immutability for free</td></tr>
+    <tr><td><b>Persist value objects</b></td><td>EF Core complex types (<code>ComplexProperty</code>) or owned types (<code>OwnsOne</code>)</td><td>Store Money or Address as columns of the owning table, without its own identity</td></tr>
+    <tr><td><b>Aggregate</b></td><td><span class="pill builtin">built-in</span> private setters + methods that enforce rules</td><td>Change state only through the root. Load and save one aggregate per transaction</td></tr>
+    <tr><td><b>Domain events</b></td><td><span class="pill builtin">built-in</span> a list on the aggregate, dispatched in a <code>SaveChanges</code> interceptor</td><td>Or hand them to Wolverine / Mediator for in-process handlers</td></tr>
+    <tr><td><b>Specifications</b></td><td><code>Ardalis.Specification</code> (+ <code>.EntityFrameworkCore</code>) (optional)</td><td>Reusable, named query rules for repositories</td></tr>
+  </table>
+<pre class="code"><code>public sealed record Money(decimal Amount, string Currency)
+{
+    public Money Add(Money other) =&gt; other.Currency == Currency
+        ? this with { Amount = Amount + other.Amount }
+        : throw new InvalidOperationException("Currency mismatch");
+}
+
+public sealed class Account                       // aggregate root
+{
+    public Guid Id { get; private set; }
+    public Money Balance { get; private set; } = new(0, "AUD");
+    public List&lt;object&gt; DomainEvents { get; } = [];
+
+    public void Deposit(Money amount)
+    {
+        if (amount.Amount &lt;= 0) throw new ArgumentException("Must be positive");
+        Balance = Balance.Add(amount);
+        DomainEvents.Add(new MoneyDeposited(Id, amount));
+    }
+}
+
+// EF Core: Money becomes Balance_Amount / Balance_Currency columns
+modelBuilder.Entity&lt;Account&gt;().ComplexProperty(a =&gt; a.Balance);
+modelBuilder.Entity&lt;Account&gt;().Ignore(a =&gt; a.DomainEvents);</code></pre>
+</div>
+  </section>
+
+<!-- SERVERLESS -->
+<section class="concept" id="serverless">
+  <h2><span class="num">9.9</span> Serverless architecture</h2>
+  <p class="oneliner">You write the code or configuration. The cloud runs, scales (even to zero) and bills it per execution. Servers still exist, you just don't manage them.</p>
+  <div class="flow">
+    <div class="n">Trigger<small>HTTP · queue · blob · timer · event</small></div><div class="ar">→</div>
+    <div class="n fill">Function<small>Azure Functions / AWS Lambda</small></div><div class="ar">→</div>
+    <div class="n g">Managed services<small>Cosmos DB · Service Bus · Blob · Event Grid</small></div>
+  </div>
+  <div class="grid">
+    <div class="box blue"><h4>FaaS</h4><p>Functions as a Service: Azure Functions, AWS Lambda, Google Cloud Functions.</p></div>
+    <div class="box purple"><h4>BaaS / managed</h4><p>Serverless DBs, queues, auth, storage (Cosmos DB serverless, DynamoDB, Entra ID).</p></div>
+    <div class="box teal"><h4>Serverless containers &amp; workflows</h4><p>Azure Container Apps, Fargate, Cloud Run · Logic Apps, Durable Functions, Step Functions.</p></div>
+  </div>
+  <div class="cols2">
+    <div class="box green"><h4>➕ Pros</h4><ul><li>No infrastructure to manage or patch</li><li>Automatic, fine-grained scaling</li><li>Pay per use. Cheap for spiky or low traffic</li><li>Fast to build event-driven glue</li></ul></div>
+    <div class="box red"><h4>➖ Cons</h4><ul><li><b>Cold starts</b> (latency on the first call)</li><li>Execution time and memory limits</li><li>Vendor lock-in</li><li>Harder local debugging and observability</li><li>Can overwhelm downstream DBs when it scales out</li><li>Costly at constant high load</li></ul></div>
+  </div>
+  <h3>Common serverless patterns</h3>
+  <ul>
+    <li><b>Event processing</b>: blob uploaded → function → extract → store.</li>
+    <li><b>API backend</b>: APIM → Functions → Cosmos DB.</li>
+    <li><b>Fan-out / fan-in</b>: Durable Functions run steps in parallel, then aggregate.</li>
+    <li><b>Scheduled jobs</b>: timer trigger replaces cron VMs.</li>
+    <li><b>Queue-based load levelling</b>: Service Bus → function with a concurrency limit.</li>
+  </ul>
+  <div class="remember"><ul>
+    <li>Cut cold starts with premium or provisioned plans, small packages and keeping functions warm.</li>
+    <li>Functions should be stateless, idempotent and short. Use Durable Functions or Logic Apps for long workflows.</li>
+    <li>Cap concurrency to protect downstream systems.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Azure Functions</b></td><td><code>Microsoft.Azure.Functions.Worker</code> + <code>.Extensions.ServiceBus</code> / <code>.Timer</code> / <code>.Http.AspNetCore</code></td><td>Isolated worker model. Supports .NET 10 (GA). The in-process model ends on 10 Nov 2026 and never got .NET 10</td></tr>
+    <tr><td><b>Durable Functions</b></td><td><code>Microsoft.Azure.Functions.Worker.Extensions.DurableTask</code></td><td>Long-running workflows, fan-out/fan-in, timers</td></tr>
+    <tr><td><b>AWS Lambda</b></td><td><code>Amazon.Lambda.AspNetCoreServer.Hosting</code></td><td>Run a minimal API on Lambda with one line: <code>AddAWSLambdaHosting(...)</code></td></tr>
+    <tr><td><b>Serverless containers</b></td><td>Azure Container Apps (no SDK needed)</td><td>Run any ASP.NET Core container with scale-to-zero and KEDA scaling on queue length</td></tr>
+  </table>
+<pre class="code"><code>public sealed class PaymentFunctions(ILogger&lt;PaymentFunctions&gt; log)
+{
+    // Queue-based load levelling: Service Bus trigger
+    [Function("ProcessPayment")]
+    public async Task Process(
+        [ServiceBusTrigger("payments", Connection = "ServiceBus")] Payment payment)
+    {
+        log.LogInformation("Processing {PaymentId}", payment.Id);
+        await Task.CompletedTask; // do the work; keep it short and idempotent
+    }
+
+    // Scheduled job: replaces a cron VM (02:00 every day)
+    [Function("NightlyReconciliation")]
+    public Task Reconcile([TimerTrigger("0 0 2 * * *")] TimerInfo timer) =&gt;
+        Task.CompletedTask;
+}</code></pre>
+  <p class="warn">.NET 10 can't run on the Linux Consumption plan: use Flex Consumption. Cap concurrency in <code>host.json</code> (e.g. Service Bus <code>maxConcurrentCalls</code>) to protect downstream databases.</p>
+</div>
+  <div class="post">
+    <p>"Serverless" doesn't mean no servers. It means no server <i>worries</i> ☁️</p>
+    <p>✅ Scales to zero ✅ Pay per execution ✅ No patching</p>
+    <p>⚠️ Cold starts ⚠️ Time limits ⚠️ Lock-in ⚠️ Can DDoS your own database when it scales out</p>
+    <p>Perfect for event-driven glue and spiky workloads. Think twice for steady, heavy traffic.</p>
+    <p>#Serverless #Azure #CloudArchitecture</p>
+  </div>
+</section>
+
+<!-- 12 FACTOR -->
+<section class="concept" id="twelve">
+  <h2><span class="num">9.10</span> The 12-Factor App <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Twelve principles for building cloud-native apps that are portable and scalable.</p>
+  <div class="tablewrap"><table>
+    <tr><td>1. Codebase: one repo, many deploys</td><td>7. Port binding: self-contained service</td></tr>
+    <tr><td>2. Dependencies: declared explicitly</td><td>8. Concurrency: scale out via processes</td></tr>
+    <tr><td>3. Config: in the environment, not in code</td><td>9. Disposability: fast start, graceful shutdown</td></tr>
+    <tr><td>4. Backing services: attached resources</td><td>10. Dev/prod parity</td></tr>
+    <tr><td>5. Build, release, run: kept strictly separate</td><td>11. Logs: written as event streams</td></tr>
+    <tr><td>6. Processes: stateless</td><td>12. Admin processes: run as one-off tasks</td></tr>
+  </table></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Factor</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>2. Dependencies</b></td><td><span class="pill builtin">built-in</span> NuGet <code>PackageReference</code> + Central Package Management, lock files</td><td>Every dependency declared and pinned</td></tr>
+    <tr><td><b>3. Config</b></td><td><span class="pill builtin">built-in</span> <code>IConfiguration</code> + options pattern; <code>Microsoft.Extensions.Configuration.AzureAppConfiguration</code>; <code>Azure.Extensions.AspNetCore.Configuration.Secrets</code></td><td>Environment variables (<code>Payments__ApiUrl</code>), App Configuration and Key Vault, validated at startup</td></tr>
+    <tr><td><b>5. Build, release, run</b></td><td><span class="pill builtin">built-in</span> <code>dotnet publish -t:PublishContainer</code></td><td>The SDK builds an OCI container image with no Dockerfile</td></tr>
+    <tr><td><b>9. Disposability</b></td><td><span class="pill builtin">built-in</span> <code>IHostApplicationLifetime</code>, <code>HostOptions.ShutdownTimeout</code></td><td>Stop taking work on SIGTERM, finish in-flight requests, then exit</td></tr>
+    <tr><td><b>11. Logs</b></td><td><span class="pill builtin">built-in</span> <code>ILogger</code> console provider (JSON formatter); OpenTelemetry</td><td>Write to stdout. The platform collects and ships the stream</td></tr>
+    <tr><td><b>12. Admin processes</b></td><td><span class="pill builtin">built-in</span> EF Core migration bundles (<code>dotnet ef migrations bundle</code>)</td><td>Run migrations as a one-off job, not on app startup</td></tr>
+  </table>
+<pre class="code"><code>var builder = WebApplication.CreateBuilder(args);   // env vars are read by default
+
+builder.Configuration.AddAzureAppConfiguration(o =&gt;
+    o.Connect(new Uri(builder.Configuration["AppConfig:Endpoint"]!),
+              new DefaultAzureCredential()));
+
+builder.Services.AddOptions&lt;PaymentOptions&gt;()
+    .BindConfiguration("Payments")
+    .ValidateDataAnnotations()
+    .ValidateOnStart();                              // fail fast on bad config
+
+builder.Services.Configure&lt;HostOptions&gt;(o =&gt;
+    o.ShutdownTimeout = TimeSpan.FromSeconds(30));   // graceful shutdown window
+builder.Logging.AddJsonConsole();                    // logs as an event stream</code></pre>
+</div>
+  </section>
+
+<div class="qa-wrap">
+  <h2>⚡ Quick-fire Q&amp;A</h2>
+  <details class="qa"><summary>How do you keep data consistent across microservices?</summary><p>Sagas with compensating actions, the transactional outbox for reliable events, idempotent consumers, and accepting eventual consistency where the business allows it.</p></details>
+  <details class="qa"><summary>When would you NOT use microservices?</summary><p>Small team, unclear domain boundaries, early-stage product, or no mature DevOps and observability. Use a modular monolith instead.</p></details>
+  <details class="qa"><summary>Serverless or containers?</summary><p>Serverless for event-driven, spiky, short tasks. Containers for long-running, steady, latency-sensitive workloads or when you need full runtime control.</p></details>
+</div>
+
+<div class="pager"><a href="08-integration-messaging.html">← 08 · Integration</a><a class="next" href="10-security-iam.html">10 · Security &amp; IAM →</a></div>
+</main>
+<footer>Tech Concepts Prep · Section 09</footer>
+<script src="assets/app.js"></script>
+<script src="assets/viz.js"></script>
+</body>
+</html>

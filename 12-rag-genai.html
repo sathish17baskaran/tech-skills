@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>12 · RAG &amp; GenAI | Tech Concepts Prep</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<nav class="top"><a href="11-devops-deployment-observability.html">← DevOps</a><span class="here">12 · RAG &amp; GenAI</span><a href="13-agentic-ai.html">Next: Agentic AI →</a></nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">Section 12</div>
+  <h1>RAG: Retrieval-Augmented Generation, end to end</h1>
+  <p>How to make an LLM answer from <i>your</i> documents: chunk, embed, store, retrieve (vector, hybrid, filters), re-rank, generate, and evaluate. Ordered the way a real RAG pipeline runs.</p>
+  <div class="toc">
+    <a href="#llm" class="added">LLM basics</a>
+    <a href="#rag">RAG overview</a>
+    <a href="#chunking">Chunking</a>
+    <a href="#embedding">Embedding</a>
+    <a href="#vector">Vector search</a>
+    <a href="#topk">Top-K retrieval</a>
+    <a href="#metadata">Metadata filtering</a>
+    <a href="#hybrid">Hybrid search</a>
+    <a href="#ranking">Ranking &amp; re-ranking</a>
+    <a href="#query">Query transformation</a>
+    <a href="#fusion">RAG Fusion</a>
+    <a href="#eval">RAG evaluation</a>
+    <a href="#advanced" class="added">Advanced RAG patterns</a>
+    <a href="#failures" class="added">Failure points &amp; fixes</a>
+  </div>
+</header>
+
+<!-- LLM BASICS -->
+<section class="concept" id="llm">
+  <h2><span class="num">12.1</span> LLM basics you need first <span class="tag-added">Added</span></h2>
+  <p class="oneliner">An LLM predicts the next token from the tokens it has seen. It knows only its training data plus whatever you put in the prompt.</p>
+  <div class="grid">
+    <div class="box"><h4>🔤 Tokens</h4><p>Pieces of words. In English, roughly 1 token ≈ 4 characters ≈ 0.75 words. You pay per token, in and out.</p></div>
+    <div class="box"><h4>🪟 Context window</h4><p>Max tokens per call (prompt + answer). Bigger isn't always better: models can get "lost in the middle".</p></div>
+    <div class="box"><h4>🌡 Temperature / top-p</h4><p>Randomness. Use low values (0–0.3) for factual RAG and higher ones for creative work.</p></div>
+    <div class="box"><h4>🎭 Hallucination</h4><p>A confident but false answer. RAG reduces it by grounding the model in retrieved facts.</p></div>
+    <div class="box"><h4>📅 Knowledge cutoff</h4><p>The model doesn't know recent or private data. RAG fixes that.</p></div>
+    <div class="box"><h4>🧾 System prompt</h4><p>Instructions that set role, rules, tone and output format.</p></div>
+  </div>
+  <div class="tablewrap"><table>
+    <tr><th></th><th>Prompt engineering</th><th>RAG</th><th>Fine-tuning</th></tr>
+    <tr><td>What</td><td>Better instructions and examples</td><td>Inject relevant documents at query time</td><td>Retrain weights on your examples</td></tr>
+    <tr><td>Good for</td><td>Format, tone, simple tasks</td><td>Fresh or private <b>knowledge</b>, citations</td><td>Style, domain <b>behaviour</b>, specialised tasks</td></tr>
+    <tr><td>Cost / effort</td><td>Lowest</td><td>Medium</td><td>Highest</td></tr>
+    <tr><td>Updates</td><td>Instant</td><td>Re-index documents</td><td>Retrain</td></tr>
+  </table></div>
+  <div class="tip">Rule of thumb: try <b>prompting → RAG → fine-tuning</b>, in that order. RAG is for knowledge. Fine-tuning is for behaviour.</div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>IChatClient</b> + <b>ChatOptions</b></td><td><code>Microsoft.Extensions.AI</code></td><td>One interface for any model. <code>ChatOptions</code> sets <code>Temperature</code>, <code>TopP</code>, <code>MaxOutputTokens</code>; <code>ChatResponse.Usage</code> gives token counts</td></tr>
+    <tr><td><b>Azure OpenAI / Foundry models</b></td><td><code>Azure.AI.OpenAI</code> + <code>Microsoft.Extensions.AI.OpenAI</code></td><td>Call Azure-hosted models with managed identity, exposed as an <code>IChatClient</code> via <code>AsIChatClient()</code></td></tr>
+    <tr><td><b>OpenAI</b></td><td><code>OpenAI</code> (official SDK)</td><td>OpenAI or any OpenAI-compatible endpoint</td></tr>
+    <tr><td><b>Local models</b></td><td><code>OllamaSharp</code></td><td><code>OllamaApiClient</code> implements <code>IChatClient</code>, so dev/test can run offline</td></tr>
+    <tr><td><b>Token counting</b></td><td><code>Microsoft.ML.Tokenizers</code> (+ <code>Microsoft.ML.Tokenizers.Data.O200kBase</code>)</td><td><code>TiktokenTokenizer</code>: count tokens before sending, to stay inside the context window and budget</td></tr>
+  </table>
+<pre class="code"><code>IChatClient chat = new AzureOpenAIClient(new Uri(endpoint), new DefaultAzureCredential())
+    .GetChatClient("my-chat-deployment").AsIChatClient();
+
+var tokenizer = TiktokenTokenizer.CreateForModel("gpt-4o");
+int promptTokens = tokenizer.CountTokens(prompt);           // check before you send
+
+ChatResponse r = await chat.GetResponseAsync(
+    [new(ChatRole.System, "Answer only from the context. If unsure, say you don't know."),
+     new(ChatRole.User, prompt)],
+    new ChatOptions { Temperature = 0.1f, MaxOutputTokens = 500 });  // low = factual
+
+Console.WriteLine($"{r.Text} (in: {r.Usage?.InputTokenCount}, out: {r.Usage?.OutputTokenCount})");</code></pre>
+  <p class="warn">Reasoning models (o-series, GPT-5 family) reject or ignore <code>Temperature</code> / <code>TopP</code>. Check the model's supported parameters. <code>Azure.AI.Inference</code> was retired in August 2026, so use <code>Azure.AI.OpenAI</code> or the <code>OpenAI</code> SDK instead.</p>
+</div>
+  </section>
+
+<!-- RAG OVERVIEW -->
+<section class="concept" id="rag">
+  <h2><span class="num">12.2</span> RAG overview</h2>
+  <p class="oneliner"><b>RAG</b> = first <b>retrieve</b> the relevant pieces of your knowledge, then <b>augment</b> the prompt with them, then let the LLM <b>generate</b> a grounded answer with citations.</p>
+  <h3>Two pipelines</h3>
+  <div class="flow"><div class="cap">① Ingestion / indexing (offline, repeated as documents change)</div>
+    <div class="n">Load<small>PDF · SharePoint · Confluence · DB</small></div><div class="ar">→</div>
+    <div class="n">Clean / parse<small>OCR, tables, layout</small></div><div class="ar">→</div>
+    <div class="n p">Chunk</div><div class="ar">→</div>
+    <div class="n p">Embed<small>text → vector</small></div><div class="ar">→</div>
+    <div class="n a">Store<small>vector index + metadata + text</small></div>
+  </div>
+  <div class="flow"><div class="cap">② Retrieval &amp; generation (online, per question)</div>
+    <div class="n">User question</div><div class="ar">→</div>
+    <div class="n t">Query transform<small>rewrite / expand</small></div><div class="ar">→</div>
+    <div class="n a">Retrieve top-K<small>hybrid + filters</small></div><div class="ar">→</div>
+    <div class="n a">Re-rank<small>keep best 3–8</small></div><div class="ar">→</div>
+    <div class="n p">Prompt = instructions + context + question</div><div class="ar">→</div>
+    <div class="n fill">LLM</div><div class="ar">→</div>
+    <div class="n g">Answer + citations</div>
+  </div>
+  <div class="cols2">
+    <div class="box green"><h4>Why RAG?</h4><ul><li>Uses private and up-to-date data without retraining</li><li>Fewer hallucinations, answers can cite sources</li><li>Access control: users only see what they're allowed to</li><li>Cheaper and faster to update than fine-tuning</li></ul></div>
+    <div class="box amber"><h4>Naive → Advanced → Modular RAG</h4><ul><li><b>Naive</b>: chunk → embed → top-k → generate</li><li><b>Advanced</b>: adds query rewriting, hybrid search, re-ranking, better chunking</li><li><b>Modular / agentic</b>: routing, tools, multi-step retrieval, self-correction</li></ul></div>
+  </div>
+  <div class="remember"><ul>
+    <li><b>Retrieval quality caps answer quality.</b> Most RAG problems are search problems.</li>
+    <li>Tell the model: "Answer only from the context. If it isn't there, say you don't know."</li>
+    <li>Typical stack: Azure AI Search / pgvector / Pinecone + Azure OpenAI / other LLM + LangChain / LlamaIndex / Semantic Kernel.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Pipeline step</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Ingest: read, chunk, enrich, store</b></td><td><code>Microsoft.Extensions.DataIngestion</code> <span class="pill preview">preview</span></td><td><code>IngestionPipeline&lt;T&gt;</code> chains readers, chunkers, enrichers and a vector store writer</td></tr>
+    <tr><td><b>Embed + generate</b></td><td><code>Microsoft.Extensions.AI</code></td><td><code>IEmbeddingGenerator</code> and <code>IChatClient</code>, the same for every provider</td></tr>
+    <tr><td><b>Store + retrieve</b></td><td><code>Microsoft.Extensions.VectorData.Abstractions</code> + a provider, e.g. <code>CommunityToolkit.VectorData.AzureAISearch</code>, <code>.PgVector</code>, <code>.Qdrant</code>, <code>.SqlServer</code></td><td>One <code>VectorStoreCollection</code> API across databases. The old <code>Microsoft.SemanticKernel.Connectors.*</code> packages are deprecated</td></tr>
+    <tr><td><b>Full search engine</b></td><td><code>Azure.Search.Documents</code></td><td>Direct Azure AI Search access: hybrid, filters, semantic ranker</td></tr>
+    <tr><td><b>Agentic / modular RAG</b></td><td><code>Microsoft.Agents.AI</code> (Agent Framework)</td><td>Retrieval becomes a tool the agent decides to call</td></tr>
+  </table>
+<pre class="code"><code>// Naive RAG in a few lines: retrieve, augment, generate
+var queryVector = await embedder.GenerateVectorAsync(question);
+var context = new StringBuilder();
+await foreach (var hit in chunks.SearchAsync(queryVector, top: 5))
+    context.AppendLine($"[{hit.Record.Source}] {hit.Record.Text}");
+
+ChatResponse answer = await chat.GetResponseAsync(
+[
+    new(ChatRole.System, "Answer only from the context. Cite sources in [brackets]. " +
+                         "If the answer isn't there, say you don't know."),
+    new(ChatRole.User, $"Context:\n{context}\n\nQuestion: {question}")
+]);</code></pre>
+  <p class="warn">Kernel Memory is an archived research project, and Semantic Kernel's agent features now live in Agent Framework. For new code, build on <code>Microsoft.Extensions.AI</code> + <code>VectorData</code>.</p>
+</div>
+  <div class="post">
+    <p>RAG is an open-book exam for LLMs 📖</p>
+    <p>Without RAG: the model answers from memory and sometimes makes things up.</p>
+    <p>With RAG: 1) find the right pages (retrieve) 2) put them on the desk (augment) 3) write the answer from them, with citations (generate).</p>
+    <p>A bad answer is usually a search problem, not a model problem.</p>
+    <p>#GenAI #RAG #LLM #AIEngineering</p>
+  </div>
+</section>
+
+<!-- CHUNKING -->
+<section class="concept" id="chunking">
+  <h2><span class="num">12.3</span> Chunking</h2>
+  <p class="oneliner">Split documents into small, meaningful pieces. Each chunk should be precise enough to retrieve and complete enough to answer from.</p>
+  <h3>Why chunk?</h3>
+  <ul><li>Embeddings of whole documents blur their meaning. Small chunks match questions better.</li><li>Context windows and token costs are limited.</li><li>Chunks become citations ("source: Policy.pdf, page 4").</li></ul>
+  <h3>Strategies</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Strategy</th><th>How</th><th>➕ / ➖</th></tr>
+    <tr><td><b>Fixed-size + overlap</b></td><td>e.g. 512 tokens with 50–100 overlap</td><td>Simple, predictable / can cut sentences and ideas</td></tr>
+    <tr><td><b>Recursive character</b></td><td>Split by paragraphs → sentences → words until it fits</td><td>Good default (LangChain) / still structure-blind</td></tr>
+    <tr><td><b>Sentence / paragraph</b></td><td>Natural language boundaries</td><td>Coherent / uneven sizes</td></tr>
+    <tr><td><b>Document-structure aware</b></td><td>By headings, sections, Markdown/HTML, table rows, code functions</td><td>Keeps meaning intact / needs good parsing</td></tr>
+    <tr><td><b>Semantic chunking</b></td><td>Start a new chunk where embedding similarity between sentences drops</td><td>Topic-coherent / slower, costs more</td></tr>
+    <tr><td><b>Parent-child (small-to-big)</b></td><td>Search small chunks, send their parent section to the LLM</td><td>Precise retrieval + rich context</td></tr>
+    <tr><td><b>Sliding window</b></td><td>Overlapping windows across the text</td><td>Context never lost at edges / duplicate content</td></tr>
+    <tr><td><b>LLM / agentic chunking</b></td><td>An LLM decides the boundaries or writes propositions</td><td>Highest quality / most expensive</td></tr>
+  </table></div>
+<figure class="viz" data-viz="lanes"><script type="application/json">
+{"title":"Fixed-size chunking with overlap (size 6, overlap 2)","max":14,"labelW":90,"width":760,"dur":5000,
+ "rows":[
+  {"label":"Text","blocks":[{"s":0,"e":1,"t":"w1","c":"slate"},{"s":1,"e":2,"t":"w2","c":"slate"},{"s":2,"e":3,"t":"w3","c":"slate"},{"s":3,"e":4,"t":"w4","c":"slate"},{"s":4,"e":5,"t":"w5","c":"slate"},{"s":5,"e":6,"t":"w6","c":"slate"},{"s":6,"e":7,"t":"w7","c":"slate"},{"s":7,"e":8,"t":"w8","c":"slate"},{"s":8,"e":9,"t":"w9","c":"slate"},{"s":9,"e":10,"t":"w10","c":"slate"},{"s":10,"e":11,"t":"w11","c":"slate"},{"s":11,"e":12,"t":"w12","c":"slate"},{"s":12,"e":13,"t":"w13","c":"slate"},{"s":13,"e":14,"t":"w14","c":"slate"}]},
+  {"label":"Chunk 1","blocks":[{"s":0,"e":4,"t":"w1 w2 w3 w4","c":"blue"},{"s":4,"e":6,"t":"w5 w6","c":"amber"}]},
+  {"label":"Chunk 2","blocks":[{"s":4,"e":6,"t":"w5 w6","c":"amber"},{"s":6,"e":8,"t":"w7 w8","c":"purple"},{"s":8,"e":10,"t":"w9 w10","c":"amber"}]},
+  {"label":"Chunk 3","blocks":[{"s":8,"e":10,"t":"w9 w10","c":"amber"},{"s":10,"e":14,"t":"w11 w12 w13 w14","c":"green"}]}
+ ],
+ "spans":[{"s":4,"e":6,"t":"overlap","c":"amber"},{"s":8,"e":10,"t":"overlap","c":"amber"}]}
+</script></figure>
+  <p class="tip">Each chunk is 6 words and shares 2 words with the next one (amber). That overlap keeps ideas from being cut in half at chunk edges.</p>
+  <div class="remember"><ul>
+    <li>Typical starting point: <b>256–1024 tokens</b>, <b>10–20% overlap</b>. Tune it with evaluation, not guesswork.</li>
+    <li>Add <b>context to each chunk</b>: document title, section heading, date (contextual chunk headers / "contextual retrieval").</li>
+    <li>Keep tables whole. Convert them to Markdown or row-wise text with headers repeated.</li>
+    <li>Store metadata with every chunk: source, page, section, date, owner, access level.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Chunkers</b></td><td><code>Microsoft.Extensions.DataIngestion</code> <span class="pill preview">preview</span></td><td><code>HeaderChunker</code> (structure-aware, by headings) and <code>SemanticSimilarityChunker</code> (splits where meaning changes), sized in tokens</td></tr>
+    <tr><td><b>Token sizes</b></td><td><code>Microsoft.ML.Tokenizers</code></td><td>Measure chunks in real tokens, not characters</td></tr>
+    <tr><td><b>Layout, tables, OCR</b></td><td><code>Azure.AI.DocumentIntelligence</code></td><td>The layout model returns Markdown with headings and tables intact</td></tr>
+    <tr><td><b>PDF / Office text</b></td><td><code>PdfPig</code>, <code>DocumentFormat.OpenXml</code></td><td>Extract text page by page (for page citations) without a cloud call</td></tr>
+    <tr><td><b>Markdown structure</b></td><td><code>Markdig</code> (reader: <code>Microsoft.Extensions.DataIngestion.Markdig</code> <span class="pill preview">preview</span>)</td><td>Parse headings and sections so chunks follow the document's shape</td></tr>
+  </table>
+<pre class="code"><code>Tokenizer tokenizer = TiktokenTokenizer.CreateForModel("gpt-4o");
+
+IngestionChunker&lt;string&gt; chunker = new HeaderChunker(new IngestionChunkerOptions(tokenizer)
+{
+    MaxTokensPerChunk = 512,   // start around 500 tokens
+    OverlapTokens = 64         // ~10-20% overlap
+});</code></pre>
+  <p class="warn">Whatever splitter you use, store <code>source</code>, <code>page</code>, <code>section</code> and access level with each chunk. You need them for citations and security trimming later.</p>
+</div>
+  <div class="post">
+    <p>Your RAG is only as good as your chunks ✂️</p>
+    <p>Too big → the meaning blurs and wrong passages match. Too small → no context, half answers.</p>
+    <p>✅ Start at ~500 tokens with 10–20% overlap ✅ Split on headings ✅ Add the title and section to every chunk ✅ Keep tables whole</p>
+    <p>Then measure. Chunking is a tuning knob, not a one-time setting.</p>
+    <p>#RAG #GenAI #LLM</p>
+  </div>
+</section>
+
+<!-- EMBEDDING -->
+<section class="concept" id="embedding">
+  <h2><span class="num">12.4</span> Embedding</h2>
+  <p class="oneliner">An embedding turns text (or images) into a list of numbers (a vector), so that <b>similar meaning ends up close together</b>.</p>
+  <div class="svgwrap">
+    <svg viewBox="0 0 620 260" width="620" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, sans-serif" font-size="13">
+      <line x1="40" y1="230" x2="600" y2="230" stroke="#94a3b8"/><line x1="40" y1="230" x2="40" y2="15" stroke="#94a3b8"/>
+      <text x="560" y="250" fill="#64748b">dim 1</text><text x="8" y="20" fill="#64748b">dim 2</text>
+      <ellipse cx="160" cy="80" rx="105" ry="48" fill="#dbeafe" opacity=".7"/>
+      <circle cx="120" cy="70" r="6" fill="#2563eb"/><text x="130" y="66">"reset my password"</text>
+      <circle cx="150" cy="100" r="6" fill="#2563eb"/><text x="160" y="104">"forgot login PIN"</text>
+      <ellipse cx="450" cy="80" rx="115" ry="45" fill="#dcfce7" opacity=".7"/>
+      <circle cx="400" cy="70" r="6" fill="#059669"/><text x="410" y="66">"home loan rates"</text>
+      <circle cx="430" cy="100" r="6" fill="#059669"/><text x="440" y="104">"mortgage interest"</text>
+      <ellipse cx="300" cy="185" rx="110" ry="35" fill="#f3e8ff" opacity=".8"/>
+      <circle cx="260" cy="180" r="6" fill="#7c3aed"/><text x="270" y="176">"card lost abroad"</text>
+      <circle cx="300" cy="200" r="6" fill="#7c3aed"/><text x="310" y="204">"block my debit card"</text>
+      <text x="300" y="250" fill="#475569" text-anchor="middle">Similar meanings cluster together, even when they share no words</text>
+    </svg>
+  </div>
+  <p><code>"home loan rates"</code> → <code>[0.021, -0.113, 0.087, …, 0.004]</code> (e.g. 1,536 numbers)</p>
+  <div class="grid">
+    <div class="box"><h4>Models</h4><p>OpenAI text-embedding-3-small (1,536 dims) / -large (3,072), Cohere Embed, BGE, E5, Jina, sentence-transformers.</p></div>
+    <div class="box"><h4>Dense vs sparse</h4><p>Dense = meaning (embeddings). Sparse = keyword weights (BM25, SPLADE). Hybrid search uses both.</p></div>
+    <div class="box"><h4>Multimodal</h4><p>Text and images in the same space (CLIP-style), so you can search images with text.</p></div>
+  </div>
+  <div class="remember"><ul>
+    <li>Use the <b>same embedding model</b> for documents and queries. Changing the model means re-embedding everything.</li>
+    <li>More dimensions = more nuance, but more storage and slower search. Some models let you shorten vectors (Matryoshka).</li>
+    <li>Check language and domain fit (banking jargon, acronyms). Benchmark on your own data (MTEB is a guide, not gospel).</li>
+    <li>Embeddings can leak information. Protect vector stores like the source data.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>IEmbeddingGenerator&lt;string, Embedding&lt;float&gt;&gt;</b></td><td><code>Microsoft.Extensions.AI</code></td><td>Provider-neutral embeddings: <code>GenerateAsync</code> for batches, <code>GenerateVectorAsync</code> for one text</td></tr>
+    <tr><td><b>Azure OpenAI / OpenAI embeddings</b></td><td><code>Azure.AI.OpenAI</code> / <code>OpenAI</code> + <code>Microsoft.Extensions.AI.OpenAI</code></td><td><code>GetEmbeddingClient("text-embedding-3-small").AsIEmbeddingGenerator()</code></td></tr>
+    <tr><td><b>Local models</b></td><td><code>Microsoft.ML.OnnxRuntime</code>, <code>OllamaSharp</code></td><td>Run BGE / E5-style models on your own hardware when data can't leave</td></tr>
+    <tr><td><b>Similarity maths</b></td><td><span class="pill builtin">built-in</span> <code>System.Numerics.Tensors</code></td><td><code>TensorPrimitives.CosineSimilarity</code>, <code>Dot</code>, SIMD-accelerated</td></tr>
+    <tr><td><b>Embedding cache</b></td><td><code>Microsoft.Extensions.AI</code> (<code>UseDistributedCache</code> on the builder)</td><td>Don't pay twice to embed the same text</td></tr>
+  </table>
+<pre class="code"><code>IEmbeddingGenerator&lt;string, Embedding&lt;float&gt;&gt; embedder =
+    new AzureOpenAIClient(new Uri(endpoint), new DefaultAzureCredential())
+        .GetEmbeddingClient("text-embedding-3-small").AsIEmbeddingGenerator();
+
+ReadOnlyMemory&lt;float&gt; a = await embedder.GenerateVectorAsync("reset my password");
+ReadOnlyMemory&lt;float&gt; b = await embedder.GenerateVectorAsync("forgot login PIN");
+
+float similarity = TensorPrimitives.CosineSimilarity(a.Span, b.Span); // close to 1 = similar meaning</code></pre>
+</div>
+  </section>
+
+<!-- VECTOR SEARCH -->
+<section class="concept" id="vector">
+  <h2><span class="num">12.5</span> Vector search</h2>
+  <p class="oneliner">Find the stored vectors <b>nearest</b> to the query vector. Nearest = most similar in meaning.</p>
+  <div class="grid">
+    <div class="box blue"><h4>Cosine similarity</h4><p>Angle between vectors (−1 to 1). The most common choice for text.</p></div>
+    <div class="box green"><h4>Dot product</h4><p>Same as cosine when vectors are normalised. Fast.</p></div>
+    <div class="box purple"><h4>Euclidean (L2)</h4><p>Straight-line distance. Smaller = closer.</p></div>
+  </div>
+  <div class="cols2">
+    <div class="box"><h4>Exact kNN (brute force)</h4><p>Compare against every vector. 100% recall, O(n). Fine up to about 100k vectors.</p></div>
+    <div class="box"><h4>ANN (approximate nearest neighbour)</h4><p>Index structures trade a little recall for huge speed gains. Needed at millions of vectors.</p></div>
+  </div>
+  <p class="tip"><b>HNSW</b> (Hierarchical Navigable Small World) is the most popular ANN index.</p>
+<div class="svgwrap">
+<svg viewBox="0 0 860 392" width="860" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, sans-serif" role="img" aria-label="HNSW: three graph layers. The search starts at the top layer, hops greedily toward the query, drops a layer each time and ends at the nearest neighbours on layer 0">
+  <rect x="10" y="50" width="840" height="80" rx="14" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+  <rect x="10" y="160" width="840" height="80" rx="14" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <rect x="10" y="270" width="840" height="80" rx="14" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+  <g font-size="13" font-weight="700" fill="#1e293b">
+    <text x="22" y="86">Layer 2 · motorway</text>
+    <text x="22" y="196">Layer 1 · main roads</text>
+    <text x="22" y="306">Layer 0</text>
+  </g>
+  <g font-size="11.5" fill="#64748b">
+    <text x="22" y="104">few nodes, long jumps</text>
+    <text x="22" y="214">more nodes</text>
+    <text x="22" y="324">all nodes (local streets)</text>
+  </g>
+  <!-- same node on the layers below -->
+  <g stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="3 4">
+    <line x1="190" y1="90" x2="190" y2="310"/><line x1="542" y1="90" x2="542" y2="310"/><line x1="806" y1="90" x2="806" y2="310"/>
+    <line x1="278" y1="200" x2="278" y2="310"/><line x1="410" y1="200" x2="410" y2="310"/><line x1="718" y1="200" x2="718" y2="310"/>
+  </g>
+  <!-- query position projected on every layer -->
+  <line x1="660" y1="44" x2="660" y2="322" stroke="#db2777" stroke-width="2" stroke-dasharray="6 5"/>
+  <text x="660" y="36" text-anchor="middle" font-size="13" font-weight="700" fill="#db2777">🎯 query</text>
+  <!-- links -->
+  <g stroke-width="2.5" fill="none">
+    <path d="M190,90 H806" stroke="#7c3aed"/>
+    <path d="M190,200 H806" stroke="#2563eb"/>
+    <path d="M190,310 H806" stroke="#64748b"/>
+  </g>
+  <!-- nodes -->
+  <g fill="#fff" stroke="#7c3aed" stroke-width="2.5"><circle cx="190" cy="90" r="7"/><circle cx="542" cy="90" r="7"/><circle cx="806" cy="90" r="7"/></g>
+  <g fill="#fff" stroke="#2563eb" stroke-width="2.5"><circle cx="190" cy="200" r="7"/><circle cx="278" cy="200" r="7"/><circle cx="410" cy="200" r="7"/><circle cx="542" cy="200" r="7"/><circle cx="718" cy="200" r="7"/><circle cx="806" cy="200" r="7"/></g>
+  <g fill="#fff" stroke="#64748b" stroke-width="2"><circle cx="190" cy="310" r="6"/><circle cx="234" cy="310" r="6"/><circle cx="278" cy="310" r="6"/><circle cx="322" cy="310" r="6"/><circle cx="366" cy="310" r="6"/><circle cx="410" cy="310" r="6"/><circle cx="454" cy="310" r="6"/><circle cx="498" cy="310" r="6"/><circle cx="542" cy="310" r="6"/><circle cx="586" cy="310" r="6"/><circle cx="630" cy="310" r="6"/><circle cx="674" cy="310" r="6"/><circle cx="718" cy="310" r="6"/><circle cx="762" cy="310" r="6"/><circle cx="806" cy="310" r="6"/></g>
+  <text x="190" y="70" text-anchor="middle" font-size="11.5" font-weight="700" fill="#7c3aed">entry point</text>
+  <!-- search path, drawn as the search runs -->
+  <path d="M190,90 L542,90 L542,200 L718,200 L718,310 L674,310" fill="none" stroke="#d97706" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="792" stroke-dashoffset="792" opacity="0.85">
+    <animate attributeName="stroke-dashoffset" values="792;0;0" keyTimes="0;0.7;1" dur="7s" repeatCount="indefinite"/>
+  </path>
+  <g font-size="11.5" font-weight="700" fill="#b45309">
+    <text x="366" y="76" text-anchor="middle">greedy hop toward query →</text>
+    <text x="550" y="150">drop a layer ↓</text>
+    <text x="630" y="186" text-anchor="middle">hop →</text>
+    <text x="726" y="260">drop ↓</text>
+    <text x="696" y="296" text-anchor="middle">refine</text>
+  </g>
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;1;1" keyTimes="0;0.68;0.76;1" dur="7s" repeatCount="indefinite"/>
+    <g fill="none" stroke="#059669" stroke-width="3"><circle cx="630" cy="310" r="11"/><circle cx="674" cy="310" r="11"/><circle cx="718" cy="310" r="11"/></g>
+    <text x="674" y="340" text-anchor="middle" font-size="12" font-weight="700" fill="#047857">nearest neighbours ✓</text>
+  </g>
+  <circle r="8" fill="#d97706" stroke="#fff" stroke-width="2.5">
+    <animateMotion dur="7s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;0.7;1" calcMode="linear" path="M190,90 L542,90 L542,200 L718,200 L718,310 L674,310"/>
+  </circle>
+  <text x="430" y="380" text-anchor="middle" font-size="12.5" fill="#1e293b">Search: start at top → greedy hop toward query → drop a layer → refine → nearest neighbours</text>
+</svg>
+</div>
+  <div class="tablewrap"><table>
+    <tr><th>Index</th><th>Idea</th><th>Trade-off</th></tr>
+    <tr><td>HNSW</td><td>Multi-layer proximity graph</td><td>Fast, high recall, memory-hungry</td></tr>
+    <tr><td>IVF</td><td>Cluster vectors, search only the nearest clusters</td><td>Less memory, needs training</td></tr>
+    <tr><td>PQ (product quantisation)</td><td>Compress vectors</td><td>Small and fast, loses some accuracy</td></tr>
+    <tr><td>DiskANN</td><td>Graph index on SSD</td><td>Billion scale, low RAM</td></tr>
+  </table></div>
+  <div class="remember"><ul>
+    <li>Vector stores: Azure AI Search, pgvector (PostgreSQL), Cosmos DB, Pinecone, Weaviate, Qdrant, Milvus, Chroma, Elasticsearch / OpenSearch, FAISS (library).</li>
+    <li>Tune ANN parameters (HNSW <code>M</code>, <code>efConstruction</code>, <code>efSearch</code>) for the recall vs latency trade-off.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Vector store</th><th>Package</th><th>Notes</th></tr>
+    <tr><td><b>Any store, one API</b></td><td><code>Microsoft.Extensions.VectorData.Abstractions</code> + <code>CommunityToolkit.VectorData.*</code> provider</td><td><code>VectorStoreCollection.SearchAsync(vector, top)</code>. Attributes choose the distance function and index (HNSW, flat)</td></tr>
+    <tr><td><b>Azure AI Search</b></td><td><code>Azure.Search.Documents</code></td><td><code>VectorizedQuery</code> on an HNSW or exhaustive-KNN field</td></tr>
+    <tr><td><b>SQL Server 2025 / Azure SQL</b></td><td><code>Microsoft.EntityFrameworkCore.SqlServer</code> (EF Core 10)</td><td><code>SqlVector&lt;float&gt;</code> column + <code>EF.Functions.VectorDistance("cosine", ...)</code> in LINQ (exact search)</td></tr>
+    <tr><td><b>PostgreSQL pgvector</b></td><td><code>Pgvector.EntityFrameworkCore</code> (or <code>Pgvector</code> for Npgsql)</td><td>HNSW / IVFFlat indexes, cosine distance in LINQ</td></tr>
+    <tr><td><b>Cosmos DB / Qdrant / Redis</b></td><td><code>Microsoft.Azure.Cosmos</code> (or EF Core Cosmos), <code>Qdrant.Client</code>, <code>NRedisStack</code></td><td>Native clients when you need store-specific features</td></tr>
+  </table>
+<pre class="code"><code>public sealed class Chunk
+{
+    [VectorStoreKey] public Guid Id { get; set; }
+    [VectorStoreData] public string Text { get; set; } = "";
+    [VectorStoreData] public string Source { get; set; } = "";
+    [VectorStoreVector(1536, DistanceFunction = DistanceFunction.CosineSimilarity, IndexKind = IndexKind.Hnsw)]
+    public ReadOnlyMemory&lt;float&gt; Embedding { get; set; }
+}
+
+VectorStoreCollection&lt;Guid, Chunk&gt; chunks = vectorStore.GetCollection&lt;Guid, Chunk&gt;("policies");
+await chunks.EnsureCollectionExistsAsync();
+
+var queryVector = await embedder.GenerateVectorAsync(question);
+await foreach (var hit in chunks.SearchAsync(queryVector, top: 5))
+    Console.WriteLine($"{hit.Score:F3}  {hit.Record.Source}");</code></pre>
+  <p class="warn">EF Core 10's <code>VectorDistance</code> scans every row (exact kNN). That's fine for tens of thousands of rows. Approximate DiskANN search (<code>VectorSearch()</code>) arrives in EF Core 11 as an experimental API.</p>
+</div>
+  </section>
+
+<!-- TOP K -->
+<section class="concept" id="topk">
+  <h2><span class="num">12.6</span> Top-K retrieval</h2>
+  <p class="oneliner">Return the <b>K</b> most similar chunks to the query. K controls the trade-off between recall and noise.</p>
+  <p>Query: <b>"What is the fee for international transfers?"</b></p>
+<figure class="viz" data-viz="bars"><script type="application/json">
+{"title":"Top 5 chunks by similarity","max":1,"threshold":{"v":0.775,"t":"K=3 cut-off"},
+ "rows":[
+  {"label":"#1 ✓ signal","v":0.89,"show":"0.89","c":"green","note":"\"International transfer fee is $X per transaction…\""},
+  {"label":"#2 ✓ signal","v":0.86,"show":"0.86","c":"green","note":"\"Fees for overseas payments via app…\""},
+  {"label":"#3 ✓ signal","v":0.81,"show":"0.81","c":"green","note":"\"Exchange rate margin applies to…\""},
+  {"label":"#4 ~ noise","v":0.74,"show":"0.74","c":"amber","note":"\"Domestic transfers are free…\""},
+  {"label":"#5 ✗ noise","v":0.62,"show":"0.62","c":"red","note":"\"Branch opening hours…\""}
+ ]}
+</script></figure>
+  <p class="tip"><b>K=3</b> keeps the signal. <b>K=5</b> adds noise + tokens.</p>
+  <div class="grid">
+    <div class="box red"><h4>K too small</h4><p>Misses the needed facts (low recall), so the answer is incomplete.</p></div>
+    <div class="box amber"><h4>K too large</h4><p>Noise, cost and latency go up, and the key facts get lost in the middle.</p></div>
+    <div class="box green"><h4>Sweet spot</h4><p>Retrieve wide (K=20–50), <b>re-rank</b>, and send the best 3–8 to the LLM.</p></div>
+  </div>
+  <div class="remember"><ul>
+    <li>Add a <b>similarity threshold</b>. If nothing scores above it, say "I don't know".</li>
+    <li><b>MMR (Maximal Marginal Relevance)</b> chooses chunks that are relevant <i>and</i> different from each other, so you don't get 5 near-duplicates.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Need</th><th>Library / API</th></tr>
+    <tr><td><b>K</b></td><td><code>SearchAsync(vector, top: 30)</code> (VectorData); <code>VectorizedQuery.KNearestNeighborsCount</code> + <code>SearchOptions.Size</code> (Azure AI Search); <code>.Take(k)</code> (EF Core)</td></tr>
+    <tr><td><b>Similarity threshold</b></td><td><code>VectorSearchOptions.ScoreThreshold</code>. Its meaning depends on the distance function (similarity: higher is better; distance: lower is better)</td></tr>
+    <tr><td><b>Paging</b></td><td><code>VectorSearchOptions.Skip</code></td></tr>
+    <tr><td><b>MMR / de-duplication</b></td><td>No built-in API. Fetch with <code>IncludeVectors = true</code> and pick diverse chunks with <code>TensorPrimitives.CosineSimilarity</code></td></tr>
+  </table>
+<pre class="code"><code>var options = new VectorSearchOptions&lt;Chunk&gt; { ScoreThreshold = 0.75 };  // cosine similarity
+var hits = await chunks.SearchAsync(queryVector, top: 30, options).ToListAsync();
+
+if (hits.Count == 0)
+    return "I don't know. I couldn't find this in the policy documents.";
+
+var best = hits.Take(5);   // or re-rank the 30 and keep the top 3-8</code></pre>
+</div>
+  </section>
+
+<!-- METADATA -->
+<section class="concept" id="metadata">
+  <h2><span class="num">12.7</span> Metadata filtering</h2>
+  <p class="oneliner">Narrow the search with structured attributes (date, product, region, access level) <b>as well as</b> semantic similarity.</p>
+  <div class="flow">
+    <div class="n">Query: "current home loan hardship policy" + user = Retail, AU</div><div class="ar">→</div>
+    <div class="n a">Filter<small>doc_type=policy AND region=AU AND status=current AND acl ∋ user groups</small></div><div class="ar">→</div>
+    <div class="n p">Vector search inside the filtered set</div><div class="ar">→</div>
+    <div class="n g">Relevant, current, permitted chunks</div>
+  </div>
+  <div class="cols2">
+    <div class="box blue"><h4>Pre-filtering</h4><p>Filter first, then vector search. Results always match the filter. Most modern vector DBs support filtered ANN efficiently.</p></div>
+    <div class="box amber"><h4>Post-filtering</h4><p>Vector search first, then filter. Can return fewer than K results, or none, if the filter is strict.</p></div>
+  </div>
+  <div class="remember"><ul>
+    <li><b>Security trimming</b>: filter by the user's groups or ACLs so RAG never leaks documents they can't open. This is essential in an enterprise.</li>
+    <li><b>Self-query</b>: an LLM pulls filters out of natural language ("policies from 2024 about credit cards" → year=2024, topic=cards).</li>
+    <li>Common metadata: source, title, section, page, created/updated date, version, product, region, language, classification, owner.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Use it for</th></tr>
+    <tr><td><code>VectorSearchOptions.Filter</code> (VectorData)</td><td>A LINQ pre-filter, translated to each store's native filter. Mark the property <code>[VectorStoreData(IsIndexed = true)]</code></td></tr>
+    <tr><td><code>SearchOptions.Filter</code> (<code>Azure.Search.Documents</code>)</td><td>OData filters. Security trimming: <code>groups/any(g: search.in(g, 'grp1,grp2'))</code></td></tr>
+    <tr><td><code>.Where(...)</code> before <code>VectorDistance</code> (EF Core 10)</td><td>Plain SQL <code>WHERE</code> on relational columns, then vector ordering</td></tr>
+    <tr><td>User's groups: <code>ClaimsPrincipal</code> + <code>Microsoft.Identity.Web</code></td><td>Read group / role claims from the validated token on the server, never from the prompt</td></tr>
+    <tr><td>Self-query: <code>IChatClient.GetResponseAsync&lt;T&gt;</code></td><td>Structured output extracts filters (year, product, region) from the question into a typed record</td></tr>
+  </table>
+<pre class="code"><code>// VectorData: LINQ filter on indexed metadata
+var vsOptions = new VectorSearchOptions&lt;PolicyChunk&gt;
+{
+    Filter = c =&gt; c.DocType == "policy" &amp;&amp; c.Region == "AU" &amp;&amp; c.Status == "current"
+};
+
+// Azure AI Search: the same filter plus security trimming by the caller's groups
+string[] groups = [.. user.FindAll("groups").Select(c =&gt; c.Value)];
+var searchOptions = new SearchOptions
+{
+    Size = 20,
+    Filter = "docType eq 'policy' and region eq 'AU' and status eq 'current' and " +
+             $"groups/any(g: search.in(g, '{string.Join(',', groups)}'))"
+};</code></pre>
+  <p class="warn">Supported filter operators vary by store (some can't do "not" or "contains"). Unsupported expressions fail at query time, so test the filter against your real store.</p>
+</div>
+  </section>
+
+<!-- HYBRID -->
+<section class="concept" id="hybrid">
+  <h2><span class="num">12.8</span> Hybrid search</h2>
+  <p class="oneliner">Run <b>keyword search</b> (BM25: exact terms) and <b>vector search</b> (meaning) together, then fuse the results. You get the best of both.</p>
+  <div class="flow">
+    <div class="n">Query</div><div class="ar">→</div>
+    <div style="display:flex;flex-direction:column;gap:6px"><div class="n a">Keyword / BM25<small>exact: "E1234", "BSB", product codes</small></div><div class="n p">Vector / semantic<small>synonyms, paraphrases</small></div></div>
+    <div class="ar">→</div><div class="n t">Fusion (RRF)</div><div class="ar">→</div><div class="n g">Merged ranked list</div>
+  </div>
+  <div class="cols2">
+    <div class="box amber"><h4>Keyword wins</h4><p>"error code AADSTS50076", account numbers, acronyms, names, exact phrases.</p></div>
+    <div class="box purple"><h4>Vector wins</h4><p>"I can't get into my online banking" ≈ "login issues / reset password".</p></div>
+  </div>
+  <h3>Reciprocal Rank Fusion (RRF)</h3>
+  <p class="tip"><b>RRF_score(doc) = Σ 1 / (k + rank_in_list)</b>, with k ≈ 60.</p>
+<figure class="viz" data-viz="bars"><script type="application/json">
+{"title":"RRF scores after fusing the BM25 and vector lists","max":0.035,
+ "rows":[
+  {"label":"Doc A (BM25 #1, vector #3)","v":0.0323,"show":"0.0323 ← top","c":"green","note":"1/61 + 1/63"},
+  {"label":"Doc B (BM25 #5, vector #1)","v":0.0318,"show":"0.0318","c":"blue","note":"1/65 + 1/61"},
+  {"label":"Doc C (only vector, #2)","v":0.0161,"show":"0.0161","c":"purple","note":"1/62"}
+ ]}
+</script></figure>
+  <p class="tip">RRF uses <b>ranks, not raw scores</b>, so there is no need to normalise BM25 vs cosine scales.</p>
+  <div class="remember"><ul>
+    <li>Hybrid usually beats pure vector search on enterprise data (codes, jargon). It's a sensible default.</li>
+    <li>Alternative: weighted fusion <code>α·vector + (1−α)·keyword</code> on normalised scores.</li>
+    <li>Supported natively by Azure AI Search, Elasticsearch, OpenSearch, Weaviate, Qdrant and others.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Option</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Azure AI Search</b></td><td><code>Azure.Search.Documents</code></td><td>Search text + a <code>VectorizedQuery</code> in one call = hybrid. The service fuses both lists with RRF</td></tr>
+    <tr><td><b>VectorData</b></td><td><code>HybridSearchAsync</code> + <code>HybridSearchOptions&lt;T&gt;</code></td><td>Only on providers that support keyword + vector (e.g. Azure AI Search, Qdrant, Weaviate). Needs a full-text indexed property</td></tr>
+    <tr><td><b>Cosmos DB</b></td><td>EF Core 10 Cosmos provider</td><td><code>EF.Functions.Rrf(EF.Functions.FullTextScore(...), EF.Functions.VectorDistance(...))</code></td></tr>
+    <tr><td><b>SQL Server / Postgres</b></td><td>EF Core full-text + vector queries</td><td>Run both queries and fuse the ranks in C# (see RAG Fusion below)</td></tr>
+  </table>
+<pre class="code"><code>var options = new SearchOptions
+{
+    Size = 50,
+    VectorSearch = new()
+    {
+        Queries = { new VectorizedQuery(queryVector) { KNearestNeighborsCount = 50, Fields = { "contentVector" } } }
+    }
+};
+
+// Keyword text + vector query together: exact codes AND meaning, fused with RRF
+SearchResults&lt;Chunk&gt; results = await search.SearchAsync&lt;Chunk&gt;("error AADSTS50076", options);</code></pre>
+</div>
+  <div class="post">
+    <p>Vector search alone isn't enough for enterprise RAG 🔍</p>
+    <p>Ask for "error AADSTS50076" and semantic search returns "login issues"… close, but not it.</p>
+    <p>Hybrid = BM25 (exact words) + vectors (meaning), merged with Reciprocal Rank Fusion.</p>
+    <p>Codes, IDs and acronyms are everywhere in enterprise data. Hybrid should be your default.</p>
+    <p>#RAG #Search #GenAI</p>
+  </div>
+</section>
+
+<!-- RANKING -->
+<section class="concept" id="ranking">
+  <h2><span class="num">12.9</span> Ranking &amp; re-ranking</h2>
+  <p class="oneliner">First-stage retrieval is fast but rough. A <b>re-ranker</b> carefully re-scores the shortlist and puts the truly relevant chunks on top.</p>
+  <div class="flow">
+    <div class="n s">1M chunks</div><div class="ar">→<small>hybrid retrieval (ms)</small></div>
+    <div class="n a">Top 50 candidates</div><div class="ar">→<small>cross-encoder re-rank</small></div>
+    <div class="n g">Top 5 best</div><div class="ar">→</div><div class="n fill">LLM</div>
+  </div>
+  <div class="cols2">
+    <div class="box"><h4>Bi-encoder (retriever)</h4><p>Embeds the query and document <b>separately</b>, then compares vectors. Very fast, document vectors are precomputed. Less precise.</p></div>
+    <div class="box"><h4>Cross-encoder (re-ranker)</h4><p>Reads the query and document <b>together</b> and outputs a relevance score. Much more accurate, too slow for millions of documents, ideal for about 50.</p></div>
+  </div>
+  <ul>
+    <li>Re-rankers: Cohere Rerank, bge-reranker, Azure AI Search <b>semantic ranker</b>, Jina reranker, LLM-as-reranker.</li>
+    <li>Business re-ranking signals: recency, authority (official policy over email), popularity, user role.</li>
+    <li><b>Lost in the middle</b>: LLMs focus on the start and end of the context. Put the best chunks first (or first and last).</li>
+  </ul>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Re-ranker</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Azure AI Search semantic ranker</b></td><td><code>Azure.Search.Documents</code>: <code>QueryType = SearchQueryType.Semantic</code></td><td>A managed cross-encoder over the top results. Read <code>SemanticSearch.RerankerScore</code></td></tr>
+    <tr><td><b>Self-hosted cross-encoder</b></td><td><code>Microsoft.ML.OnnxRuntime</code> + <code>Microsoft.ML.Tokenizers</code></td><td>Run a bge-reranker style ONNX model on (query, chunk) pairs</td></tr>
+    <tr><td><b>Hosted rerank APIs</b></td><td><code>HttpClient</code> + <code>Microsoft.Extensions.Http.Resilience</code></td><td>Cohere / Jina rerank over REST, with retries and timeouts</td></tr>
+    <tr><td><b>LLM as re-ranker</b></td><td><code>IChatClient.GetResponseAsync&lt;T&gt;</code></td><td>Ask for scores as structured output. Accurate but slow and costly</td></tr>
+    <tr><td><b>Business signals</b></td><td>LINQ <code>OrderByDescending</code></td><td>Boost recency and authority after the semantic score</td></tr>
+  </table>
+<pre class="code"><code>var options = new SearchOptions
+{
+    Size = 5,
+    QueryType = SearchQueryType.Semantic,
+    SemanticSearch = new() { SemanticConfigurationName = "default" },
+    VectorSearch = new() { Queries = { new VectorizedQuery(queryVector) { KNearestNeighborsCount = 50, Fields = { "contentVector" } } } }
+};
+SearchResults&lt;Chunk&gt; results = await search.SearchAsync&lt;Chunk&gt;(question, options);
+
+await foreach (SearchResult&lt;Chunk&gt; r in results.GetResultsAsync())
+    Console.WriteLine($"{r.SemanticSearch.RerankerScore:F2}  {r.Document.Title}");</code></pre>
+</div>
+  </section>
+
+<!-- QUERY TRANSFORM -->
+<section class="concept" id="query">
+  <h2><span class="num">12.10</span> Query transformation</h2>
+  <p class="oneliner">Users ask vague, messy or multi-part questions. Rewrite the query into something that retrieves better <b>before</b> you search.</p>
+  <div class="tablewrap"><table>
+    <tr><th>Technique</th><th>What it does</th><th>Example</th></tr>
+    <tr><td><b>Rewriting</b></td><td>Clean up, clarify, expand acronyms</td><td>"cc limit inc?" → "How do I increase my credit card limit?"</td></tr>
+    <tr><td><b>Conversational condensing</b></td><td>Turn a follow-up into a standalone question using chat history</td><td>"What about for business?" → "What is the international transfer fee for business accounts?"</td></tr>
+    <tr><td><b>Multi-query expansion</b></td><td>Generate several phrasings and retrieve for each</td><td>"fees overseas payment", "international transfer charges", "SWIFT cost"</td></tr>
+    <tr><td><b>HyDE</b></td><td>LLM writes a <i>hypothetical answer</i>, and you embed that instead</td><td>Fake answer paragraph → closer to real answer chunks</td></tr>
+    <tr><td><b>Step-back prompting</b></td><td>Ask a broader question first for background</td><td>"Can I port my loan if I move?" → "What are loan portability rules?"</td></tr>
+    <tr><td><b>Decomposition</b></td><td>Split a multi-hop question into sub-questions</td><td>"Compare fees of card A and B" → fees(A), fees(B)</td></tr>
+    <tr><td><b>Routing</b></td><td>Send it to the right index, DB or tool</td><td>HR question → HR index. "My balance" → API tool, not RAG</td></tr>
+    <tr><td><b>Self-query / filter extraction</b></td><td>Pull out metadata filters</td><td>"2024 credit card policies" → year=2024, product=cards</td></tr>
+  </table></div>
+  <div class="remember"><ul><li>Each transformation is an extra LLM call, adding latency and cost. Use them where evaluation shows a gain.</li></ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Technique</th><th>Library / API</th></tr>
+    <tr><td><b>Rewrite / condense follow-ups</b></td><td><code>IChatClient.GetResponseAsync</code> with the chat history: "Rewrite the last question as a standalone search query"</td></tr>
+    <tr><td><b>Multi-query / decomposition</b></td><td><code>GetResponseAsync&lt;T&gt;</code> (structured output) returns a typed list of sub-queries</td></tr>
+    <tr><td><b>HyDE</b></td><td>Generate a hypothetical answer with <code>IChatClient</code>, then embed it with <code>IEmbeddingGenerator</code> and search with that vector</td></tr>
+    <tr><td><b>Use a small, cheap model</b></td><td>Register a second keyed client: <code>AddKeyedChatClient("rewriter", ...)</code></td></tr>
+  </table>
+<pre class="code"><code>public sealed record SearchPlan(string[] Queries);
+
+ChatResponse&lt;SearchPlan&gt; plan = await rewriter.GetResponseAsync&lt;SearchPlan&gt;(
+    $"""
+    Rewrite this banking question as 3 short, different search queries.
+    Expand acronyms. Question: {question}
+    """);
+
+string[] queries = [question, .. plan.Result.Queries];</code></pre>
+</div>
+  </section>
+
+<!-- RAG FUSION -->
+<section class="concept" id="fusion">
+  <h2><span class="num">12.11</span> RAG Fusion</h2>
+  <p class="oneliner">Generate <b>multiple versions</b> of the user's query, retrieve for each, then <b>fuse</b> all the result lists with Reciprocal Rank Fusion before generating.</p>
+  <div class="flow">
+    <div class="n">Original query</div><div class="ar">→</div>
+    <div class="n p">LLM generates N queries<small>Q1 · Q2 · Q3 · Q4</small></div><div class="ar">→</div>
+    <div class="n a">Retrieve for each<small>N ranked lists</small></div><div class="ar">→</div>
+    <div class="n t">RRF fusion<small>docs found by many queries rise</small></div><div class="ar">→</div>
+    <div class="n fill">LLM answer</div>
+  </div>
+  <div class="cols2">
+    <div class="box green"><h4>➕</h4><ul><li>Higher recall: catches documents a single phrasing misses</li><li>Robust to vague or badly phrased questions</li><li>Consensus ranking cuts down on flukes</li></ul></div>
+    <div class="box red"><h4>➖</h4><ul><li>N× retrieval plus an extra LLM call, so more latency and cost</li><li>Generated queries can drift off-topic</li><li>Overkill for simple, precise questions</li></ul></div>
+  </div>
+  <div class="tip">RAG Fusion = multi-query expansion + RRF. Hybrid search = two retrieval methods + RRF. You can combine them.</div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Step</th><th>Library / API</th></tr>
+    <tr><td><b>Generate query variants</b></td><td><code>IChatClient.GetResponseAsync&lt;T&gt;</code> (see Query transformation)</td></tr>
+    <tr><td><b>Search them in parallel</b></td><td><span class="pill builtin">built-in</span> <code>Task.WhenAll</code> over <code>SearchAsync</code></td></tr>
+    <tr><td><b>Fuse with RRF</b></td><td>A few lines of LINQ (below), or let the store do it: Azure AI Search hybrid, EF Core Cosmos <code>EF.Functions.Rrf</code></td></tr>
+  </table>
+<pre class="code"><code>// Reciprocal Rank Fusion: score(doc) = sum of 1 / (k + rank) across all ranked lists
+static List&lt;string&gt; Rrf(IEnumerable&lt;IReadOnlyList&lt;string&gt;&gt; rankedLists, int k = 60) =&gt;
+    rankedLists
+        .SelectMany(list =&gt; list.Select((id, i) =&gt; (id, score: 1.0 / (k + i + 1))))  // rank starts at 1
+        .GroupBy(x =&gt; x.id)
+        .Select(g =&gt; (id: g.Key, score: g.Sum(x =&gt; x.score)))
+        .OrderByDescending(x =&gt; x.score)
+        .Select(x =&gt; x.id)
+        .ToList();
+
+IReadOnlyList&lt;string&gt;[] lists = await Task.WhenAll(queries.Select(q =&gt; SearchIdsAsync(q, top: 20)));
+List&lt;string&gt; fused = Rrf(lists);   // then re-rank and keep the best 3-8</code></pre>
+</div>
+  </section>
+
+<!-- EVAL -->
+<section class="concept" id="eval">
+  <h2><span class="num">12.12</span> RAG evaluation</h2>
+  <p class="oneliner">Evaluate <b>retrieval</b> (did we find the right chunks?) and <b>generation</b> (is the answer faithful and useful?) separately. You can't improve what you don't measure.</p>
+  <div class="svgwrap">
+    <svg viewBox="0 0 600 250" width="600" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, sans-serif" font-size="13">
+      <rect x="230" y="10" width="140" height="40" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="300" y="35" text-anchor="middle" font-weight="700">Question</text>
+      <rect x="30" y="180" width="140" height="40" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/><text x="100" y="205" text-anchor="middle" font-weight="700">Retrieved context</text>
+      <rect x="430" y="180" width="140" height="40" rx="10" fill="#dcfce7" stroke="#059669" stroke-width="2"/><text x="500" y="205" text-anchor="middle" font-weight="700">Answer</text>
+      <line x1="250" y1="50" x2="120" y2="180" stroke="#64748b" stroke-width="2"/><text x="90" y="110" fill="#b45309" font-weight="700">Context relevance</text><text x="90" y="126" fill="#475569" font-size="11">is the context on-topic?</text>
+      <line x1="350" y1="50" x2="480" y2="180" stroke="#64748b" stroke-width="2"/><text x="420" y="110" fill="#059669" font-weight="700">Answer relevance</text><text x="420" y="126" fill="#475569" font-size="11">does it answer the question?</text>
+      <line x1="170" y1="200" x2="430" y2="200" stroke="#64748b" stroke-width="2"/><text x="300" y="192" text-anchor="middle" fill="#7c3aed" font-weight="700">Groundedness / faithfulness</text><text x="300" y="240" text-anchor="middle" fill="#475569" font-size="11">is every claim supported by the context? (no hallucination)</text>
+    </svg>
+  </div>
+  <div class="cols2">
+    <div class="box blue"><h4>Retrieval metrics</h4><ul>
+      <li><b>Recall@K</b>: share of the relevant chunks found in the top K</li>
+      <li><b>Precision@K</b>: share of the top K that are relevant</li>
+      <li><b>Hit rate</b>: is at least one relevant chunk in the top K?</li>
+      <li><b>MRR</b>: how high the first relevant result ranks</li>
+      <li><b>nDCG</b>: ranking quality with graded relevance</li>
+      <li><b>Context precision / recall</b> (RAGAS)</li></ul></div>
+    <div class="box green"><h4>Generation metrics</h4><ul>
+      <li><b>Faithfulness / groundedness</b>: claims supported by the context</li>
+      <li><b>Answer relevance</b>: addresses the question</li>
+      <li><b>Answer correctness</b>: matches the ground truth</li>
+      <li><b>Citation accuracy</b></li>
+      <li>Safety: toxicity, PII leakage, jailbreak resistance</li>
+      <li>Ops: latency, tokens and cost per answer</li></ul></div>
+  </div>
+  <h3>How to evaluate</h3>
+  <div class="flow">
+    <div class="n">Golden dataset<small>questions + expected answers + source chunks</small></div><div class="ar">→</div>
+    <div class="n p">Run the pipeline</div><div class="ar">→</div>
+    <div class="n a">Score<small>LLM-as-judge + metrics + human review</small></div><div class="ar">→</div>
+    <div class="n g">Compare versions<small>chunk size, K, model, prompt</small></div><div class="ar">→</div>
+    <div class="n t">Online: user feedback 👍👎, A/B</div>
+  </div>
+  <div class="remember"><ul>
+    <li>Build a golden set of 50–200 real questions early, including "not in the docs" questions (the system should say "I don't know").</li>
+    <li>Tools: RAGAS, TruLens, DeepEval, Azure AI Foundry evaluations, LangSmith, Arize Phoenix, promptfoo.</li>
+    <li>Calibrate LLM-as-judge against human labels. Run evaluations in CI so regressions are caught before release.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>LLM-as-judge evaluators</b></td><td><code>Microsoft.Extensions.AI.Evaluation.Quality</code></td><td><code>GroundednessEvaluator</code>, <code>RelevanceEvaluator</code>, <code>CompletenessEvaluator</code>, <code>RetrievalEvaluator</code>, <code>EquivalenceEvaluator</code> (vs ground truth)</td></tr>
+    <tr><td><b>Safety evaluators</b></td><td><code>Microsoft.Extensions.AI.Evaluation.Safety</code></td><td>Harmful content, protected material, indirect attack (uses the Azure AI Foundry evaluation service)</td></tr>
+    <tr><td><b>Classic NLP scores</b></td><td><code>Microsoft.Extensions.AI.Evaluation.NLP</code></td><td>BLEU, GLEU, F1 without calling an LLM</td></tr>
+    <tr><td><b>Caching + reports in CI</b></td><td><code>Microsoft.Extensions.AI.Evaluation.Reporting</code> + <code>dotnet aieval</code> tool (<code>Microsoft.Extensions.AI.Evaluation.Console</code>)</td><td>Run evals as MSTest/xUnit tests, cache LLM responses, publish an HTML report from the pipeline</td></tr>
+    <tr><td><b>Cloud evaluations</b></td><td><code>Azure.AI.Projects</code></td><td>Azure AI Foundry evaluation runs over datasets</td></tr>
+  </table>
+<pre class="code"><code>IEvaluator evaluator = new GroundednessEvaluator();
+var judge = new ChatConfiguration(judgeChatClient);       // a strong model acts as the judge
+
+EvaluationResult result = await evaluator.EvaluateAsync(
+    messages, response, judge,
+    additionalContext: [new GroundednessEvaluatorContext(retrievedText)]);
+
+NumericMetric g = result.Get&lt;NumericMetric&gt;(GroundednessEvaluator.GroundednessMetricName);
+Assert.IsFalse(g.Interpretation!.Failed, g.Reason);       // fail the build on ungrounded answers</code></pre>
+</div>
+  <div class="post">
+    <p>"The RAG demo looked great" isn't an evaluation strategy 📏</p>
+    <p>Measure two things separately:</p>
+    <p>🔎 Retrieval: did we find the right chunks? (Recall@K, MRR, context precision)</p>
+    <p>✍️ Generation: is the answer faithful, relevant and correct? (groundedness, answer relevance)</p>
+    <p>Golden dataset + LLM-as-judge + human spot checks + run it in CI.</p>
+    <p>#RAG #LLMOps #GenAI #Evaluation</p>
+  </div>
+</section>
+
+<!-- ADVANCED -->
+<section class="concept" id="advanced">
+  <h2><span class="num">12.13</span> Advanced RAG patterns <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Variants that go beyond the basic retrieve-then-generate pipeline for harder questions and data.</p>
+  <div class="grid">
+    <div class="box"><h4>🕸 GraphRAG</h4><p>Build a knowledge graph of entities and relationships. Good for "global" questions ("main themes across all complaints?") and multi-hop reasoning.</p></div>
+    <div class="box"><h4>🤖 Agentic RAG</h4><p>An agent decides when, where and how often to retrieve, and checks its own answer.</p></div>
+    <div class="box"><h4>🔧 Corrective RAG (CRAG)</h4><p>Grade the retrieved documents. If they're poor, rewrite the query or fall back to another source.</p></div>
+    <div class="box"><h4>🪞 Self-RAG</h4><p>The model reflects: is retrieval needed? Is my answer supported?</p></div>
+    <div class="box"><h4>🧩 Contextual retrieval</h4><p>Prepend an LLM-generated summary of the surrounding document to each chunk before embedding.</p></div>
+    <div class="box"><h4>🖼 Multimodal RAG</h4><p>Retrieve images, charts and tables, not just text.</p></div>
+    <div class="box"><h4>⚡ Semantic cache</h4><p>Reuse answers for semantically similar questions, cutting cost and latency.</p></div>
+    <div class="box"><h4>📊 Text-to-SQL / structured RAG</h4><p>For numbers and tables, query the database rather than embedding it.</p></div>
+  </div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Pattern</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Parent-child (small-to-big)</b></td><td>VectorData record with a <code>ParentId</code>; load the parent from your DB (EF Core)</td><td>Search small chunks, send the parent section to the model</td></tr>
+    <tr><td><b>Semantic cache</b></td><td>A VectorData collection of past Q&amp;A + <code>VectorSearchOptions.ScoreThreshold</code>; exact-match cache with <code>HybridCache</code></td><td>Return a stored answer for near-identical questions. Partition the cache by user permissions</td></tr>
+    <tr><td><b>Agentic RAG</b></td><td><code>Microsoft.Agents.AI</code> with a search tool (<code>AIFunctionFactory.Create</code>)</td><td>The agent decides when and what to retrieve, and can search again</td></tr>
+    <tr><td><b>Text-to-SQL</b></td><td><code>IChatClient.GetResponseAsync&lt;T&gt;</code> + EF Core / <code>Microsoft.Data.SqlClient</code></td><td>Generate a query from the schema, run it with a read-only login and a row limit</td></tr>
+    <tr><td><b>GraphRAG</b></td><td>No first-party .NET library. <code>Neo4j.Driver</code> for a graph store; build entities with <code>IChatClient</code></td><td>Or run Microsoft's GraphRAG (Python) as a separate service</td></tr>
+  </table>
+</div>
+  </section>
+
+<!-- FAILURES -->
+<section class="concept" id="failures">
+  <h2><span class="num">12.14</span> Common RAG failure points &amp; fixes <span class="tag-added">Added</span></h2>
+  <div class="tablewrap"><table>
+    <tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr>
+    <tr><td>"Answer not found" but it's in the docs</td><td>Bad parsing or chunking, poor retrieval</td><td>Better parsers, structure-aware chunks, hybrid search, query rewriting</td></tr>
+    <tr><td>Right docs retrieved, wrong answer</td><td>Ranking, too much noise, lost in the middle</td><td>Re-ranker, smaller K, ordering, a clearer prompt</td></tr>
+    <tr><td>Outdated answers</td><td>Stale index, no version filter</td><td>Incremental re-indexing, "current version" metadata filter</td></tr>
+    <tr><td>Hallucinated details</td><td>Weak grounding instructions, high temperature</td><td>"Answer only from context", citations, groundedness checks, low temperature</td></tr>
+    <tr><td>User sees restricted content</td><td>No security trimming</td><td>ACL metadata filters, per-user retrieval</td></tr>
+    <tr><td>Slow and expensive</td><td>Many LLM calls, big contexts</td><td>Caching, smaller models for rewriting, fewer chunks, streaming</td></tr>
+  </table></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Failure</th><th>.NET fix</th></tr>
+    <tr><td><b>Can't see why an answer was wrong</b></td><td><code>ChatClientBuilder.UseOpenTelemetry()</code> + <code>UseLogging()</code>: trace prompt, retrieved chunks, tokens and latency (Aspire dashboard / Application Insights)</td></tr>
+    <tr><td><b>Hallucination / ungrounded answer</b></td><td>Offline: <code>GroundednessEvaluator</code> in CI. Online: Azure AI Content Safety groundedness detection over REST <span class="pill preview">preview</span></td></tr>
+    <tr><td><b>Nothing relevant retrieved</b></td><td><code>VectorSearchOptions.ScoreThreshold</code> + an "I don't know" path; hybrid search for codes and acronyms</td></tr>
+    <tr><td><b>Answer leaks restricted data</b></td><td>ACL filter in the query (<code>SearchOptions.Filter</code>); <code>Microsoft.Extensions.Compliance.Redaction</code> for PII in logs</td></tr>
+    <tr><td><b>Slow or costly</b></td><td><code>UseDistributedCache()</code> on the chat / embedding builder, <code>MaxOutputTokens</code>, a smaller model for rewriting</td></tr>
+    <tr><td><b>Model or service errors</b></td><td><code>Microsoft.Extensions.Http.Resilience</code> (retry with backoff on 429, timeout, circuit breaker)</td></tr>
+  </table>
+<pre class="code"><code>IChatClient chat = new ChatClientBuilder(inner)
+    .UseDistributedCache(cache)                         // repeat questions are free
+    .UseOpenTelemetry(sourceName: "Bank.Rag",
+        configure: o =&gt; o.EnableSensitiveData = false)  // keep prompts out of traces in prod
+    .Build(services);
+
+builder.Services.AddOpenTelemetry().WithTracing(t =&gt; t.AddSource("Bank.Rag"));</code></pre>
+</div>
+  </section>
+
+<div class="qa-wrap">
+  <h2>⚡ Quick-fire Q&amp;A</h2>
+  <details class="qa"><summary>RAG or fine-tuning for internal policies that change monthly?</summary><p>RAG. The knowledge changes often and needs citations and access control. Fine-tuning teaches behaviour or style, not frequently updated facts.</p></details>
+  <details class="qa"><summary>Why use a re-ranker if you already have vector search?</summary><p>Bi-encoder retrieval is fast but approximate. A cross-encoder reads the query and chunk together and scores relevance much more accurately on a small shortlist.</p></details>
+  <details class="qa"><summary>How do you stop RAG leaking confidential documents?</summary><p>Index ACLs as metadata and filter on the user's identity at query time (security trimming). Add PII redaction and output guardrails.</p></details>
+  <details class="qa"><summary>Hybrid search vs RAG Fusion?</summary><p>Hybrid fuses different retrieval <i>methods</i> (keyword + vector) for one query. RAG Fusion fuses results from multiple <i>query variants</i>. Both typically use RRF.</p></details>
+</div>
+
+<div class="pager"><a href="11-devops-deployment-observability.html">← 11 · DevOps</a><a class="next" href="13-agentic-ai.html">13 · Agentic AI →</a></div>
+</main>
+<footer>Tech Concepts Prep · Section 12</footer>
+<script src="assets/app.js"></script>
+<script src="assets/viz.js"></script>
+</body>
+</html>

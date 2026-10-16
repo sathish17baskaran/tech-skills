@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>03 · Scalability &amp; Reliability | Tech Concepts Prep</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<nav class="top"><a href="02-networking-protocols.html">← Protocols</a><span class="here">03 · Scalability &amp; Reliability</span><a href="04-caching.html">Next: Caching →</a></nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">Section 03</div>
+  <h1>Scalability, availability &amp; fault tolerance</h1>
+  <p>How to handle more load (scale), stay up (availability), respond fast (performance), survive failures (fault tolerance) and recover from disasters (DR), plus the theory behind the trade-offs (CAP and PACELC).</p>
+  <div class="toc">
+    <a href="#scaling">Vertical vs Horizontal</a>
+    <a href="#stateless" class="added">Stateless vs Stateful</a>
+    <a href="#lb">Load balancing</a>
+    <a href="#consistent-hashing" class="added">Consistent hashing</a>
+    <a href="#ft">Fault tolerance</a>
+    <a href="#resilience" class="added">Resilience patterns</a>
+    <a href="#availability" class="added">Availability (HA &amp; nines)</a>
+    <a href="#performance" class="added">Performance</a>
+    <a href="#sla" class="added">SLA / SLO / SLI</a>
+    <a href="#cap">CAP</a>
+    <a href="#pacelc" class="added">PACELC &amp; consistency</a>
+    <a href="#dr" class="added">Disaster recovery (RPO/RTO)</a>
+  </div>
+</header>
+
+<!-- SCALING -->
+<section class="concept" id="scaling">
+  <h2><span class="num">3.1</span> Vertical vs Horizontal scaling</h2>
+  <p class="oneliner"><b>Vertical</b> (scale up) = a bigger machine. <b>Horizontal</b> (scale out) = more machines behind a load balancer.</p>
+  <div class="cols2">
+    <div class="flow v"><div class="cap">Vertical: scale up</div>
+      <div class="n s">2 vCPU / 8 GB</div><div class="ar">↓</div><div class="n">8 vCPU / 32 GB</div><div class="ar">↓</div><div class="n fill">64 vCPU / 512 GB<small>hits a ceiling 🧱</small></div></div>
+    <div class="flow v"><div class="cap">Horizontal: scale out</div>
+      <div class="n p">Load balancer</div><div class="ar">↓ ↓ ↓</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><div class="n g">Node 1</div><div class="n g">Node 2</div><div class="n g">Node 3</div><div class="n g">Node N…</div></div></div>
+  </div>
+  <div class="tablewrap"><table>
+    <tr><th></th><th>Vertical (up)</th><th>Horizontal (out)</th></tr>
+    <tr><td>How</td><td>Add CPU, RAM or disk to one node</td><td>Add more nodes</td></tr>
+    <tr><td>Limit</td><td>Hardware ceiling, cost rises steeply</td><td>Almost unlimited</td></tr>
+    <tr><td>Availability</td><td>Single point of failure</td><td>Redundant. One node down is OK</td></tr>
+    <tr><td>Complexity</td><td>Simple, no code change</td><td>Needs stateless apps, load balancing, distributed data</td></tr>
+    <tr><td>Downtime</td><td>Often needs a restart</td><td>Add or remove nodes live</td></tr>
+    <tr><td>Typical</td><td>Relational DB primary, legacy apps</td><td>Web/API tiers, microservices, NoSQL, Kafka</td></tr>
+  </table></div>
+  <div class="remember"><ul>
+    <li><b>Auto-scaling</b> = horizontal scaling triggered by metrics (CPU, queue length, request rate). Kubernetes HPA, VM Scale Sets, Azure Functions.</li>
+    <li>Start vertical (it's simple). Go horizontal when you need high availability or pass the ceiling.</li>
+    <li>The data tier is the hardest to scale out. See read replicas and sharding in Section 05.</li>
+    <li>Scale <b>out</b> fast, scale <b>in</b> slowly (cool-down) so capacity doesn't flap up and down.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Stateless ASP.NET Core</b></td><td><span class="pill builtin">built-in</span></td><td>The precondition for scaling out: no session or files on the instance (see 3.2)</td></tr>
+    <tr><td><b>Server GC + DATAS</b></td><td><span class="pill builtin">built-in</span> runtime settings</td><td>Server GC uses every core when you scale up. DATAS (on by default since .NET 9) keeps the heap small, so many small containers stay cheap</td></tr>
+    <tr><td><b>Aspire</b></td><td><code>Aspire.Hosting.AppHost</code></td><td>Run several replicas locally (<code>WithReplicas(3)</code>) and deploy to Azure Container Apps</td></tr>
+    <tr><td><b>Autoscaling</b></td><td>Platform config, not code: Azure Container Apps / AKS (KEDA), App Service autoscale</td><td>Add instances on CPU, request rate or queue length</td></tr>
+    <tr><td><b>Health checks</b></td><td><span class="pill builtin">built-in</span> <code>AddHealthChecks</code> / <code>MapHealthChecks</code></td><td>New instances only get traffic once they report ready</td></tr>
+  </table>
+</div>
+  <div class="post">
+    <p>Vertical vs Horizontal scaling 🏋️ vs 👥</p>
+    <p>Vertical: hire a stronger worker. Easy, but there's only so strong a person can get.</p>
+    <p>Horizontal: hire more workers. Unlimited, but now you need a manager (load balancer) and they can't keep notes in their heads (stateless).</p>
+    <p>Most real systems use both.</p>
+    <p>#SystemDesign #Cloud #Scalability</p>
+  </div>
+</section>
+
+<!-- STATELESS -->
+<section class="concept" id="stateless">
+  <h2><span class="num">3.2</span> Stateless vs Stateful services <span class="tag-added">Added</span></h2>
+  <p class="oneliner">A <b>stateless</b> service keeps no client data in memory between requests, so any instance can serve any request.</p>
+  <div class="flow">
+    <div class="n">Client</div><div class="ar">→</div><div class="n p">LB</div><div class="ar">→</div>
+    <div class="n g">Any app instance<small>stateless</small></div><div class="ar">⇄</div><div class="n a">Redis / DB<small>session &amp; state live here</small></div>
+  </div>
+  <div class="remember"><ul>
+    <li>Move state out of the app: sessions to Redis, files to blob storage, data to the DB, auth to tokens (JWT).</li>
+    <li><b>Sticky sessions</b> are a workaround. They break even load spreading and lose sessions when a node dies.</li>
+    <li>Stateful workloads (DBs, Kafka, WebSocket servers) need special handling: StatefulSets, partitions, replication.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>State to move out</th><th>Library / API</th></tr>
+    <tr><td><b>Data Protection keys</b></td><td><code>Azure.Extensions.AspNetCore.DataProtection.Blobs</code> + <code>.Keys</code> (Key Vault), or <code>Microsoft.AspNetCore.DataProtection.StackExchangeRedis</code>. All instances must share keys, or cookies and antiforgery tokens fail on other instances</td></tr>
+    <tr><td><b>Session</b></td><td><span class="pill builtin">built-in</span> <code>AddSession</code> on <code>IDistributedCache</code> (<code>Microsoft.Extensions.Caching.StackExchangeRedis</code>)</td></tr>
+    <tr><td><b>Auth</b></td><td><code>Microsoft.AspNetCore.Authentication.JwtBearer</code>: tokens carry the identity, so no server-side login state</td></tr>
+    <tr><td><b>Files / uploads</b></td><td><code>Azure.Storage.Blobs</code> instead of the local disk</td></tr>
+    <tr><td><b>Cached data</b></td><td><code>HybridCache</code> with a Redis L2 (see section 4)</td></tr>
+  </table>
+<pre class="code"><code>var credential = new DefaultAzureCredential();
+builder.Services.AddDataProtection()
+    .SetApplicationName("payments-api")                    // same name on every instance
+    .PersistKeysToAzureBlobStorage(new Uri(keysBlobUri), credential)
+    .ProtectKeysWithAzureKeyVault(new Uri(keyVaultKeyId), credential);
+
+builder.Services.AddStackExchangeRedisCache(o =&gt;
+    o.Configuration = builder.Configuration.GetConnectionString("redis"));
+builder.Services.AddSession(o =&gt; o.IdleTimeout = TimeSpan.FromMinutes(20)); // stored in Redis
+
+var app = builder.Build();
+app.UseSession();</code></pre>
+</div>
+  </section>
+
+<!-- LOAD BALANCING -->
+<section class="concept" id="lb">
+  <h2><span class="num">3.3</span> Load balancing</h2>
+  <p class="oneliner">A load balancer spreads traffic across healthy servers to improve throughput, availability and response time.</p>
+  <div class="flow">
+    <div class="n">Users</div><div class="ar">→</div>
+    <div class="n t">DNS / Global LB<small>Front Door · Traffic Manager</small></div><div class="ar">→</div>
+    <div class="n p">Regional L7 LB<small>App Gateway / ALB + WAF</small></div><div class="ar">→</div>
+    <div class="n g">Server pool<small>health-checked</small></div>
+  </div>
+  <h3>Algorithms</h3>
+  <div class="grid">
+    <div class="box"><h4>Round robin</h4><p>1 → 2 → 3 → 1… Simple. Assumes servers are equal.</p></div>
+    <div class="box"><h4>Weighted round robin</h4><p>Bigger servers get more traffic. Also used for canary releases (90/10).</p></div>
+    <div class="box"><h4>Least connections</h4><p>Send to the server with the fewest active connections. Good for long requests.</p></div>
+    <div class="box"><h4>Least response time</h4><p>Pick the fastest healthy server.</p></div>
+    <div class="box"><h4>IP hash / sticky</h4><p>The same client goes to the same server. Session affinity.</p></div>
+    <div class="box"><h4>Consistent hashing</h4><p>Key-based routing that barely reshuffles when nodes change (caches, shards).</p></div>
+  </div>
+  <div class="tablewrap"><table>
+    <tr><th></th><th>L4 (transport)</th><th>L7 (application)</th></tr>
+    <tr><td>Sees</td><td>IP, port, TCP/UDP</td><td>URL path, host, headers, cookies</td></tr>
+    <tr><td>Can do</td><td>Very fast forwarding</td><td>Path routing, TLS termination, WAF, rewrites</td></tr>
+    <tr><td>Examples</td><td>Azure Load Balancer, AWS NLB</td><td>Azure App Gateway, AWS ALB, NGINX, Envoy</td></tr>
+  </table></div>
+  <div class="remember"><ul>
+    <li><b>Health checks</b> (liveness/readiness) take bad nodes out automatically.</li>
+    <li><b>TLS termination</b> at the LB offloads crypto work. Re-encrypt to the backend if compliance needs end-to-end TLS.</li>
+    <li>The LB itself must be redundant (managed cloud LBs are).</li>
+    <li>Global LB = DNS-based or Anycast, for multi-region active-active and failover.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>YARP</b></td><td><code>Yarp.ReverseProxy</code></td><td>A reverse proxy / L7 load balancer in .NET. Policies: <code>PowerOfTwoChoices</code> (default), <code>RoundRobin</code>, <code>LeastRequests</code>, <code>Random</code>, <code>FirstAlphabetical</code></td></tr>
+    <tr><td><b>YARP health checks</b></td><td><code>Yarp.ReverseProxy</code></td><td>Active (probe a path) and passive (watch real failures) checks take bad servers out</td></tr>
+    <tr><td><b>YARP session affinity</b></td><td><code>Yarp.ReverseProxy</code></td><td>Sticky sessions via a cookie or header, when you can't avoid state</td></tr>
+    <tr><td><b>Service discovery</b></td><td><code>Microsoft.Extensions.ServiceDiscovery</code></td><td>Client side: <code>HttpClient</code> calls <code>https+http://catalog</code> and it resolves to the real endpoints</td></tr>
+    <tr><td><b>Health endpoints</b></td><td><span class="pill builtin">built-in</span> <code>MapHealthChecks</code></td><td>What Azure Front Door, App Gateway or Kubernetes probe</td></tr>
+  </table>
+<pre class="code"><code>// Program.cs
+builder.Services.AddReverseProxy().LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
+app.MapReverseProxy();
+
+// appsettings.json
+"ReverseProxy": {
+  "Routes":   { "api": { "ClusterId": "api", "Match": { "Path": "/api/{**catch-all}" } } },
+  "Clusters": {
+    "api": {
+      "LoadBalancingPolicy": "LeastRequests",
+      "HealthCheck": {
+        "Active":  { "Enabled": true, "Interval": "00:00:10", "Path": "/health/ready" },
+        "Passive": { "Enabled": true }
+      },
+      "Destinations": {
+        "a": { "Address": "https://10.0.1.4/" },
+        "b": { "Address": "https://10.0.1.5/" }
+      }
+    }
+  }
+}</code></pre>
+</div>
+  </section>
+
+<!-- CONSISTENT HASHING -->
+<section class="concept" id="consistent-hashing">
+  <h2><span class="num">3.4</span> Consistent hashing <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Place nodes and keys on a hash ring. Each key belongs to the next node clockwise, so adding a node only moves about 1/N of the keys.</p>
+<div class="svgwrap">
+<svg viewBox="0 0 860 360" width="860" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, sans-serif" role="img" aria-label="Hash ring with nodes A to D; keys belong to the next node clockwise. When Node E joins, only the two keys between A and E move to E. With hash mod N, most keys move.">
+  <g transform="translate(30,10)">
+    <circle cx="170" cy="170" r="120" fill="none" stroke="#cbd5e1" stroke-width="10"/>
+    <circle cx="170" cy="170" r="120" fill="none" stroke="#94a3b8" stroke-width="2" stroke-dasharray="3 7">
+      <animateTransform attributeName="transform" type="rotate" from="0 170 170" to="360 170 170" dur="30s" repeatCount="indefinite"/>
+    </circle>
+    <text x="170" y="160" text-anchor="middle" font-size="14" font-weight="700" fill="#1e293b">hash ring</text>
+    <text x="170" y="180" text-anchor="middle" font-size="12" fill="#64748b">key → next node</text>
+    <text x="170" y="196" text-anchor="middle" font-size="12" fill="#64748b">clockwise ↻</text>
+    <!-- keys -->
+    <g stroke="#fff" stroke-width="2">
+      <circle cx="211" cy="57.2" r="7" fill="#059669"><animate attributeName="fill" values="#059669;#059669;#db2777;#db2777;#059669" keyTimes="0;0.42;0.48;0.92;1" dur="8s" repeatCount="indefinite"/><animate attributeName="r" values="7;7;10;7;7" keyTimes="0;0.42;0.46;0.52;1" dur="8s" repeatCount="indefinite"/></circle>
+      <circle cx="230" cy="66.1" r="7" fill="#059669"><animate attributeName="fill" values="#059669;#059669;#db2777;#db2777;#059669" keyTimes="0;0.44;0.5;0.92;1" dur="8s" repeatCount="indefinite"/><animate attributeName="r" values="7;7;10;7;7" keyTimes="0;0.44;0.48;0.54;1" dur="8s" repeatCount="indefinite"/></circle>
+      <circle cx="282.8" cy="129" r="7" fill="#059669"/>
+      <circle cx="273.9" cy="230" r="7" fill="#7c3aed"/>
+      <circle cx="230" cy="273.9" r="7" fill="#7c3aed"/>
+      <circle cx="110" cy="273.9" r="7" fill="#d97706"/>
+      <circle cx="61.2" cy="220.7" r="7" fill="#d97706"/>
+      <circle cx="57.2" cy="129" r="7" fill="#2563eb"/>
+      <circle cx="110" cy="66.1" r="7" fill="#2563eb"/>
+    </g>
+    <!-- nodes -->
+    <g font-size="15" font-weight="700" text-anchor="middle" fill="#fff">
+      <circle cx="170" cy="50" r="18" fill="#2563eb"/><text x="170" y="55">A</text>
+      <circle cx="290" cy="170" r="18" fill="#059669"/><text x="290" y="175">B</text>
+      <circle cx="170" cy="290" r="18" fill="#7c3aed"/><text x="170" y="295">C</text>
+      <circle cx="50" cy="170" r="18" fill="#d97706"/><text x="50" y="175">D</text>
+    </g>
+    <g font-size="12.5" font-weight="700" fill="#1e293b">
+      <text x="170" y="22" text-anchor="middle">Node A</text>
+      <text x="314" y="175">Node B</text>
+      <text x="170" y="332" text-anchor="middle">Node C</text>
+      <text x="26" y="175" text-anchor="end">Node D</text>
+    </g>
+    <!-- new node E -->
+    <g opacity="0">
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.3;0.38;0.92;1" dur="8s" repeatCount="indefinite"/>
+      <circle cx="254.85" cy="85.15" r="18" fill="#db2777"/>
+      <circle cx="254.85" cy="85.15" r="18" fill="none" stroke="#db2777" stroke-width="2">
+        <animate attributeName="r" values="18;30" dur="1.6s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0.8;0" dur="1.6s" repeatCount="indefinite"/>
+      </circle>
+      <text x="254.85" y="90.15" text-anchor="middle" font-size="15" font-weight="700" fill="#fff">E</text>
+      <text x="282" y="58" font-size="12.5" font-weight="700" fill="#be185d">Node E joins</text>
+    </g>
+  </g>
+
+  <!-- right panel: comparison -->
+  <text x="430" y="40" font-size="15" font-weight="700" fill="#1e293b">Add a 5th node: how many keys move?</text>
+  <text x="430" y="92" font-size="13" font-weight="700" fill="#1e293b">hash(key) mod N  (N: 4 → 5)</text>
+  <g stroke="#fff" stroke-width="1.5">
+    <rect x="430" y="104" width="26" height="26" rx="6" fill="#dc2626"><animate attributeName="fill" values="#94a3b8;#94a3b8;#dc2626;#dc2626;#94a3b8" keyTimes="0;0.38;0.44;0.92;1" dur="8s" repeatCount="indefinite"/></rect>
+    <rect x="460" y="104" width="26" height="26" rx="6" fill="#dc2626"><animate attributeName="fill" values="#94a3b8;#94a3b8;#dc2626;#dc2626;#94a3b8" keyTimes="0;0.39;0.45;0.92;1" dur="8s" repeatCount="indefinite"/></rect>
+    <rect x="490" y="104" width="26" height="26" rx="6" fill="#94a3b8"/>
+    <rect x="520" y="104" width="26" height="26" rx="6" fill="#dc2626"><animate attributeName="fill" values="#94a3b8;#94a3b8;#dc2626;#dc2626;#94a3b8" keyTimes="0;0.4;0.46;0.92;1" dur="8s" repeatCount="indefinite"/></rect>
+    <rect x="550" y="104" width="26" height="26" rx="6" fill="#dc2626"><animate attributeName="fill" values="#94a3b8;#94a3b8;#dc2626;#dc2626;#94a3b8" keyTimes="0;0.41;0.47;0.92;1" dur="8s" repeatCount="indefinite"/></rect>
+    <rect x="580" y="104" width="26" height="26" rx="6" fill="#dc2626"><animate attributeName="fill" values="#94a3b8;#94a3b8;#dc2626;#dc2626;#94a3b8" keyTimes="0;0.42;0.48;0.92;1" dur="8s" repeatCount="indefinite"/></rect>
+    <rect x="610" y="104" width="26" height="26" rx="6" fill="#dc2626"><animate attributeName="fill" values="#94a3b8;#94a3b8;#dc2626;#dc2626;#94a3b8" keyTimes="0;0.43;0.49;0.92;1" dur="8s" repeatCount="indefinite"/></rect>
+    <rect x="640" y="104" width="26" height="26" rx="6" fill="#dc2626"><animate attributeName="fill" values="#94a3b8;#94a3b8;#dc2626;#dc2626;#94a3b8" keyTimes="0;0.44;0.5;0.92;1" dur="8s" repeatCount="indefinite"/></rect>
+    <rect x="670" y="104" width="26" height="26" rx="6" fill="#94a3b8"/>
+    <rect x="700" y="104" width="26" height="26" rx="6" fill="#dc2626"><animate attributeName="fill" values="#94a3b8;#94a3b8;#dc2626;#dc2626;#94a3b8" keyTimes="0;0.45;0.51;0.92;1" dur="8s" repeatCount="indefinite"/></rect>
+  </g>
+  <text x="430" y="154" font-size="13" font-weight="700" fill="#dc2626">✗ almost ALL keys move (about 80%)</text>
+
+  <text x="430" y="206" font-size="13" font-weight="700" fill="#1e293b">consistent hashing</text>
+  <g stroke="#fff" stroke-width="1.5">
+    <rect x="430" y="218" width="26" height="26" rx="6" fill="#94a3b8"/>
+    <rect x="460" y="218" width="26" height="26" rx="6" fill="#db2777"><animate attributeName="fill" values="#94a3b8;#94a3b8;#db2777;#db2777;#94a3b8" keyTimes="0;0.42;0.48;0.92;1" dur="8s" repeatCount="indefinite"/></rect>
+    <rect x="490" y="218" width="26" height="26" rx="6" fill="#94a3b8"/>
+    <rect x="520" y="218" width="26" height="26" rx="6" fill="#94a3b8"/>
+    <rect x="550" y="218" width="26" height="26" rx="6" fill="#94a3b8"/>
+    <rect x="580" y="218" width="26" height="26" rx="6" fill="#94a3b8"/>
+    <rect x="610" y="218" width="26" height="26" rx="6" fill="#db2777"><animate attributeName="fill" values="#94a3b8;#94a3b8;#db2777;#db2777;#94a3b8" keyTimes="0;0.44;0.5;0.92;1" dur="8s" repeatCount="indefinite"/></rect>
+    <rect x="640" y="218" width="26" height="26" rx="6" fill="#94a3b8"/>
+    <rect x="670" y="218" width="26" height="26" rx="6" fill="#94a3b8"/>
+    <rect x="700" y="218" width="26" height="26" rx="6" fill="#94a3b8"/>
+  </g>
+  <text x="430" y="268" font-size="13" font-weight="700" fill="#059669">✓ only the neighbour's keys move (about 1/N)</text>
+
+  <rect x="430" y="296" width="410" height="46" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="444" y="316" font-size="12.5" font-weight="700" fill="#5b21b6">Virtual nodes: each server appears many times</text>
+  <text x="444" y="333" font-size="12" fill="#5b21b6">on the ring, so the keys spread evenly</text>
+</svg>
+</div>
+<p class="tip">Watch Node E join: only the keys between Node A and Node E (they used to belong to Node B) move to E. Every other key stays where it is. With <b>hash(key) mod N</b>, changing N from 4 to 5 sends almost every key to a different node. <b>Virtual nodes</b> = each server appears many times on the ring, which gives an even spread.</p>
+  <div class="remember"><ul><li>Used in Cassandra, DynamoDB, Redis Cluster (hash slots), CDNs and distributed caches.</li></ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>XxHash3 / XxHash64</b></td><td><code>System.IO.Hashing</code></td><td>Fast, stable hash for ring positions. Don't use <code>string.GetHashCode()</code>: it changes on every process start</td></tr>
+    <tr><td><b>Sorted array + BinarySearch</b></td><td><span class="pill builtin">built-in</span> <code>SortedList</code>, <code>Array.BinarySearch</code></td><td>Find the next node clockwise in O(log n). .NET has no built-in hash ring</td></tr>
+    <tr><td><b>Redis Cluster</b></td><td><code>StackExchange.Redis</code></td><td>Redis uses 16,384 hash slots instead of a ring; the client routes each key for you</td></tr>
+    <tr><td><b>Cosmos DB / Kafka partitions</b></td><td><code>Microsoft.Azure.Cosmos</code>, <code>Confluent.Kafka</code></td><td>Pick a good partition key; the service does the hashing</td></tr>
+  </table>
+<pre class="code"><code>public sealed class HashRing
+{
+    private readonly ulong[] _positions;   // sorted points on the ring
+    private readonly string[] _nodes;      // node that owns each point
+
+    public HashRing(IEnumerable&lt;string&gt; nodes, int virtualNodes = 100)
+    {
+        var ring = new SortedList&lt;ulong, string&gt;();
+        foreach (var node in nodes)
+            for (var i = 0; i &lt; virtualNodes; i++)
+                ring[Hash($"{node}#{i}")] = node;   // many points per node = even spread
+        _positions = [.. ring.Keys];
+        _nodes = [.. ring.Values];
+    }
+
+    public string GetNode(string key)
+    {
+        var i = Array.BinarySearch(_positions, Hash(key));
+        if (i &lt; 0) i = ~i;                                // first point clockwise
+        return _nodes[i == _positions.Length ? 0 : i];    // wrap around the ring
+    }
+
+    private static ulong Hash(string s) =&gt; XxHash3.HashToUInt64(Encoding.UTF8.GetBytes(s));
+}</code></pre>
+</div>
+  </section>
+
+<!-- FAULT TOLERANCE -->
+<section class="concept" id="ft">
+  <h2><span class="num">3.5</span> Fault tolerance</h2>
+  <p class="oneliner">The system keeps working, maybe in a reduced mode, when parts of it fail. Design assuming <i>everything fails eventually</i>.</p>
+  <div class="grid">
+    <div class="box blue"><h4>High availability</h4><p>Minimise downtime with redundancy and fast failover. A brief blip is OK.</p></div>
+    <div class="box green"><h4>Fault tolerance</h4><p>No interruption at all when a component fails. Costs more.</p></div>
+    <div class="box purple"><h4>Resilience</h4><p>Absorb the failure, degrade gracefully and recover automatically.</p></div>
+  </div>
+  <h3>How it's achieved</h3>
+  <ul>
+    <li><b>Remove single points of failure (SPOF)</b>: at least 2 of everything, across availability zones.</li>
+    <li><b>Redundancy models</b>: active-active (all serve traffic) or active-passive (standby takes over). N+1 or N+2 capacity.</li>
+    <li><b>Replication</b> of data: synchronous (no data loss, slower) or asynchronous (fast, may lose recent writes).</li>
+    <li><b>Failover</b>: automatic detection (health checks, heartbeats) and switchover. Leader election (Raft/Paxos) for clusters.</li>
+    <li><b>Isolation</b>: bulkheads and cells, so one failure doesn't sink everything.</li>
+    <li><b>Graceful degradation</b>: serve cached or partial data, turn off non-critical features.</li>
+    <li><b>Chaos engineering</b>: inject failures on purpose to prove resilience (Chaos Monkey, Azure Chaos Studio).</li>
+  </ul>
+<div class="svgwrap">
+<svg viewBox="0 0 880 430" width="880" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, sans-serif" role="img" aria-label="Three availability zones, each with two stateless apps, a DB primary in zone 1 replicating synchronously to replicas in zones 2 and 3, and asynchronously to a DR region. Zone 3 fails and traffic keeps flowing to zones 1 and 2.">
+  <defs>
+    <marker id="ft-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#059669"/></marker>
+    <marker id="ft-ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#d97706"/></marker>
+  </defs>
+  <!-- status line -->
+  <text x="450" y="30" font-size="13" font-weight="700" fill="#059669">✓ All zones healthy<animate attributeName="opacity" values="1;1;0;0;1;1" keyTimes="0;0.34;0.36;0.88;0.9;1" dur="8s" repeatCount="indefinite"/></text>
+  <text x="450" y="30" font-size="13" font-weight="700" fill="#dc2626" opacity="0">✗ Zone 3 down → traffic shifts to Zones 1 and 2<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.34;0.36;0.88;0.9;1" dur="8s" repeatCount="indefinite"/></text>
+  <!-- load balancer -->
+  <rect x="242" y="8" width="176" height="34" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+  <text x="330" y="30" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1e293b">Load balancer</text>
+  <!-- regions -->
+  <rect x="10" y="56" width="650" height="364" rx="16" fill="#f8fafc" stroke="#64748b" stroke-width="2"/>
+  <text x="24" y="76" font-size="12.5" font-weight="700" fill="#334155">Region 1 (primary)</text>
+  <rect x="680" y="56" width="190" height="364" rx="16" fill="#fef3c7" stroke="#d97706" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="775" y="80" text-anchor="middle" font-size="13" font-weight="700" fill="#92400e">Region 2 (DR)</text>
+  <!-- zones -->
+  <rect x="24" y="88" width="200" height="284" rx="12" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
+  <rect x="240" y="88" width="200" height="284" rx="12" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
+  <rect x="456" y="88" width="200" height="284" rx="12" fill="#ffffff" stroke="#2563eb" stroke-width="2">
+    <animate attributeName="fill" values="#ffffff;#ffffff;#fee2e2;#fee2e2;#ffffff;#ffffff" keyTimes="0;0.34;0.36;0.88;0.9;1" dur="8s" repeatCount="indefinite"/>
+    <animate attributeName="stroke" values="#2563eb;#2563eb;#dc2626;#dc2626;#2563eb;#2563eb" keyTimes="0;0.34;0.36;0.88;0.9;1" dur="8s" repeatCount="indefinite"/>
+  </rect>
+  <!-- traffic lines -->
+  <g stroke="#cbd5e1" stroke-width="2">
+    <line x1="330" y1="42" x2="76" y2="122"/><line x1="330" y1="42" x2="172" y2="122"/>
+    <line x1="330" y1="42" x2="292" y2="122"/><line x1="330" y1="42" x2="388" y2="122"/>
+  </g>
+  <g stroke="#cbd5e1" stroke-width="2">
+    <animate attributeName="stroke" values="#cbd5e1;#cbd5e1;#fca5a5;#fca5a5;#cbd5e1;#cbd5e1" keyTimes="0;0.34;0.36;0.88;0.9;1" dur="8s" repeatCount="indefinite"/>
+    <line x1="330" y1="42" x2="508" y2="122" stroke-dasharray="5 5"/><line x1="330" y1="42" x2="604" y2="122" stroke-dasharray="5 5"/>
+  </g>
+  <!-- traffic dots -->
+  <g fill="#7c3aed">
+    <circle r="5"><animateMotion dur="2s" repeatCount="indefinite" path="M330,42 L76,122"/></circle>
+    <circle r="5"><animateMotion dur="2s" begin="0.5s" repeatCount="indefinite" path="M330,42 L172,122"/></circle>
+    <circle r="5"><animateMotion dur="2s" begin="1s" repeatCount="indefinite" path="M330,42 L292,122"/></circle>
+    <circle r="5"><animateMotion dur="2s" begin="1.5s" repeatCount="indefinite" path="M330,42 L388,122"/></circle>
+    <g>
+      <animate attributeName="opacity" values="1;1;0;0;1;1" keyTimes="0;0.34;0.36;0.88;0.9;1" dur="8s" repeatCount="indefinite"/>
+      <circle r="5"><animateMotion dur="2s" begin="0.25s" repeatCount="indefinite" path="M330,42 L508,122"/></circle>
+      <circle r="5"><animateMotion dur="2s" begin="1.25s" repeatCount="indefinite" path="M330,42 L604,122"/></circle>
+    </g>
+  </g>
+  <!-- apps -->
+  <g font-size="13" font-weight="700" text-anchor="middle" fill="#1e293b">
+    <rect x="34" y="122" width="84" height="44" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="76" y="149">App</text>
+    <rect x="130" y="122" width="84" height="44" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="172" y="149">App</text>
+    <rect x="250" y="122" width="84" height="44" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="292" y="149">App</text>
+    <rect x="346" y="122" width="84" height="44" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="388" y="149">App</text>
+  </g>
+  <g font-size="11.5" fill="#64748b" text-anchor="middle">
+    <text x="124" y="190">stateless, auto-scaled</text>
+    <text x="340" y="190">stateless, auto-scaled</text>
+  </g>
+  <!-- DBs zone 1-2 -->
+  <rect x="38" y="278" width="172" height="56" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <text x="124" y="302" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1e293b">DB Primary</text>
+  <text x="124" y="320" text-anchor="middle" font-size="11.5" fill="#64748b">takes the writes</text>
+  <rect x="254" y="278" width="172" height="56" rx="10" fill="#d1fae5" stroke="#059669" stroke-width="2"/>
+  <text x="340" y="302" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1e293b">DB Replica</text>
+  <text x="340" y="320" text-anchor="middle" font-size="11.5" fill="#64748b">zone-redundant data</text>
+  <!-- zone 3 contents (dim when down) -->
+  <g>
+    <animate attributeName="opacity" values="1;1;0.35;0.35;1;1" keyTimes="0;0.34;0.36;0.88;0.9;1" dur="8s" repeatCount="indefinite"/>
+    <rect x="466" y="122" width="84" height="44" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="508" y="149" text-anchor="middle" font-size="13" font-weight="700" fill="#1e293b">App</text>
+    <rect x="562" y="122" width="84" height="44" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="604" y="149" text-anchor="middle" font-size="13" font-weight="700" fill="#1e293b">App</text>
+    <text x="556" y="190" text-anchor="middle" font-size="11.5" fill="#64748b">stateless, auto-scaled</text>
+    <rect x="470" y="278" width="172" height="56" rx="10" fill="#d1fae5" stroke="#059669" stroke-width="2"/>
+    <text x="556" y="302" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1e293b">DB Replica</text>
+    <text x="556" y="320" text-anchor="middle" font-size="11.5" fill="#64748b">zone-redundant data</text>
+  </g>
+  <text x="556" y="240" text-anchor="middle" font-size="20" font-weight="800" fill="#dc2626" opacity="0">✗ ZONE DOWN<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.34;0.36;0.88;0.9;1" dur="8s" repeatCount="indefinite"/></text>
+  <!-- zone labels -->
+  <g font-size="12.5" font-weight="700" fill="#1e3a8a">
+    <text x="36" y="366">Zone 1</text><text x="252" y="366">Zone 2</text><text x="468" y="366">Zone 3</text>
+  </g>
+  <!-- sync replication -->
+  <line x1="211" y1="306" x2="252" y2="306" stroke="#059669" stroke-width="2.5" marker-end="url(#ft-ah)"/>
+  <line x1="427" y1="306" x2="468" y2="306" stroke="#059669" stroke-width="2.5" marker-end="url(#ft-ah)"><animate attributeName="opacity" values="1;1;0.25;0.25;1;1" keyTimes="0;0.34;0.36;0.88;0.9;1" dur="8s" repeatCount="indefinite"/></line>
+  <rect x="214" y="282" width="36" height="16" rx="8" fill="#fff" stroke="#059669" stroke-width="1.2"/><text x="232" y="294" text-anchor="middle" font-size="11" font-weight="700" fill="#059669">sync</text>
+  <rect x="430" y="282" width="36" height="16" rx="8" fill="#fff" stroke="#059669" stroke-width="1.2"/><text x="448" y="294" text-anchor="middle" font-size="11" font-weight="700" fill="#059669">sync</text>
+  <circle r="4" fill="#059669"><animateMotion dur="1.4s" repeatCount="indefinite" path="M212,306 L248,306"/></circle>
+  <circle r="4" fill="#059669"><animateMotion dur="1.4s" begin="0.7s" repeatCount="indefinite" path="M428,306 L464,306"/><animate attributeName="opacity" values="1;1;0;0;1;1" keyTimes="0;0.34;0.36;0.88;0.9;1" dur="8s" repeatCount="indefinite"/></circle>
+  <!-- DR region contents -->
+  <rect x="694" y="122" width="162" height="44" rx="10" fill="#ffffff" stroke="#d97706" stroke-width="2" stroke-dasharray="5 4"/>
+  <text x="775" y="149" text-anchor="middle" font-size="13" font-weight="700" fill="#1e293b">Standby apps</text>
+  <rect x="694" y="278" width="162" height="56" rx="10" fill="#ffffff" stroke="#d97706" stroke-width="2"/>
+  <text x="775" y="302" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1e293b">DB copy</text>
+  <text x="775" y="320" text-anchor="middle" font-size="11.5" fill="#64748b">for disaster recovery</text>
+  <!-- async replication to DR -->
+  <path d="M124,334 V392 H775 V338" fill="none" stroke="#d97706" stroke-width="2.5" stroke-dasharray="7 5" marker-end="url(#ft-ah2)"/>
+  <text x="440" y="410" text-anchor="middle" font-size="12" font-weight="700" fill="#b45309">async replication → Region 2 (DR)</text>
+  <rect x="-7" y="-5" width="14" height="10" rx="2" fill="#f59e0b"><animateMotion dur="3.5s" repeatCount="indefinite" path="M124,336 V392 H775 V340"/></rect>
+</svg>
+</div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Health checks</b></td><td><span class="pill builtin">built-in</span> <code>Microsoft.Extensions.Diagnostics.HealthChecks</code>; dependency checks: <code>AspNetCore.HealthChecks.*</code> (community)</td><td>Liveness and readiness probes, so the platform restarts or removes a broken instance</td></tr>
+    <tr><td><b>Fallback</b></td><td><code>Polly.Core</code> (<code>AddFallback</code>)</td><td>Degrade gracefully: return cached or default data when a dependency fails</td></tr>
+    <tr><td><b>DB retries</b></td><td>EF Core <code>EnableRetryOnFailure()</code></td><td>Ride through transient SQL errors and failovers</td></tr>
+    <tr><td><b>Azure SDK retries</b></td><td><code>ClientOptions.Retry</code> (all <code>Azure.*</code> clients)</td><td>Built-in exponential retry for Storage, Service Bus, Key Vault and others</td></tr>
+    <tr><td><b>Durable messaging</b></td><td><code>Azure.Messaging.ServiceBus</code></td><td>Work waits in a queue while a consumer is down; poison messages go to the dead-letter queue</td></tr>
+  </table>
+<pre class="code"><code>builder.Services.AddHealthChecks()
+    .AddCheck("self", () =&gt; HealthCheckResult.Healthy(), tags: ["live"])
+    .AddSqlServer(builder.Configuration.GetConnectionString("sql")!, tags: ["ready"])   // AspNetCore.HealthChecks.SqlServer
+    .AddDbContextCheck&lt;AppDbContext&gt;(tags: ["ready"]);   // ...HealthChecks.EntityFrameworkCore
+
+builder.Services.AddDbContext&lt;AppDbContext&gt;(o =&gt;
+    o.UseSqlServer(builder.Configuration.GetConnectionString("sql"),
+        sql =&gt; sql.EnableRetryOnFailure()));   // retries transient errors
+
+app.MapHealthChecks("/health/live",  new() { Predicate = c =&gt; c.Tags.Contains("live") });
+app.MapHealthChecks("/health/ready", new() { Predicate = c =&gt; c.Tags.Contains("ready") });</code></pre>
+  <p class="warn">Keep liveness checks shallow (is the process alive?). If liveness checks the database, a DB outage makes the platform restart every instance at once.</p>
+</div>
+  </section>
+
+<!-- RESILIENCE PATTERNS -->
+<section class="concept" id="resilience">
+  <h2><span class="num">3.6</span> Resilience patterns: timeout, retry, circuit breaker, bulkhead <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Code-level patterns that stop one slow or failing dependency from taking everything down with it.</p>
+  <div class="grid">
+    <div class="box"><h4>⏱ Timeout</h4><p>Never wait forever. Set connect and read timeouts below the caller's own timeout.</p></div>
+    <div class="box"><h4>🔁 Retry + exponential backoff + jitter</h4><p>Retry only transient errors (503, timeouts): 100 ms, 200 ms, 400 ms + random. Cap the attempts. Only retry <b>idempotent</b> operations.</p></div>
+    <div class="box"><h4>🔌 Circuit breaker</h4><p>After N failures, stop calling the dependency and fail fast. Probe again later.</p></div>
+    <div class="box"><h4>🚢 Bulkhead</h4><p>Give each dependency its own thread or connection pool, so one bad one can't use up all resources.</p></div>
+    <div class="box"><h4>🪂 Fallback</h4><p>Default value, cached response or friendly message.</p></div>
+    <div class="box"><h4>🚦 Rate limit / load shedding</h4><p>Reject extra load early (429/503) to protect the core.</p></div>
+  </div>
+  <h3>Circuit breaker states</h3>
+  <div class="flow">
+    <div class="n g">CLOSED<small>calls flow, count failures</small></div>
+    <div class="ar">→<small>failures ≥ threshold</small></div>
+    <div class="n r">OPEN<small>fail fast, no calls</small></div>
+    <div class="ar">→<small>after cool-down</small></div>
+    <div class="n a">HALF-OPEN<small>let a few test calls through</small></div>
+    <div class="ar">→<small>success → CLOSED / fail → OPEN</small></div>
+  </div>
+  <div class="remember"><ul>
+    <li>Retries without backoff or jitter cause <b>retry storms</b> that make an outage worse.</li>
+    <li>Retry in one layer only. Retrying at every layer multiplies traffic (3 layers × 3 retries = 27×).</li>
+    <li>Libraries: Polly (.NET), Resilience4j (Java), and service mesh / APIM policies.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Pattern</th><th>Library / API</th></tr>
+    <tr><td><b>All-in-one for HttpClient</b> &#9733;</td><td><code>Microsoft.Extensions.Http.Resilience</code>: <code>AddStandardResilienceHandler()</code> = concurrency limit + total timeout + retry + circuit breaker + per-attempt timeout, with good defaults</td></tr>
+    <tr><td><b>Timeout / retry / circuit breaker</b></td><td>Polly v8 (<code>Polly.Core</code>) <code>ResiliencePipelineBuilder</code>: <code>AddTimeout</code>, <code>AddRetry</code> (exponential backoff + jitter), <code>AddCircuitBreaker</code></td></tr>
+    <tr><td><b>Bulkhead</b></td><td><code>Polly.RateLimiting</code> (<code>AddConcurrencyLimiter</code>), or a <code>SemaphoreSlim</code> per dependency</td></tr>
+    <tr><td><b>Hedging</b></td><td><code>AddStandardHedgingHandler()</code>: send a second request if the first is slow</td></tr>
+    <tr><td><b>Non-HTTP calls</b></td><td><code>Microsoft.Extensions.Resilience</code>: <code>AddResiliencePipeline("name", ...)</code> + <code>ResiliencePipelineProvider&lt;string&gt;</code>, with telemetry</td></tr>
+  </table>
+<pre class="code"><code>// HttpClient: one line gives timeout, retry, circuit breaker and bulkhead
+builder.Services.AddHttpClient&lt;FxClient&gt;(c =&gt; c.BaseAddress = new("https://fx.internal/"))
+    .AddStandardResilienceHandler(o =&gt;
+    {
+        o.AttemptTimeout.Timeout = TimeSpan.FromSeconds(2);
+        o.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(10);
+        o.Retry.MaxRetryAttempts = 3;               // backoff + jitter by default
+    });
+
+// Anything else (DB, SDK): a named Polly v8 pipeline. First added = outermost
+builder.Services.AddResiliencePipeline("ledger", p =&gt; p
+    .AddRetry(new() { MaxRetryAttempts = 3, BackoffType = DelayBackoffType.Exponential, UseJitter = true })
+    .AddCircuitBreaker(new() { FailureRatio = 0.5, MinimumThroughput = 10, BreakDuration = TimeSpan.FromSeconds(30) })
+    .AddTimeout(TimeSpan.FromSeconds(3)));
+
+// Usage (inject ResiliencePipelineProvider&lt;string&gt; provider)
+await provider.GetPipeline("ledger").ExecuteAsync(async t =&gt; await ledger.PostAsync(entry, t), ct);</code></pre>
+  <p class="warn">Only retry idempotent operations, or send an idempotency key. Retrying a payment POST without one can charge the customer twice. The standard handler retries every method by default; call <code>o.Retry.DisableForUnsafeHttpMethods()</code> to stop that.</p>
+</div>
+  <div class="post">
+    <p>The circuit breaker pattern is literally your home fuse box ⚡</p>
+    <p>Too many failures → trip (OPEN) → stop calling the broken service → after a cool-down, try one call (HALF-OPEN) → healthy? Back to normal (CLOSED).</p>
+    <p>Fail fast &gt; fail slow. A slow failure takes your threads, your users and your weekend.</p>
+    <p>#Resilience #Microservices #SRE</p>
+  </div>
+</section>
+
+<!-- AVAILABILITY -->
+<section class="concept" id="availability">
+  <h2><span class="num">3.7</span> Availability (HA &amp; "the nines") <span class="tag-added">Added</span></h2>
+  <p class="oneliner"><b>Availability</b> is the percentage of time a system is up and <b>working correctly for its users</b>. High availability (HA) means designing it so failures cause little or no downtime.</p>
+
+  <h3>How it's measured</h3>
+  <div class="cols2">
+    <div class="box blue"><h4>⏱ Time-based</h4><p><code>Availability = uptime ÷ (uptime + downtime)</code></p><p><code>= MTBF ÷ (MTBF + MTTR)</code></p><p>MTBF = mean time between failures. MTTR = mean time to recover.</p></div>
+    <div class="box green"><h4>📨 Request-based (preferred for APIs)</h4><p><code>Availability = successful requests ÷ total valid requests</code></p><p>e.g. 999,000 good out of 1,000,000 = 99.9%. This reflects what users actually experienced.</p></div>
+  </div>
+<figure class="viz" data-viz="lanes"><script type="application/json">
+{"title":"Up, fail, recover, repeat","max":20,"labelW":90,"width":760,"rowH":44,"axis":"time →","dur":5000,
+ "rows":[
+  {"label":"System","blocks":[
+   {"s":0,"e":8,"t":"up","c":"green"},
+   {"s":8,"e":10,"t":"down","c":"red"},
+   {"s":10,"e":18,"t":"up","c":"green"},
+   {"s":18,"e":20,"t":"down","c":"red"}]}
+ ],
+ "spans":[
+  {"s":0,"e":8,"t":"MTBF (up)","c":"green"},
+  {"s":8,"e":10,"t":"MTTR","c":"red"},
+  {"s":10,"e":18,"t":"MTBF (up)","c":"green"},
+  {"s":18,"e":20,"t":"MTTR","c":"red"}
+ ],
+ "markers":[{"at":8,"t":"💥 failure","c":"red"},{"at":18,"t":"💥 failure","c":"red"}]}
+</script></figure>
+<figure class="viz" data-viz="bars"><script type="application/json">
+{"title":"Same MTBF (720 h), faster recovery = more nines","max":60,
+ "rows":[
+  {"label":"MTTR 1 h","v":60,"show":"<b>99.86%</b> (720 ÷ 721)","c":"red","note":"≈ 60 min down per failure"},
+  {"label":"MTTR 6 min (0.1 h)","v":6,"show":"<b>99.986%</b> (720 ÷ 720.1)","c":"green","note":"≈ 6 min down per failure"}
+ ]}
+</script></figure>
+
+  <div class="grid">
+    <div class="box"><h4>Availability</h4><p>Is it up and answering right now?</p></div>
+    <div class="box"><h4>Reliability</h4><p>Does it work correctly over time, without failing? (MTBF)</p></div>
+    <div class="box"><h4>Durability</h4><p>Is the data kept safe and never lost? (Storage: 11 nines of durability ≠ 11 nines of availability.)</p></div>
+    <div class="box"><h4>Resilience</h4><p>How well does it absorb failures and recover?</p></div>
+  </div>
+
+  <h3>The nines</h3>
+  <div class="cols2">
+    <table>
+      <tr><th>Availability</th><th>Downtime / year</th><th>Downtime / month</th></tr>
+      <tr><td>99% (two nines)</td><td>3.65 days</td><td>7.3 h</td></tr>
+      <tr><td>99.9%</td><td>8.77 h</td><td>43.8 min</td></tr>
+      <tr><td>99.95%</td><td>4.38 h</td><td>21.9 min</td></tr>
+      <tr><td>99.99%</td><td>52.6 min</td><td>4.4 min</td></tr>
+      <tr><td>99.999%</td><td>5.26 min</td><td>26 s</td></tr>
+    </table>
+    <div>
+      <h3>Composite availability</h3>
+      <p><b>In series</b> (A calls B): multiply.<br><code>99.9% × 99.9% = 99.8%</code>. Each dependency lowers the total.</p>
+      <p><b>In parallel</b> (redundant copies): <code>1 − (1 − a)ⁿ</code><br>Two 99% nodes → <code>1 − 0.01² = 99.99%</code>.</p>
+      <p class="tip">Redundancy raises availability. Long dependency chains lower it.</p>
+    </div>
+  </div>
+
+  <h3>How to achieve high availability: redundancy at every layer</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Layer</th><th>HA technique</th><th>Azure examples</th></tr>
+    <tr><td>Edge / DNS</td><td>Global load balancing, multi-region routing, health-based failover</td><td>Front Door, Traffic Manager</td></tr>
+    <tr><td>Compute</td><td>2+ stateless instances spread across availability zones, auto-scale, auto-heal</td><td>App Service zone redundancy, AKS across zones, VM Scale Sets</td></tr>
+    <tr><td>Gateway</td><td>Multiple units across zones or regions</td><td>APIM Premium with zones / multi-region</td></tr>
+    <tr><td>Data</td><td>Synchronous replicas in-region, async geo-replica, automatic failover</td><td>Azure SQL zone-redundant + failover groups, Cosmos DB multi-region</td></tr>
+    <tr><td>Messaging</td><td>Zone-redundant broker, geo-disaster-recovery pairing</td><td>Service Bus Premium, Event Hubs geo-DR</td></tr>
+    <tr><td>Dependencies</td><td>Timeouts, circuit breakers, cached fallbacks, async decoupling</td><td>Polly, APIM policies, queues</td></tr>
+    <tr><td>Releases</td><td>Zero-downtime deployments and fast rollback</td><td>Blue-green, canary, deployment slots</td></tr>
+    <tr><td>Operations</td><td>Health probes, alerting, runbooks, automated failover, DR drills</td><td>Azure Monitor, Chaos Studio</td></tr>
+  </table></div>
+
+  <div class="cols2">
+    <div class="box blue"><h4>Active-active</h4><p>All sites serve traffic at the same time.</p><ul><li>➕ Near-zero failover time, capacity is already warm</li><li>➖ Costly. Data consistency across sites is hard</li></ul></div>
+    <div class="box purple"><h4>Active-passive</h4><p>A standby takes over when the primary fails (hot, warm or cold).</p><ul><li>➕ Simpler, cheaper</li><li>➖ Failover takes time. The standby may be untested or stale</li></ul></div>
+  </div>
+
+  <div class="remember"><ul>
+    <li>Two levers: <b>fail less often</b> (raise MTBF: redundancy, testing, change control) and <b>recover faster</b> (cut MTTR: detection, automated failover, rollback). Recovering faster is usually cheaper.</li>
+    <li>Changes cause most outages. Safe deployment practices protect availability as much as redundancy does.</li>
+    <li>Agree whether <b>planned maintenance</b> counts as downtime in the SLA.</li>
+    <li>Availability is only as high as your <b>weakest required dependency</b>, including DNS, the identity provider, certificates and third-party APIs.</li>
+    <li>Pick a target from the business impact. 99.99% costs far more than 99.9%. Don't over-engineer internal or batch systems.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Health checks + probes</b></td><td><span class="pill builtin">built-in</span> <code>MapHealthChecks</code></td><td>Load balancers route around failed instances and zones (see 3.5)</td></tr>
+    <tr><td><b>SQL connection resiliency</b></td><td><code>Microsoft.Data.SqlClient</code></td><td><code>ConnectRetryCount</code> / <code>ConnectRetryInterval</code> reconnect after a blip; connect to the failover-group listener so failover needs no config change</td></tr>
+    <tr><td><b>Cosmos DB multi-region</b></td><td><code>Microsoft.Azure.Cosmos</code></td><td><code>ApplicationPreferredRegions</code>: the SDK reads from the nearest region and moves to the next one if it fails</td></tr>
+    <tr><td><b>Geo-redundant storage reads</b></td><td><code>Azure.Storage.Blobs</code></td><td><code>GeoRedundantSecondaryUri</code>: reads fall back to the secondary region (RA-GRS)</td></tr>
+    <tr><td><b>Availability SLI</b></td><td><span class="pill builtin">built-in</span> <code>http.server.request.duration</code> metric</td><td>Count successful vs failed requests to measure "the nines" (see 3.9)</td></tr>
+  </table>
+<pre class="code"><code>// Cosmos DB: nearest region first, automatic move to the next if it fails
+var cosmos = new CosmosClient(endpoint, new DefaultAzureCredential(), new CosmosClientOptions
+{
+    ApplicationPreferredRegions = [Regions.AustraliaEast, Regions.AustraliaSoutheast]
+});</code></pre>
+</div>
+  <div class="post">
+    <p>Want more nines? Fix your MTTR, not just your MTBF ⏱</p>
+    <p>Availability = MTBF ÷ (MTBF + MTTR)</p>
+    <p>Fail once a month, recover in 1 hour → 99.86%</p>
+    <p>Same failures, recover in 6 minutes → 99.986%</p>
+    <p>Redundancy, health checks, automated failover and one-click rollback beat "we'll never fail".</p>
+    <p>#HighAvailability #SRE #SystemDesign</p>
+  </div>
+</section>
+
+<!-- PERFORMANCE -->
+<section class="concept" id="performance">
+  <h2><span class="num">3.8</span> Performance <span class="tag-added">Added</span></h2>
+  <p class="oneliner"><b>Performance</b> is how fast a system responds and how much work it can get through with the resources it has.</p>
+
+  <h3>Key metrics</h3>
+  <div class="grid">
+    <div class="box blue"><h4>⏱ Latency / response time</h4><p>Time for one request. Track p50, p95 and p99, not the average.</p></div>
+    <div class="box green"><h4>🚚 Throughput</h4><p>Work per second: requests/s, TPS, messages/s, MB/s.</p></div>
+    <div class="box amber"><h4>📊 Utilisation</h4><p>How busy the resources are: CPU, memory, connections, threads, DB DTU.</p></div>
+    <div class="box red"><h4>❌ Error rate under load</h4><p>Timeouts and 5xx often appear only when load rises.</p></div>
+  </div>
+
+  <h3>Performance vs scalability</h3>
+  <div class="cols2">
+    <div class="box purple"><h4>Performance problem</h4><p>The system is slow <b>even for one user</b>. Fix the code, query, algorithm or network path.</p></div>
+    <div class="box teal"><h4>Scalability problem</h4><p>Fast for one user, but <b>slows down as load grows</b>. Fix capacity, contention or the architecture (scale out, cache, queue, partition).</p></div>
+  </div>
+
+  <h3>Why things slow down under load: queueing</h3>
+<p>Response time = network + <b>waiting in queue</b> + service time. Waiting time explodes as utilisation approaches 100% (simple queue model: <code>R = S ÷ (1 − U)</code>, where S is the service time and U the utilisation).</p>
+<div class="svgwrap">
+<svg viewBox="0 0 760 350" width="760" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, sans-serif" role="img" aria-label="Latency against utilisation: flat at first, then a hockey stick. U=50% gives 2 times the service time, 80% gives 5 times, 90% gives 10 times. Keep utilisation around 60 to 70 percent.">
+  <!-- keep zone -->
+  <rect x="448" y="40" width="63" height="250" fill="#d1fae5" opacity="0.8"/>
+  <text x="479.5" y="58" text-anchor="middle" font-size="12" font-weight="700" fill="#065f46">keep</text>
+  <text x="479.5" y="74" text-anchor="middle" font-size="12" font-weight="700" fill="#065f46">here</text>
+  <!-- grid -->
+  <g stroke="#e2e8f0" stroke-width="1">
+    <line x1="70" y1="206" x2="700" y2="206"/><line x1="70" y1="101" x2="700" y2="101"/>
+  </g>
+  <!-- axes -->
+  <g stroke="#475569" stroke-width="2" fill="none">
+    <path d="M70,30 V290 H710"/>
+  </g>
+  <path d="M64,38 L70,26 L76,38 z" fill="#475569"/><path d="M702,284 L714,290 L702,296 z" fill="#475569"/>
+  <text x="28" y="160" font-size="12.5" font-weight="700" fill="#334155" text-anchor="middle" transform="rotate(-90 28 160)">latency (× service time)</text>
+  <g font-size="11.5" fill="#64748b" text-anchor="end">
+    <text x="62" y="294">1×</text><text x="62" y="210">5×</text><text x="62" y="105">10×</text>
+  </g>
+  <g font-size="11.5" fill="#64748b" text-anchor="middle">
+    <text x="70" y="308">0%</text><text x="385" y="308">50%</text><text x="700" y="308">100%</text>
+  </g>
+  <text x="479.5" y="308" text-anchor="middle" font-size="11.5" font-weight="700" fill="#059669">60–70%</text>
+  <text x="710" y="334" text-anchor="end" font-size="12.5" font-weight="700" fill="#334155">utilisation →</text>
+  <!-- 100% asymptote -->
+  <line x1="700" y1="30" x2="700" y2="290" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="5 5"/>
+  <text x="694" y="150" text-anchor="end" font-size="11.5" font-weight="700" fill="#dc2626">wait → ∞</text>
+  <!-- curve -->
+  <path id="q-curve" d="M70,290 L133,287.7 L196,284.8 L259,281 L322,276 L385,269 L448,258.5 L511,241 L542.5,227 L574,206 L590,191 L605.5,171 L615,156 L624.4,136 L631,120 L637,101 L643.3,77.7 L649.6,48.5" fill="none" stroke="#2563eb" stroke-width="3" stroke-linejoin="round"/>
+  <!-- markers -->
+  <circle cx="385" cy="269" r="5" fill="#d97706"/>
+  <text x="385" y="252" text-anchor="middle" font-size="12" font-weight="700" fill="#b45309">U = 50% → 2×</text>
+  <circle cx="574" cy="206" r="5" fill="#d97706"/>
+  <text x="562" y="196" text-anchor="end" font-size="12" font-weight="700" fill="#b45309">U = 80% → 5×</text>
+  <circle cx="637" cy="101" r="5" fill="#dc2626"/>
+  <text x="625" y="96" text-anchor="end" font-size="12" font-weight="700" fill="#dc2626">U = 90% → 10× service time</text>
+  <!-- moving request -->
+  <circle r="8" fill="#2563eb" stroke="#fff" stroke-width="2.5">
+    <animateMotion dur="6s" repeatCount="indefinite" keyPoints="0;0.55;1;1" keyTimes="0;0.6;0.85;1" calcMode="linear"><mpath href="#q-curve"/></animateMotion>
+  </circle>
+</svg>
+</div>
+
+  <h3>Where the time goes, and what to do about it</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Layer</th><th>Common bottleneck</th><th>Fixes</th></tr>
+    <tr><td>Client / edge</td><td>Distance, big payloads, many round trips</td><td>CDN, compression, HTTP/2–3, bundle calls, put data in the same region</td></tr>
+    <tr><td>Gateway / network</td><td>TLS handshakes, extra hops, chatty services</td><td>Keep-alive, connection reuse, fewer hops, gRPC internally</td></tr>
+    <tr><td>Application</td><td>Sequential calls, blocking I/O, inefficient code</td><td>Parallel calls, async I/O, better algorithms, profiling, caching</td></tr>
+    <tr><td>Data</td><td>Slow queries, missing indexes, lock contention, N+1</td><td>Indexes, query tuning, read replicas, batching, denormalising</td></tr>
+    <tr><td>Infrastructure</td><td>CPU, memory or connection pool exhausted</td><td>Right-size, auto-scale, pool tuning, load balancing</td></tr>
+    <tr><td>Long-running work</td><td>User waits for heavy processing</td><td>Return 202 and process asynchronously through a queue</td></tr>
+  </table></div>
+
+  <h3>The tuning loop</h3>
+  <div class="flow">
+    <div class="n">1. Set a target<small>p95 &lt; 300 ms at 500 TPS</small></div><div class="ar">→</div>
+    <div class="n p">2. Measure<small>APM, traces, load test</small></div><div class="ar">→</div>
+    <div class="n a">3. Find the biggest bottleneck<small>profile, trace waterfall</small></div><div class="ar">→</div>
+    <div class="n g">4. Fix that one thing</div><div class="ar">→</div>
+    <div class="n s">5. Re-measure ↺</div>
+  </div>
+
+  <h3>Performance testing types</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Test</th><th>Question it answers</th><th>How</th></tr>
+    <tr><td><b>Load</b></td><td>Does it meet targets at expected peak?</td><td>Ramp to peak load, hold it</td></tr>
+    <tr><td><b>Stress</b></td><td>Where does it break, and how does it fail?</td><td>Push beyond peak until it fails</td></tr>
+    <tr><td><b>Spike</b></td><td>Can it handle a sudden surge (salary day, a promotion)?</td><td>Jump instantly from low to very high load</td></tr>
+    <tr><td><b>Soak / endurance</b></td><td>Does it degrade over hours (memory leaks, pool exhaustion)?</td><td>Moderate load for 8–24 h or more</td></tr>
+    <tr><td><b>Capacity / scalability</b></td><td>How much load per instance? When must we add more?</td><td>Increase load step by step and track resource use</td></tr>
+  </table></div>
+
+  <div class="remember"><ul>
+    <li>Write performance targets as <b>measurable NFRs</b>, for example "p95 &lt; 300 ms at 500 TPS with error rate &lt; 0.1%".</li>
+    <li>Test with <b>production-like data volumes</b> and environments. A query that's fast on 1,000 rows can be slow on 100 million.</li>
+    <li>Fix the biggest bottleneck first. Speeding up anything else won't help (Amdahl's law).</li>
+    <li>Keep headroom. Run at 60–70% utilisation, not 95%.</li>
+    <li>Tools: JMeter, k6, Gatling, Azure Load Testing for testing. App Insights, Datadog, Dynatrace for APM and profiling.</li>
+    <li>For API-specific techniques, see <a href="06-api-design.html#performance">06 · API performance</a>. For caching, see <a href="04-caching.html">04 · Caching</a>.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>BenchmarkDotNet</b></td><td><code>BenchmarkDotNet</code></td><td>Micro-benchmarks: time and allocations per call, compared with a baseline</td></tr>
+    <tr><td><b>Diagnostics tools</b></td><td><code>dotnet-counters</code>, <code>dotnet-trace</code>, <code>dotnet-dump</code> (.NET global tools)</td><td>Live metrics, CPU traces and memory dumps from a running app, including in containers</td></tr>
+    <tr><td><b>Fewer allocations</b></td><td><span class="pill builtin">built-in</span> <code>Span&lt;T&gt;</code>, <code>Memory&lt;T&gt;</code>, <code>ArrayPool&lt;T&gt;</code>; <code>Microsoft.Extensions.ObjectPool</code></td><td>Less GC work under load, so better p99 latency</td></tr>
+    <tr><td><b>Fast I/O and JSON</b></td><td><span class="pill builtin">built-in</span> <code>System.IO.Pipelines</code>, <code>System.Text.Json</code> source generation</td><td>Parse streams and serialise without reflection</td></tr>
+    <tr><td><b>Do less work</b></td><td><span class="pill builtin">built-in</span> output caching (<code>AddOutputCache</code>), response compression (<code>AddResponseCompression</code>)</td><td>Skip repeated work; send fewer bytes</td></tr>
+    <tr><td><b>Native AOT</b></td><td><span class="pill builtin">built-in</span> <code>&lt;PublishAot&gt;true&lt;/PublishAot&gt;</code></td><td>Fast startup and small memory, good for scale-to-zero. Not every library supports it</td></tr>
+  </table>
+<pre class="code"><code>[MemoryDiagnoser]                                   // also shows bytes allocated per call
+public class ParseBench
+{
+    private readonly string _line = "2026-10-16,ACC123,150.25";
+
+    [Benchmark(Baseline = true)]
+    public decimal WithSplit() =&gt; decimal.Parse(_line.Split(',')[2]);   // allocates 3 strings
+
+    [Benchmark]
+    public decimal WithSpan()
+    {
+        var s = _line.AsSpan();
+        return decimal.Parse(s[(s.LastIndexOf(',') + 1)..]);            // no allocations
+    }
+}
+// Run in Release: BenchmarkRunner.Run&lt;ParseBench&gt;();</code></pre>
+  <p class="warn">Measure first. Find the real bottleneck with <code>dotnet-counters</code> / <code>dotnet-trace</code> (often the DB or a chatty remote call) before tuning C# code.</p>
+</div>
+  <div class="post">
+    <p>Is your system slow, or just busy? 🐢 vs 🚦</p>
+    <p>Slow for ONE user → a performance problem (code, query, network).</p>
+    <p>Fast for one, slow for MANY → a scalability problem (capacity, contention).</p>
+    <p>And watch utilisation: at 50% busy, requests wait about 2× longer. At 90%, about 10× longer. Keep headroom.</p>
+    <p>Measure → find the biggest bottleneck → fix → re-measure.</p>
+    <p>#Performance #SystemDesign #SRE</p>
+  </div>
+</section>
+
+<!-- SLA -->
+<section class="concept" id="sla">
+  <h2><span class="num">3.9</span> SLA vs SLO vs SLI &amp; error budgets <span class="tag-added">Added</span></h2>
+  <p class="oneliner"><b>SLI</b> is what you measure, <b>SLO</b> is the target you set, <b>SLA</b> is what you promise in a contract (with penalties).</p>
+  <div class="flow">
+    <div class="n">SLI<small>99.95% of requests &lt; 300 ms (measured)</small></div><div class="ar">→</div>
+    <div class="n p">SLO<small>internal target: 99.9%</small></div><div class="ar">→</div>
+    <div class="n r">SLA<small>contract: 99.5%, or service credits</small></div>
+  </div>
+  <div class="remember"><ul>
+    <li>Set SLO stricter than SLA, so you get warned before you break the contract.</li>
+    <li><b>Error budget</b> = 100% − SLO. At 99.9%, you get 43 min/month for incidents and risky releases. Budget used up → freeze features, fix reliability.</li>
+    <li>Good SLIs: availability (success rate), latency (p95/p99), freshness, correctness.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Built-in HTTP metrics</b></td><td><span class="pill builtin">built-in</span> <code>http.server.request.duration</code></td><td>Latency and status code for every request: the raw data for availability and latency SLIs</td></tr>
+    <tr><td><b>Custom SLIs</b></td><td><span class="pill builtin">built-in</span> <code>System.Diagnostics.Metrics</code> (<code>Counter</code>, <code>Histogram</code>)</td><td>Business SLIs, e.g. "payments settled within 5 s"</td></tr>
+    <tr><td><b>OpenTelemetry</b></td><td><code>OpenTelemetry.Extensions.Hosting</code> + an exporter (<code>OpenTelemetry.Exporter.OpenTelemetryProtocol</code>)</td><td>Send metrics to Prometheus / Grafana or any OTLP backend</td></tr>
+    <tr><td><b>Azure Monitor</b></td><td><code>Azure.Monitor.OpenTelemetry.AspNetCore</code></td><td>One call (<code>UseAzureMonitor</code>) sends metrics, traces and logs to Application Insights</td></tr>
+  </table>
+<pre class="code"><code>builder.Services.AddOpenTelemetry()
+    .UseAzureMonitor()                                 // Azure.Monitor.OpenTelemetry.AspNetCore
+    .WithMetrics(m =&gt; m.AddMeter("Bank.Payments"));    // plus our custom meter
+
+public sealed class PaymentSli
+{
+    private readonly Counter&lt;long&gt; _total;
+    private readonly Counter&lt;long&gt; _good;
+
+    public PaymentSli(IMeterFactory meterFactory)
+    {
+        var meter = meterFactory.Create("Bank.Payments");
+        _total = meter.CreateCounter&lt;long&gt;("payments.sli.total");
+        _good  = meter.CreateCounter&lt;long&gt;("payments.sli.good");
+    }
+
+    public void Record(bool succeeded, TimeSpan settleTime)
+    {
+        _total.Add(1);
+        if (succeeded &amp;&amp; settleTime &lt; TimeSpan.FromSeconds(5)) _good.Add(1);   // SLI = good / total
+    }
+}</code></pre>
+  <p class="warn">The SLO maths (good / total over 30 days, burn-rate alerts) lives in the monitoring tool (KQL, PromQL), not in app code. The app's job is to emit honest metrics.</p>
+</div>
+  </section>
+
+<!-- CAP -->
+<section class="concept" id="cap">
+  <h2><span class="num">3.10</span> CAP theorem</h2>
+  <p class="oneliner">When a network <b>Partition</b> splits a distributed data store, it must choose between <b>Consistency</b> (everyone sees the latest write) and <b>Availability</b> (every request gets an answer).</p>
+  <div class="svgwrap">
+    <svg viewBox="0 0 620 310" width="620" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, sans-serif" role="img" aria-label="CAP triangle: Consistency, Availability, Partition tolerance">
+      <polygon points="280,30 70,260 490,260" fill="#eef2ff" stroke="#6366f1" stroke-width="3"/>
+      <circle cx="280" cy="30" r="26" fill="#2563eb"/><text x="280" y="37" text-anchor="middle" fill="#fff" font-size="20" font-weight="700">C</text>
+      <circle cx="70" cy="260" r="26" fill="#059669"/><text x="70" y="267" text-anchor="middle" fill="#fff" font-size="20" font-weight="700">A</text>
+      <circle cx="490" cy="260" r="26" fill="#7c3aed"/><text x="490" y="267" text-anchor="middle" fill="#fff" font-size="20" font-weight="700">P</text>
+      <text x="320" y="34" font-size="13" fill="#1e293b">Consistency: every read gets the latest write</text>
+      <text x="20" y="298" font-size="13" fill="#1e293b">Availability: every request answered</text>
+      <text x="330" y="298" font-size="13" fill="#1e293b">Partition tolerance: survives a network split</text>
+      <text x="150" y="135" font-size="13" fill="#059669" font-weight="700" text-anchor="middle">CA*</text>
+      <text x="150" y="152" font-size="11" fill="#475569" text-anchor="middle">single node / no partitions</text>
+      <text x="410" y="135" font-size="13" fill="#2563eb" font-weight="700" text-anchor="middle">CP</text>
+      <text x="410" y="152" font-size="11" fill="#475569" text-anchor="middle">ZooKeeper, etcd, HBase,</text>
+      <text x="410" y="166" font-size="11" fill="#475569" text-anchor="middle">MongoDB (majority)</text>
+      <text x="280" y="250" font-size="13" fill="#7c3aed" font-weight="700" text-anchor="middle">AP</text>
+      <text x="280" y="235" font-size="11" fill="#475569" text-anchor="middle">Cassandra, DynamoDB, CouchDB</text>
+    </svg>
+  </div>
+  <h3>How it plays out</h3>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"A partition forces the choice","interval":2600,
+ "frames":[
+  {"label":"In sync","caption":"Both nodes hold x = 3 and replicate every write.",
+   "rows":[
+    {"label":"Clients","items":[{"t":"Client A","sub":"idle","c":"off"},{"k":"gap"},{"t":"Client B","sub":"idle","c":"off"}]},
+    {"label":"Nodes","items":[{"t":"Node 1","sub":"x = 3","c":"blue","big":true,"w":130},{"k":"arrow","g":"⇄","t":"replicating"},{"t":"Node 2","sub":"x = 3","c":"blue","big":true,"w":130}]}
+   ]},
+  {"label":"Partition","caption":"✂ The network between the nodes breaks. They can't talk to each other.",
+   "rows":[
+    {"label":"Clients","items":[{"t":"Client A","sub":"idle","c":"off"},{"k":"gap"},{"t":"Client B","sub":"idle","c":"off"}]},
+    {"label":"Nodes","items":[{"t":"Node 1","sub":"x = 3","c":"blue","big":true,"w":130},{"k":"arrow","g":"✂","t":"network partition"},{"t":"Node 2","sub":"x = 3","c":"blue","big":true,"w":130}]}
+   ]},
+  {"label":"Write x=5","caption":"A write <b>x = 5</b> arrives at Node 1. Then a read for x arrives at Node 2…","ms":3000,
+   "rows":[
+    {"label":"Clients","items":[{"t":"Client A","sub":"write x = 5","c":"amber"},{"k":"gap"},{"t":"Client B","sub":"read x ?","c":"amber"}]},
+    {"label":"Nodes","items":[{"t":"Node 1","sub":"x = 5 (new)","c":"green","big":true,"w":130},{"k":"arrow","g":"✂","t":"can't sync"},{"t":"Node 2","sub":"x = 3 (old)","c":"slate","big":true,"w":130}]}
+   ]},
+  {"label":"CP choice","caption":"<b>CP choice</b>: Node 2 refuses or errors until it can sync → correct, but unavailable.","ms":3200,
+   "rows":[
+    {"label":"Clients","items":[{"t":"Client A","sub":"write x = 5 ✓","c":"green"},{"k":"gap"},{"t":"Client B","sub":"gets an error ✗","c":"red"}]},
+    {"label":"Nodes","items":[{"t":"Node 1","sub":"x = 5","c":"green","big":true,"w":130},{"k":"arrow","g":"✂","t":"can't sync"},{"t":"Node 2","sub":"refuses: 503","c":"red","big":true,"w":130}]}
+   ]},
+  {"label":"AP choice","caption":"<b>AP choice</b>: Node 2 answers with the old x = 3 → available, but stale.","ms":3200,
+   "rows":[
+    {"label":"Clients","items":[{"t":"Client A","sub":"write x = 5 ✓","c":"green"},{"k":"gap"},{"t":"Client B","sub":"gets x = 3 (stale)","c":"amber"}]},
+    {"label":"Nodes","items":[{"t":"Node 1","sub":"x = 5","c":"green","big":true,"w":130},{"k":"arrow","g":"✂","t":"can't sync"},{"t":"Node 2","sub":"answers x = 3","c":"amber","big":true,"w":130}]}
+   ]}
+ ]}
+</script></figure>
+  <div class="remember"><ul>
+    <li>It's <b>not</b> "pick any 2 of 3". In a distributed system, partitions <b>will</b> happen, so P is a given. The real choice is <b>C or A during a partition</b>.</li>
+    <li>"C" in CAP means <b>linearizability</b>, which is different from the "C" in ACID (constraint validity).</li>
+    <li>Banking ledgers and payments usually choose <b>CP</b>. Social feeds, carts and catalogues often choose <b>AP</b>.</li>
+    <li>Many databases let you tune this per request (Cassandra consistency levels, Cosmos DB's 5 levels).</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Use it for</th></tr>
+    <tr><td><code>Microsoft.Azure.Cosmos</code> <code>ConsistencyLevel</code></td><td>CAP is a theory, but Cosmos DB lets you choose the trade-off: <code>Strong</code> (CP-like across regions) down to <code>Eventual</code> (AP). Details in 3.11</td></tr>
+    <tr><td><code>CassandraCSharpDriver</code> <code>ConsistencyLevel</code></td><td>Per query: <code>LocalQuorum</code> leans to C, <code>One</code> leans to A</td></tr>
+  </table>
+</div>
+  <div class="post">
+    <p>CAP theorem in 20 seconds ⏱</p>
+    <p>Network splits happen. When they do, your database must choose:</p>
+    <p>🔵 Consistency: "I'd rather say nothing than say something wrong." (payments, ledgers)</p>
+    <p>🟢 Availability: "I'll answer, even if it's a bit stale." (likes, product catalogue)</p>
+    <p>It's not "pick 2 of 3". It's "pick C or A when P happens".</p>
+    <p>#SystemDesign #DistributedSystems #Databases</p>
+  </div>
+</section>
+
+<!-- PACELC -->
+<section class="concept" id="pacelc">
+  <h2><span class="num">3.11</span> PACELC &amp; consistency models <span class="tag-added">Added</span></h2>
+  <p class="oneliner">PACELC extends CAP: if there's a <b>P</b>artition choose <b>A</b> or <b>C</b>; <b>E</b>lse (normal operation) choose <b>L</b>atency or <b>C</b>onsistency.</p>
+  <div class="cols2">
+    <div><h3>Examples</h3><ul>
+      <li><b>PA/EL</b>: Cassandra, DynamoDB. Fast, eventually consistent.</li>
+      <li><b>PC/EC</b>: traditional RDBMS clusters, Spanner. Always consistent.</li>
+      <li><b>PA/EC</b> or tunable: MongoDB, Cosmos DB.</li>
+    </ul></div>
+    <div><h3>Consistency spectrum (strong → weak)</h3><ul>
+      <li><b>Strong / linearizable</b>: reads always see the latest write</li>
+      <li><b>Bounded staleness</b>: at most X seconds or versions behind</li>
+      <li><b>Session / read-your-writes</b>: you always see your own updates</li>
+      <li><b>Causal</b>: cause is seen before effect</li>
+      <li><b>Eventual</b>: copies converge… eventually</li>
+    </ul></div>
+  </div>
+  <div class="remember"><ul><li><b>Quorum rule</b>: with N replicas, if writes go to W and reads to R where <code>R + W &gt; N</code>, reads see the latest write. Example: N=3, W=2, R=2.</li></ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Cosmos DB consistency</b></td><td><code>Microsoft.Azure.Cosmos</code></td><td>Five levels: <code>Strong</code>, <code>BoundedStaleness</code>, <code>Session</code> (default), <code>ConsistentPrefix</code>, <code>Eventual</code>. Set on the account; a client or request can only make it <b>weaker</b></td></tr>
+    <tr><td><b>Cassandra consistency</b></td><td><code>CassandraCSharpDriver</code></td><td>Tune per statement (<code>SetConsistencyLevel</code>): latency vs consistency on every query</td></tr>
+    <tr><td><b>Optimistic concurrency</b></td><td>EF Core <code>[Timestamp]</code> / rowversion</td><td>Stop lost updates: a stale write throws <code>DbUpdateConcurrencyException</code></td></tr>
+    <tr><td><b>Read replicas</b></td><td><code>Microsoft.Data.SqlClient</code> <code>ApplicationIntent=ReadOnly</code></td><td>Send reads to a readable secondary only when slightly stale data is OK</td></tr>
+  </table>
+<pre class="code"><code>// Cosmos: the account default is Session; relax it for one read where latency matters more
+var options = new ItemRequestOptions { ConsistencyLevel = ConsistencyLevel.Eventual };
+var item = await container.ReadItemAsync&lt;Quote&gt;(id, new PartitionKey(pair), options);
+
+// EF Core: optimistic concurrency with a SQL Server rowversion column
+public class Account
+{
+    public int Id { get; set; }
+    public decimal Balance { get; set; }
+    [Timestamp] public byte[] RowVersion { get; set; } = [];
+}</code></pre>
+</div>
+  </section>
+
+<!-- DR -->
+<section class="concept" id="dr">
+  <h2><span class="num">3.12</span> Disaster recovery: RPO, RTO &amp; DR strategies <span class="tag-added">Added</span></h2>
+  <p class="oneliner"><b>RPO</b> = how much data you can afford to lose. <b>RTO</b> = how long you can afford to be down.</p>
+<figure class="viz" data-viz="lanes"><script type="application/json">
+{"title":"RPO looks back from the disaster, RTO looks forward","max":10,"labelW":90,"width":760,"rowH":42,"axis":"time →","dur":5000,
+ "rows":[
+  {"label":"Data","blocks":[{"s":0,"e":3,"t":"safe in backup","c":"green"},{"s":3,"e":6,"t":"data lost in this gap","c":"amber"}]},
+  {"label":"Service","blocks":[{"s":0,"e":3,"t":"up","c":"green"},{"s":3,"e":6,"t":"up","c":"green"},{"s":6,"e":9,"t":"downtime in this gap","c":"red"},{"s":9,"e":10,"t":"up","c":"green"}]}
+ ],
+ "markers":[{"at":3,"t":"💾 last good backup","c":"blue"},{"at":6,"t":"💥 disaster","c":"red"},{"at":9,"t":"✅ restored","c":"green"}],
+ "spans":[{"s":3,"e":6,"t":"RPO","c":"amber"},{"s":6,"e":9,"t":"RTO","c":"red"}]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>Strategy</th><th>How</th><th>RTO / RPO</th><th>Cost</th></tr>
+    <tr><td>Backup &amp; restore</td><td>Restore from backups into a new environment</td><td>Hours–days / hours</td><td>💲</td></tr>
+    <tr><td>Pilot light</td><td>Data replicated, core infra kept minimal and "off"</td><td>10s of minutes–hours / minutes</td><td>💲💲</td></tr>
+    <tr><td>Warm standby</td><td>Scaled-down full copy running in the DR region</td><td>Minutes / seconds–minutes</td><td>💲💲💲</td></tr>
+    <tr><td>Multi-site active-active</td><td>Both regions serve live traffic</td><td>Near zero / near zero</td><td>💲💲💲💲</td></tr>
+  </table></div>
+  <div class="remember"><ul>
+    <li>Business sets RPO/RTO through a Business Impact Analysis (BIA). Tech picks the strategy to meet them.</li>
+    <li><b>Test DR regularly</b>. An untested DR plan is just a wish.</li>
+    <li>For Australian regulated entities, APRA <b>CPS 230</b> (operational resilience) and <b>CPS 234</b> (information security) shape DR and BCP expectations.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Azure SQL failover groups</b></td><td><code>Microsoft.Data.SqlClient</code></td><td>Connect to the listener (<code>&lt;fog&gt;.database.windows.net</code>, read-only: <code>&lt;fog&gt;.secondary.database.windows.net</code>). After failover the same name points to the new primary</td></tr>
+    <tr><td><b>Geo-redundant blobs</b></td><td><code>Azure.Storage.Blobs</code></td><td><code>BlobClientOptions.GeoRedundantSecondaryUri</code>: keep reading from the secondary region (RA-GRS / RA-GZRS) during an outage</td></tr>
+    <tr><td><b>Cosmos DB</b></td><td><code>Microsoft.Azure.Cosmos</code></td><td>Multi-region account + <code>ApplicationPreferredRegions</code>; RPO depends on the consistency level</td></tr>
+    <tr><td><b>DR automation</b></td><td><code>Azure.ResourceManager.*</code> (e.g. <code>Azure.ResourceManager.Sql</code>)</td><td>Script failover and DR drills from a runbook or pipeline</td></tr>
+    <tr><td><b>Rebuild the region</b></td><td>Infrastructure as code (Bicep / Terraform), not app code</td><td>Rebuild the secondary region the same way every time</td></tr>
+  </table>
+<pre class="code"><code>// SQL: always connect to the failover-group listener, never a server name
+var sql = "Server=tcp:payments-fog.database.windows.net;Database=Payments;" +
+          "Authentication=Active Directory Default;ConnectRetryCount=3";
+
+// Blobs: read from the secondary region if the primary is down (RA-GRS)
+var blobs = new BlobServiceClient(new Uri("https://paymentsdocs.blob.core.windows.net"),
+    new DefaultAzureCredential(),
+    new BlobClientOptions
+    {
+        GeoRedundantSecondaryUri = new Uri("https://paymentsdocs-secondary.blob.core.windows.net")
+    });</code></pre>
+  <p class="warn">Test it. A DR plan that has never been run in a drill usually misses its RTO because something was forgotten: DNS caches, firewall rules, secrets or connection strings in the second region.</p>
+</div>
+  </section>
+
+<div class="qa-wrap">
+  <h2>⚡ Quick-fire Q&amp;A</h2>
+  <details class="qa"><summary>Your service has 3 dependencies at 99.9% each. What's your max availability?</summary><p>About 99.7% (0.999³). To do better, add redundancy, caching or async decoupling.</p></details>
+  <details class="qa"><summary>When would you choose AP over CP?</summary><p>When stale data is acceptable and downtime isn't: product catalogues, social feeds, recommendations, shopping carts.</p></details>
+  <details class="qa"><summary>Difference between HA and DR?</summary><p>HA handles local failures (node or zone) automatically with little or no downtime. DR recovers from a large-scale disaster (region loss, ransomware) within the agreed RPO/RTO.</p></details>
+</div>
+
+<div class="pager"><a href="02-networking-protocols.html">← 02 · Protocols</a><a class="next" href="04-caching.html">04 · Caching →</a></div>
+</main>
+<footer>Tech Concepts Prep · Section 03</footer>
+<script src="assets/app.js"></script>
+<script src="assets/viz.js"></script>
+</body>
+</html>

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tech Concepts Prep · Roadmap</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<nav class="top"><span class="here">🏠 Tech Concepts Prep</span><a href="01-foundations.html">Start: 01 Foundations →</a></nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">System design · Integration · Cloud · Security · GenAI</div>
+  <h1>Tech concepts: the learning roadmap</h1>
+  <p>Your list, put in a logical order (each section builds on the previous one) and extended with the concepts that usually come up alongside it. Every concept has a <b>one-line definition</b>, <b>how it works</b>, a <b>visual</b>, <b>points to remember</b>, and many have a ready-to-copy <b>LinkedIn post idea</b>. Every technical concept also has a <b>.NET 10 "How to implement it"</b> box listing the libraries to use, with a short C# snippet where it helps.</p>
+  <div class="toc">
+    <a href="#path">Learning path</a>
+    <a href="#sections">All 15 sections</a>
+    <a href="#linkedin">LinkedIn content kit</a>
+    <a href="#plan">Posting plan</a>
+  </div>
+</header>
+
+<section class="concept" id="path">
+  <h2>🧭 The learning path</h2>
+  <p class="oneliner">From the basics, through building blocks and architecture, to operations, AI, and putting it all together.</p>
+  <div class="flow">
+    <div class="n s">01 Foundations</div><div class="ar">→</div><div class="n s">02 Protocols</div><div class="ar">→</div>
+    <div class="n">03 Scalability &amp; Reliability</div><div class="ar">→</div><div class="n">04 Caching</div><div class="ar">→</div><div class="n">05 Databases &amp; Data</div>
+  </div>
+  <div class="flow">
+    <div class="n p">06 API Design</div><div class="ar">→</div><div class="n p">07 APIM</div><div class="ar">→</div>
+    <div class="n p">08 Integration &amp; Messaging</div><div class="ar">→</div><div class="n p">09 Architecture Patterns</div>
+  </div>
+  <div class="flow">
+    <div class="n a">10 Security &amp; IAM</div><div class="ar">→</div><div class="n a">11 DevOps &amp; Deployment</div><div class="ar">→</div>
+    <div class="n g">12 RAG &amp; GenAI</div><div class="ar">→</div><div class="n g">13 Agentic AI</div><div class="ar">→</div>
+    <div class="n t">14 Architecture Docs</div><div class="ar">→</div><div class="n fill">15 E2E Playbook</div>
+  </div>
+  <div class="tip">Green items in the cards below (marked ＋) are concepts added to your original list to fill gaps in system design, integration and end-to-end coverage.</div>
+</section>
+
+<section id="sections">
+  <div class="grid wide">
+    <a class="sec-card" href="01-foundations.html"><div class="sn">SECTION 01</div><h3>Foundations</h3><ul>
+      <li>Process vs Thread</li><li class="added">＋ Concurrency vs Parallelism</li><li>Sync vs Async</li><li class="added">＋ Latency vs Throughput</li><li class="added">＋ Back-of-the-envelope numbers</li></ul></a>
+
+    <a class="sec-card" href="02-networking-protocols.html"><div class="sn">SECTION 02</div><h3>Networking &amp; Communication Protocols</h3><ul>
+      <li class="added">＋ OSI / TCP-IP layers</li><li class="added">＋ TCP vs UDP</li><li class="added">＋ HTTP/1.1 vs 2 vs 3</li><li class="added">＋ DNS</li><li>Various communication protocols</li><li class="added">＋ Polling vs WebSocket vs SSE vs Webhook</li><li class="added">＋ Data formats (ISO 20022, ISO 8583)</li></ul></a>
+
+    <a class="sec-card" href="03-scalability-reliability.html"><div class="sn">SECTION 03</div><h3>Scalability &amp; Reliability</h3><ul>
+      <li>Vertical vs Horizontal scaling</li><li class="added">＋ Stateless vs Stateful</li><li>Load balancing</li><li class="added">＋ Consistent hashing</li><li>Fault tolerance</li><li class="added">＋ Resilience patterns (circuit breaker…)</li><li class="added">＋ Availability (HA &amp; the nines)</li><li class="added">＋ Performance</li><li class="added">＋ SLA / SLO / SLI</li><li>CAP</li><li class="added">＋ PACELC &amp; consistency models</li><li class="added">＋ Disaster recovery (RPO/RTO)</li></ul></a>
+
+    <a class="sec-card" href="04-caching.html"><div class="sn">SECTION 04</div><h3>Caching</h3><ul>
+      <li class="added">＋ Where to cache</li><li>Caching strategies</li><li>Caching expiration strategies</li><li class="added">＋ Eviction policies (LRU/LFU)</li><li class="added">＋ Stampede, penetration, avalanche</li><li class="added">＋ CDN</li><li class="added">＋ Redis vs Memcached</li></ul></a>
+
+    <a class="sec-card" href="05-databases-data.html"><div class="sn">SECTION 05</div><h3>Databases &amp; Data</h3><ul>
+      <li class="added">＋ SQL vs NoSQL</li><li class="added">＋ ACID vs BASE</li><li class="added">＋ Indexing</li><li>Database scaling</li><li>Database backup strategies</li><li>Data migration strategies</li><li>ETL vs ELT</li><li class="added">＋ CDC</li><li class="added">＋ Warehouse vs Lake vs Lakehouse</li></ul></a>
+
+    <a class="sec-card" href="06-api-design.html"><div class="sn">SECTION 06</div><h3>API Design, Security &amp; Performance</h3><ul>
+      <li>API architecture patterns</li><li class="added">＋ REST design best practices</li><li>API authentication &amp; authorization</li><li class="added">＋ OAuth 2.0 / OIDC / JWT</li><li>API performance</li><li>Rate limit algorithms</li><li class="added">＋ Idempotency</li></ul></a>
+
+    <a class="sec-card" href="07-apim.html"><div class="sn">SECTION 07</div><h3>API Management (APIM)</h3><ul>
+      <li>Key concepts for APIM</li><li>Building blocks: products, subscriptions, backends</li><li>Policies &amp; pipeline</li><li>Versions vs revisions</li><li>Lifecycle &amp; APIOps</li><li>AI gateway</li><li class="added">＋ Gateway vs LB vs Mesh vs ESB</li></ul></a>
+
+    <a class="sec-card" href="08-integration-messaging.html"><div class="sn">SECTION 08</div><h3>Integration &amp; Messaging</h3><ul>
+      <li>Real-time vs Near-RT vs Batch</li><li class="added">＋ Integration styles &amp; API-led</li><li>Queue vs Event-driven</li><li class="added">＋ Delivery guarantees</li><li class="added">＋ EIP patterns &amp; Outbox</li><li class="added">＋ Orchestration vs Choreography</li><li class="added">＋ Batch &amp; file integration</li></ul></a>
+
+    <a class="sec-card" href="09-architecture-patterns.html"><div class="sn">SECTION 09</div><h3>Architecture Patterns</h3><ul>
+      <li>Different types of architecture patterns</li><li class="added">＋ Monolith vs Microservices</li><li>Microservice architecture patterns</li><li class="added">＋ Saga, CQRS, Event Sourcing</li><li class="added">＋ Strangler Fig, Sidecar, Service Mesh</li><li class="added">＋ DDD essentials</li><li>Serverless architecture</li><li class="added">＋ 12-Factor App</li></ul></a>
+
+    <a class="sec-card" href="10-security-iam.html"><div class="sn">SECTION 10</div><h3>Security, IAM &amp; Cryptography</h3><ul>
+      <li class="added">＋ AuthN vs AuthZ</li><li>IAM</li><li class="added">＋ SAML vs OAuth vs OIDC</li><li>Symmetric vs Asymmetric keys</li><li class="added">＋ Hashing vs Encryption vs Tokenisation</li><li class="added">＋ TLS, mTLS &amp; PKI</li><li class="added">＋ Secrets &amp; key management</li><li class="added">＋ Zero Trust</li><li class="added">＋ OWASP API Top 10</li></ul></a>
+
+    <a class="sec-card" href="11-devops-deployment-observability.html"><div class="sn">SECTION 11</div><h3>DevOps, Deployment &amp; Observability</h3><ul>
+      <li class="added">＋ CI/CD</li><li>Deployment strategies</li><li class="added">＋ Feature flags</li><li class="added">＋ IaC &amp; GitOps</li><li class="added">＋ Containers &amp; Kubernetes</li><li class="added">＋ Observability</li><li class="added">＋ Logging</li><li class="added">＋ Metrics</li><li class="added">＋ Alerting</li><li class="added">＋ Incident management</li></ul></a>
+
+    <a class="sec-card" href="12-rag-genai.html"><div class="sn">SECTION 12</div><h3>RAG &amp; GenAI</h3><ul>
+      <li class="added">＋ LLM basics</li><li>RAG</li><li>Chunking</li><li>Embedding</li><li>Vector search</li><li>Top-K retrieval</li><li>Metadata filtering</li><li>Hybrid search</li><li>Ranking</li><li>Query transformation</li><li>RAG fusion</li><li>RAG evaluation</li><li class="added">＋ Advanced RAG patterns</li><li class="added">＋ Failure points &amp; fixes</li></ul></a>
+
+    <a class="sec-card" href="13-agentic-ai.html"><div class="sn">SECTION 13</div><h3>Agentic AI</h3><ul>
+      <li>Agentic AI</li><li class="added">＋ Workflows vs Agents</li><li class="added">＋ ReAct agent loop</li><li class="added">＋ Tools &amp; function calling</li><li class="added">＋ Memory &amp; planning</li><li class="added">＋ Multi-agent patterns</li><li class="added">＋ MCP &amp; A2A</li><li class="added">＋ Guardrails &amp; HITL</li><li class="added">＋ Evaluation &amp; AgentOps</li></ul></a>
+
+    <a class="sec-card" href="14-architecture-documents.html"><div class="sn">SECTION 14</div><h3>Architecture Documents &amp; Governance</h3><ul>
+      <li>ACD · AIA · SO · LLD · ADR · SOP</li><li class="added">＋ HLD</li><li class="added">＋ NFRs</li><li class="added">＋ C4 model</li><li class="added">＋ Threat model (STRIDE)</li><li class="added">＋ Runbook vs SOP vs Playbook</li><li class="added">＋ TOGAF &amp; Well-Architected</li></ul></a>
+
+    <a class="sec-card" href="15-system-design-playbook.html"><div class="sn">SECTION 15 · CAPSTONE</div><h3>End-to-End System Design Playbook</h3><ul>
+      <li class="added">＋ Journey of one request (all concepts)</li><li class="added">＋ Interview framework</li><li class="added">＋ How to answer "X vs Y"</li><li class="added">＋ Trade-off cheat sheet</li><li class="added">＋ Worked example</li><li class="added">＋ Design review checklist</li></ul></a>
+  </div>
+</section>
+
+<section class="concept" id="linkedin" style="margin-top:24px">
+  <h2>📣 LinkedIn content kit</h2>
+  <p class="oneliner">A simple, repeatable format for short, scannable posts. Every section has ready drafts in the blue "LinkedIn post idea" boxes (click <b>Copy</b>).</p>
+  <div class="grid">
+    <div class="box blue"><h4>1. Hook (line 1)</h4><p>A question, a myth or an analogy. "Queue vs Event in one line 📬📢"</p></div>
+    <div class="box purple"><h4>2. Simple explanation</h4><p>An everyday analogy: coffee buzzer, hotel key card, fuse box.</p></div>
+    <div class="box green"><h4>3. 3–5 bullets</h4><p>Emoji bullets, one idea each. No jargon without a definition.</p></div>
+    <div class="box amber"><h4>4. Visual</h4><p>Screenshot a diagram from these pages, or make a carousel of 5–8 slides.</p></div>
+    <div class="box teal"><h4>5. Takeaway + question</h4><p>"Rule of thumb: … Which do you use? 👇"</p></div>
+    <div class="box red"><h4>6. 3–5 hashtags</h4><p>#SystemDesign #Integration #APIs #GenAI #Architecture</p></div>
+  </div>
+  <div class="remember"><ul>
+    <li>Keep it under ~1,300 characters. Use short lines and white space.</li>
+    <li>One concept per post. Turn "X vs Y" topics into a series.</li>
+    <li>Add a real lesson from your own work. It beats textbook content every time (leave out confidential details).</li>
+  </ul></div>
+</section>
+
+<section class="concept" id="plan">
+  <h2>🗓 Suggested posting plan (3 posts a week ≈ 11 weeks)</h2>
+  <p class="oneliner">One concept per post, in roughly the same order as the sections.</p>
+  <div class="tablewrap"><table>
+    <tr><th>Week</th><th>Mon</th><th>Wed</th><th>Fri</th></tr>
+    <tr><td>1</td><td>Process vs Thread</td><td>Sync vs Async</td><td>Communication protocols: which one?</td></tr>
+    <tr><td>2</td><td>Vertical vs Horizontal</td><td>Load balancing algorithms</td><td>CAP theorem</td></tr>
+    <tr><td>3</td><td>Circuit breaker</td><td>6 caching strategies</td><td>Cache expiration &amp; stampede</td></tr>
+    <tr><td>4</td><td>Database scaling ladder</td><td>3-2-1-1-0 backups</td><td>ETL vs ELT</td></tr>
+    <tr><td>5</td><td>REST vs GraphQL vs gRPC</td><td>OAuth 2.0 hotel key card</td><td>5 rate-limit algorithms</td></tr>
+    <tr><td>6</td><td>APIM = airport for APIs</td><td>Real-time vs NRT vs Batch</td><td>Queue vs Event</td></tr>
+    <tr><td>7</td><td>Microservices move complexity</td><td>Serverless myths</td><td>IAM: right access, right time</td></tr>
+    <tr><td>8</td><td>Symmetric vs Asymmetric</td><td>6 deployment strategies</td><td>Good logs for on-call</td></tr>
+    <tr><td>9</td><td>Metrics: why p99, not average</td><td>Alerting: if every alert is critical…</td><td>RAG = open-book exam</td></tr>
+    <tr><td>10</td><td>Chunking</td><td>Hybrid search + RRF</td><td>RAG evaluation</td></tr>
+    <tr><td>11</td><td>Chatbot vs Agent</td><td>ADRs</td><td>"What happens when you tap Pay" (capstone)</td></tr>
+  </table></div>
+</section>
+
+</main>
+<footer>Tech Concepts Prep · Open any section and use your browser's Print → Save as PDF for offline notes.</footer>
+<script src="assets/app.js"></script>
+<script src="assets/viz.js"></script>
+</body>
+</html>
