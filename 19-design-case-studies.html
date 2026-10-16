@@ -13,7 +13,7 @@
 <header class="hero">
   <div class="kicker">Section 19</div>
   <h1>Design case studies</h1>
-  <p>Six classic system design questions, each worked through the same way: requirements, estimates, API, data model, an animated high-level design, deep dives, bottlenecks, and the .NET 10 stack you'd build it with.</p>
+  <p>Seven classic system design questions, each worked through the same way: requirements, estimates, API, data model, an animated high-level design, deep dives, bottlenecks, and the .NET 10 stack you'd build it with.</p>
   <p><b>How to use them:</b> read the question line only, set a 45-minute timer, and answer it yourself with the <a href="18-system-design-playbook.html#framework" style="color:#fff;text-decoration:underline">7-step framework from 18</a>. Say the numbers and trade-offs out loud. Then compare with the write-up and note what you missed. Each one also ends with a LinkedIn post you can reuse.</p>
   <div class="toc">
     <a href="#url" class="added">URL shortener</a>
@@ -21,6 +21,7 @@
     <a href="#chat" class="added">Chat / messaging app</a>
     <a href="#notification" class="added">Notification service</a>
     <a href="#feed" class="added">News feed / timeline</a>
+    <a href="#video" class="added">Video streaming platform</a>
     <a href="#ledger" class="added">Payment ledger</a>
   </div>
 </header>
@@ -633,9 +634,178 @@ processor.ProcessMessageAsync += async args =&gt;
   </div>
 </section>
 
+<!-- VIDEO STREAMING -->
+<section class="concept" id="video">
+  <h2><span class="num">19.6</span> Video streaming platform (YouTube / Netflix-style) <span class="tag-added">Added</span></h2>
+  <p class="oneliner">"Design YouTube or Netflix: creators upload videos, and millions watch them on any device without buffering." The work is a one-off processing pipeline per upload, then a huge read path that the CDN must carry.</p>
+  <div class="cols2">
+    <div>
+      <h3>1. Requirements</h3>
+      <ul>
+        <li><b>F:</b> upload large files (resumable), process into streamable formats, watch on phone/TV/web at the right quality, search, view counts, live streams</li>
+        <li><b>NFR:</b> 100M daily viewers, 500k uploads/day (avg 6 min); playback starts &lt; 2 s; rebuffering &lt; 1% of watch time; new uploads playable within minutes; 99.95% playback availability, worldwide</li>
+        <li><b>Out of scope:</b> ads, comments, creator payouts; recommendations in one line</li>
+      </ul>
+      <h3>2. Estimates</h3>
+      <ul>
+        <li><b>Uploads:</b> 500k ÷ 86,400 ≈ <b>6/s</b>; 500k × 6 min = <b>3M minutes/day</b> (≈ 35 hours of video every minute)</li>
+        <li><b>Ladder size:</b> 5 rungs (0.4 + 0.8 + 1.4 + 2.8 + 5 Mbps) ≈ 10.5 Mbps × 60 s ÷ 8 ≈ <b>80 MB per video minute</b></li>
+        <li><b>Storage:</b> 3M × 80 MB = <b>240 TB/day</b> ≈ 88 PB/year, plus the originals. Storage tiers are not optional</li>
+        <li><b>Encoding:</b> 3M min × 5 rungs = 15M rung-minutes/day. If one vCPU does ~1 min per min (very rough), ÷ 1,440 ≈ <b>10,000 vCPUs</b> busy all day</li>
+        <li><b>Egress at peak:</b> 5M watching at once × 3 Mbps = <b>15 Tbps</b>. At a 95% CDN hit ratio the origin still serves 750 Gbps; each 1% of misses = 150 Gbps</li>
+        <li><b>Read:write:</b> 100M × 40 min watched vs 3M min uploaded ≈ <b>1,300 : 1</b></li>
+      </ul>
+    </div>
+    <div>
+      <h3>3. API</h3>
+      <div class="tablewrap"><table>
+        <tr><th>Call</th><th>Does</th></tr>
+        <tr><td><code>POST /videos</code> {title, sizeBytes}</td><td>201 + <code>{videoId, uploadUrl}</code>: a write-only SAS / pre-signed URL for one blob, valid ~1 h</td></tr>
+        <tr><td><code>PUT {uploadUrl}</code> blocks, then commit the block list</td><td>Client uploads 8 MiB chunks straight to storage, in parallel; resume = resend only the missing blocks</td></tr>
+        <tr><td><code>BlobCreated</code> event (no client call)</td><td>Starts the processing pipeline</td></tr>
+        <tr><td><code>GET /videos/{id}</code></td><td>Metadata, status, thumbnails</td></tr>
+        <tr><td><code>GET /videos/{id}/play</code></td><td>Short-lived manifest URL (+ DRM licence URL)</td></tr>
+        <tr><td><code>POST /views</code> (batched heartbeats)</td><td>202; counted async</td></tr>
+      </table></div>
+      <h3>4. Data model</h3>
+      <div class="tablewrap"><table>
+        <tr><th>Store</th><th>Key</th><th>Columns / content</th></tr>
+        <tr><td><b>videos</b> (SQL / Cosmos DB)</td><td>video_id</td><td>owner, title, status (uploading → processing → ready), duration</td></tr>
+        <tr><td><b>renditions</b></td><td>(video_id, rung)</td><td>codec, resolution, bitrate, path</td></tr>
+        <tr><td><b>Blob storage</b></td><td>path</td><td><code>raw/{id}</code>, <code>vod/{id}/720p/seg_00042.m4s</code>, <code>master.m3u8</code>, <code>manifest.mpd</code></td></tr>
+        <tr><td><b>view_counts</b></td><td>video_id</td><td>total; flushed from Redis every ~30&ndash;60 s</td></tr>
+        <tr><td><b>search index</b></td><td>video_id</td><td>title, tags, caption text</td></tr>
+      </table></div>
+    </div>
+  </div>
+  <h3>5. High-level design</h3>
+<figure class="viz" data-viz="journey"><script type="application/json">
+{"title":"From upload to the viewer's screen","stepMs":1100,
+ "steps":[
+  {"icon":"📤","t":"Upload API","d":"auth, create the <b>videos</b> row, return a write-only SAS URL (one blob, 1 h). The API never touches the bytes","tag":"06 Storage","href":"06-databases-data.html#storage","c":"blue"},
+  {"icon":"🧱","t":"Chunked upload to Blob Storage","d":"8 MiB blocks in parallel; retry failed blocks; commit the block list. A dropped connection resumes, it doesn't restart","c":"blue"},
+  {"icon":"📣","t":"BlobCreated event → queue","d":"Event Grid → Service Bus; the orchestrator starts one pipeline per video","tag":"10 Queues","href":"10-integration-messaging.html#queue-event","c":"amber"},
+  {"icon":"✂️","t":"Probe + split","d":"check the file (ffprobe, malware and content scan), cut into ~4 s keyframe-aligned segments","indent":1,"c":"purple"},
+  {"icon":"⚙️","t":"Parallel encode","d":"every segment × every rung of the bitrate ladder on Spot workers (fan-out / fan-in)","tag":"10 Orchestration","href":"10-integration-messaging.html#orch","indent":1,"c":"purple"},
+  {"icon":"🖼️","t":"Thumbnails + captions","d":"frames for thumbnails, speech-to-text for captions (also feeds search)","indent":1,"c":"purple"},
+  {"icon":"📦","t":"Package","d":"CMAF segments + HLS (<code>.m3u8</code>) and DASH (<code>.mpd</code>) manifests; encrypt once for DRM","c":"teal"},
+  {"icon":"🌍","t":"CDN","d":"edges cache the segments; Blob Storage is the origin behind an origin shield","tag":"05 CDN","href":"05-caching.html#cdn","c":"green"},
+  {"icon":"✅","t":"Ready","d":"status = ready, update the search index, notify the creator. Low rungs can go live first","c":"green"}
+ ]}
+</script></figure>
+  <h3>6. Deep dives</h3>
+  <div class="grid wide">
+    <div class="box blue"><h4>Resumable direct upload</h4><ul><li>Never stream gigabytes through your API servers. Hand out a short-lived, write-only URL for one blob.</li><li>Block blobs: upload blocks in parallel, then commit the list. After a drop, ask which blocks arrived and send the rest.</li><li>Treat the upload as untrusted until probed and scanned.</li></ul></div>
+    <div class="box purple"><h4>Transcoding pipeline</h4><ul><li>Split at keyframes, encode each segment × rung in parallel, then stitch. A 10-min video = 150 segments × 5 rungs = 750 small jobs: minutes, not an hour.</li><li>Same GOP length on every rung, so the player can switch at any segment boundary.</li><li>Jobs are idempotent per (video, segment, rung), so retries and Spot evictions are safe.</li></ul></div>
+    <div class="box teal"><h4>Adaptive bitrate (ABR)</h4><ul><li><b>HLS</b> (<code>.m3u8</code>, Apple) and <b>MPEG-DASH</b> (<code>.mpd</code>): a manifest plus small segments over plain HTTP.</li><li><b>CMAF</b> (fragmented MP4): one set of segments serves both, so you store and cache them once.</li><li>The player, not the server, picks the rung for each next segment from measured throughput and buffer level.</li></ul></div>
+    <div class="box amber"><h4>CDN and cache hit ratio</h4><ul><li>Segments never change: cache them with a long max-age. Live manifests get a TTL of a second or two.</li><li>Hit ratio is the key metric: at 15 Tbps, each 1% of misses is 150 Gbps on the origin.</li><li>Origin shield (tiered cache) collapses misses; pre-warm before a big premiere.</li></ul></div>
+    <div class="box red"><h4>Protecting content</h4><ul><li>Tokenised URLs: the play API signs a manifest URL that expires in minutes. Stops hotlinking.</li><li>Premium content adds DRM: encrypt once (CENC), then a licence per device: <b>Widevine</b> (Chrome, Android), <b>FairPlay</b> (Apple), <b>PlayReady</b> (Windows, many TVs).</li><li>The licence server checks the entitlement, not the CDN.</li></ul></div>
+    <div class="box green"><h4>Metadata, search, views</h4><ul><li>Metadata in SQL / Cosmos DB; a search index fed from change events. Captions make speech searchable.</li><li>Views: <code>INCR</code> in Redis, flush to the DB every minute; unique viewers with HyperLogLog (<a href="05-caching.html#probabilistic">05 probabilistic</a>). Counts lag a little by design.</li><li>Recommendations: offline candidate generation + online ranking on watch history.</li></ul></div>
+  </div>
+<figure class="viz" data-viz="bars"><script type="application/json">
+{"title":"An example bitrate ladder (H.264, ≈ 10.5 Mbps for all five rungs)","max":5000,
+ "rows":[
+  {"label":"1080p","v":5000,"show":"<b>5 Mbps</b>","note":"TV, fast Wi-Fi","c":"purple"},
+  {"label":"720p","v":2800,"show":"<b>2.8 Mbps</b>","note":"laptop, good 4G","c":"blue"},
+  {"label":"480p","v":1400,"show":"<b>1.4 Mbps</b>","note":"phone on the move","c":"teal"},
+  {"label":"360p","v":800,"show":"<b>0.8 Mbps</b>","note":"weak mobile","c":"amber"},
+  {"label":"240p","v":400,"show":"<b>0.4 Mbps</b>","note":"start-up, very poor network","c":"red"}
+ ]}
+</script></figure>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Playback: the player switches rungs as bandwidth changes","actors":[{"t":"Player","c":"blue"},{"t":"Play API","c":"purple"},{"t":"CDN edge","c":"amber"},{"t":"Origin (Blob)","c":"green"},{"t":"DRM licence","c":"red"}],"colW":165,"rowH":42,"stepMs":950,
+ "steps":[
+  {"from":0,"to":1,"t":"GET /videos/42/play","c":"blue"},
+  {"from":1,"to":0,"t":"signed manifest URL (5 min)","dash":true,"c":"purple"},
+  {"from":0,"to":2,"t":"GET master.m3u8","c":"blue"},
+  {"from":2,"to":3,"t":"miss: fetch once","sub":"then cached at the edge","c":"amber"},
+  {"from":2,"to":0,"t":"ladder: 240p … 1080p","dash":true,"c":"amber"},
+  {"from":0,"to":4,"t":"DRM licence request (Widevine / FairPlay / PlayReady)","c":"blue"},
+  {"from":4,"to":0,"t":"content key","dash":true,"c":"red"},
+  {"from":0,"to":2,"t":"720p segments 1–3 (hits)","c":"blue"},
+  {"note":"Bandwidth drops, buffer falls below 10 s","over":[0,2],"c":"amber"},
+  {"from":0,"to":2,"t":"360p segment 4 (step down)","c":"red"},
+  {"note":"Bandwidth recovers: step up one rung at a time","over":[0,2],"c":"green"},
+  {"from":0,"to":2,"t":"1080p segment 9","c":"green"},
+  {"from":0,"to":1,"t":"view heartbeat (batched)","dash":true,"c":"slate"}
+ ]}
+</script></figure>
+  <div class="cols2">
+    <div class="box purple"><h4>Live streaming (short version)</h4><ul><li><b>Ingest:</b> the broadcaster pushes RTMP or SRT to the nearest ingest point.</li><li><b>Transcode in real time:</b> you can't split the future, so each live channel needs reserved encoder capacity.</li><li><b>Low-latency HLS:</b> small partial segments (a few hundred ms), blocking playlist reload, preload hints.</li><li><b>Latency:</b> classic HLS with 6 s segments is often 10&ndash;30 s behind; LL-HLS gets to a few seconds. Sub-second (auctions, calls) needs WebRTC, which costs more to fan out.</li><li>Record the stream and publish it as VOD afterwards.</li></ul></div>
+    <div class="box green"><h4>Cost: where the money goes</h4><ul><li><b>Egress is the big bill.</b> Hit ratio, better codecs for devices that support them, and CDN contracts matter more than compute.</li><li><b>Storage tiers:</b> hot for new and popular videos, cool / cold for the long tail, archive for originals (180-day minimum, hours to rehydrate).</li><li><b>Per-title encoding:</b> build the ladder per video. Netflix (2015) streamed a simple cartoon at 1080p for 1,540 kbps, where its fixed ladder gave 480p at 1,750 kbps.</li><li>Encode the top rungs lazily, once a video actually gets views.</li></ul></div>
+  </div>
+  <h3>7. Bottlenecks &amp; scaling</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Bottleneck</th><th>Fix</th></tr>
+    <tr><td>Transcode backlog after a spike</td><td>Queue + autoscale Spot workers on queue depth; publish low rungs first</td></tr>
+    <tr><td>Viral video or premiere hits the origin</td><td>Origin shield, pre-warm the CDN, long TTL on segments</td></tr>
+    <tr><td>Egress cost</td><td>Higher hit ratio, multi-CDN deals, per-title encoding, newer codecs where supported</td></tr>
+    <tr><td>Hot view counter</td><td>Split into N Redis keys and sum; flush async in batches</td></tr>
+    <tr><td>Storage growth</td><td>Lifecycle rules hot → cool → cold; originals to archive; drop unwatched top rungs</td></tr>
+  </table></div>
+  <div class="remember"><ul>
+    <li>Upload straight to object storage with a short-lived write-only URL. The API never touches the bytes.</li>
+    <li>Split, encode in parallel to a bitrate ladder, package once as CMAF for HLS and DASH.</li>
+    <li>The player picks the bitrate; the CDN carries the load. Hit ratio and egress decide the bill.</li>
+    <li>View counts are approximate and async: Redis counters + periodic flush, HyperLogLog for uniques.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> The .NET stack for this design</div>
+  <table>
+    <tr><th>Component</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Upload API</b></td><td><span class="pill builtin">built-in</span> minimal APIs + <code>Azure.Storage.Blobs</code> (<code>GetUserDelegationKeyAsync</code>, <code>BlobSasBuilder</code>), <code>Azure.Identity</code></td><td>User delegation SAS (Entra-signed, no account key); Create/Write only, short expiry</td></tr>
+    <tr><td><b>Pipeline</b></td><td><code>Azure.Messaging.EventGrid</code>, <code>Azure.Messaging.ServiceBus</code>; <code>Microsoft.Azure.Functions.Worker.Extensions.DurableTask</code></td><td>BlobCreated starts a Durable orchestration that fans out per segment and rung</td></tr>
+    <tr><td><b>Encoding workers</b></td><td><code>FFMpegCore</code> (MIT); <code>Xabe.FFmpeg</code> <span class="pill lic">commercial licence</span></td><td>Run in Container Apps jobs, AKS Spot node pools or Azure Batch Spot VMs</td></tr>
+    <tr><td><b>Delivery + playback</b></td><td>Azure Front Door (Blob origin); minimal API that signs manifest URLs</td><td>Front Door has no built-in signed-URL check: enforce access in the play API and DRM licence server</td></tr>
+    <tr><td><b>View counts</b></td><td><code>StackExchange.Redis</code> (<code>StringIncrementAsync</code>, <code>HyperLogLogAddAsync</code>)</td><td>A <code>BackgroundService</code> flushes totals to the DB every minute</td></tr>
+    <tr><td><b>Buy, not build</b></td><td><code>Mux.Csharp.Sdk</code>, <code>AWSSDK.MediaConvert</code>, <code>Google.Cloud.Video.Transcoder.V1</code></td><td>Cloudflare Stream has no official .NET SDK: call its REST API with <code>HttpClient</code></td></tr>
+  </table>
+<pre class="code"><code>// Durable Functions (isolated worker): fan out every segment x rung, then fan in
+[Function(nameof(TranscodeVideo))]
+public static async Task&lt;string&gt; TranscodeVideo(
+    [OrchestrationTrigger] TaskOrchestrationContext ctx)
+{
+    var videoId = ctx.GetInput&lt;string&gt;()!;
+    var segments = await ctx.CallActivityAsync&lt;string[]&gt;(nameof(Split), videoId);
+
+    string[] ladder = ["1080p", "720p", "480p", "360p", "240p"];
+    var encodes = from s in segments
+                  from r in ladder
+                  select ctx.CallActivityAsync&lt;string&gt;(nameof(Encode), new Job(s, r));
+    string[] outputs = await Task.WhenAll(encodes);  // fan in: 10 min = 750 tasks
+
+    return await ctx.CallActivityAsync&lt;string&gt;(nameof(Package), outputs);
+}
+
+[Function(nameof(Encode))]
+public static async Task&lt;string&gt; Encode([ActivityTrigger] Job job)
+{
+    var output = Path.ChangeExtension(job.Segment, $".{job.Rung}.mp4");
+    await FFMpegArguments.FromFileInput(job.Segment)
+        .OutputToFile(output, true, o =&gt; o
+            .WithVideoCodec(VideoCodec.LibX264)
+            .WithVideoBitrate(Ladder.Kbps[job.Rung])
+            .WithCustomArgument($"-vf scale=-2:{Ladder.Height[job.Rung]}"))
+        .ProcessAsynchronously();
+    return output;               // real code: download from / upload to Blob Storage
+}</code></pre>
+  <p class="warn">Azure Media Services was retired on 30 June 2024, so Azure has no first-party encode/package/DRM service any more: build with FFmpeg or buy (Mux, Cloudflare Stream, AWS Elemental MediaConvert, Google Transcoder API). FFMpegCore is MIT, but the ffmpeg binary you ship is LGPL, or GPL if built with parts like libx264: check your build. For very large fan-outs, use one sub-orchestration per rung to keep orchestration history small.</p>
+</div>
+  <div class="post">
+    <p>Why does a show start a bit blurry and turn sharp after a few seconds? That's the design working. 🎬</p>
+    <p>📤 Uploads go straight to object storage with a short-lived URL, never through your API</p>
+    <p>✂️ The video is cut into ~4-second segments and encoded in parallel at 5+ quality levels</p>
+    <p>📦 One set of CMAF segments serves both HLS and DASH</p>
+    <p>📶 The player measures your bandwidth and picks the quality of every next segment</p>
+    <p>🌍 The CDN serves 95%+ of the bytes; every 1% of misses lands on your origin</p>
+    <p>💸 Egress, not storage, is the big bill</p>
+    <p>Start low, step up, never stall. #SystemDesign #VideoStreaming #CDN #Architecture #DotNet</p>
+  </div>
+</section>
+
 <!-- LEDGER -->
 <section class="concept" id="ledger">
-  <h2><span class="num">19.6</span> Payment ledger service <span class="tag-added">Added</span></h2>
+  <h2><span class="num">19.7</span> Payment ledger service <span class="tag-added">Added</span></h2>
   <p class="oneliner">"Design the ledger that records every money movement for a digital wallet or bank account product." Here correctness beats speed: every cent must balance, and nothing is ever edited or lost.</p>
   <div class="cols2">
     <div>
@@ -762,6 +932,8 @@ return Results.Created($"/transfers/{txId}", txId);</code></pre>
   <details class="qa"><summary>Rate limiter: what happens if Redis goes down?</summary><p>Decide per endpoint. Most APIs fail open with a local in-memory limiter as a safety net. Login, OTP and payment initiation fail closed, because abuse costs more than a short outage.</p></details>
   <details class="qa"><summary>Chat: how do you keep messages in order?</summary><p>Give each conversation its own sequence number (Redis INCR or one stream partition per conversation). Clients sort by it and fetch any gaps. Global ordering isn't needed.</p></details>
   <details class="qa"><summary>Feed: what is the celebrity problem?</summary><p>With fan-out on write, one post by an account with millions of followers means millions of feed writes. The hybrid fix: push posts from normal accounts, and pull celebrity posts at read time and merge them in.</p></details>
+  <details class="qa"><summary>Video: why cut a video into segments at several bitrates?</summary><p>Segments let you encode in parallel (minutes, not hours) and let the player switch quality at every segment boundary. The bitrate ladder gives every network a rung it can play without stalling, and small immutable segments cache well on the CDN.</p></details>
+  <details class="qa"><summary>Video: what is the biggest cost, and how do you cut it?</summary><p>Egress (CDN bandwidth), not storage or compute. Keep the cache hit ratio high, use per-title encoding and newer codecs where devices support them, and move the long tail of rarely watched videos to cooler storage tiers.</p></details>
   <details class="qa"><summary>Ledger: why store a balance if you can sum the entries?</summary><p>Summing is slow for busy accounts and makes the overdraw check expensive. Store the balance, update it in the same transaction as the entries, and run a nightly check that it still equals the sum.</p></details>
 </div>
 
