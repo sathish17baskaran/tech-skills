@@ -289,11 +289,11 @@
 </script></figure>
   <div class="grid">
     <div class="box purple"><h4>🧱 API facade</h4><p>Expose mainframe transactions through an API layer. Channels stop depending on the legacy interface, so the back end can change later.</p></div>
-    <div class="box green"><h4>🌿 Strangler fig</h4><p>Route capability by capability to new services behind the facade. Details in <a href="11-architecture-patterns.html#strangler">11.7</a>.</p></div>
+    <div class="box green"><h4>🌿 Strangler fig</h4><p>Route capability by capability to new services behind the facade. Details in <a href="11-architecture-patterns.html#strangler">11.8</a>.</p></div>
     <div class="box teal"><h4>📤 CDC into events</h4><p>Log-based CDC from mainframe databases into Kafka. Publish business events, not raw table changes. See <a href="06-databases-data.html#cdc">06 CDC</a>.</p></div>
     <div class="box blue"><h4>🪞 Data replication</h4><p>Copy data to cloud read stores for queries and analytics. Fewer reads on the mainframe often means lower running costs.</p></div>
     <div class="box amber"><h4>📦 Batch → events</h4><p>Publish events alongside the nightly file. Move consumers one by one. Keep the batch as a reconciliation control until the end.</p></div>
-    <div class="box"><h4>🛡️ Anti-corruption layer</h4><p>Translate legacy codes and record layouts into a clean domain model, so they don't leak into new services (<a href="11-architecture-patterns.html#ddd">11.9</a>).</p></div>
+    <div class="box"><h4>🛡️ Anti-corruption layer</h4><p>Translate legacy codes and record layouts into a clean domain model, so they don't leak into new services (<a href="11-architecture-patterns.html#ddd">11.10</a>).</p></div>
   </div>
   <h3>Managing the risk</h3>
   <div class="cols2">

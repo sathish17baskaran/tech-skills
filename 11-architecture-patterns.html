@@ -19,6 +19,7 @@
     <a href="#hexagonal" class="added">Hexagonal / Clean / Onion</a>
     <a href="#mono-micro" class="added">Monolith vs Microservices</a>
     <a href="#ms-patterns">Microservice patterns</a>
+    <a href="#ms-api" class="added">Microservice API patterns</a>
     <a href="#saga" class="added">Saga</a>
     <a href="#cqrs" class="added">CQRS &amp; Event Sourcing</a>
     <a href="#strangler" class="added">Strangler Fig</a>
@@ -345,6 +346,7 @@ builder.Build().Run();</code></pre>
     <div class="n fill">API Gateway</div><div class="ar">→</div>
     <div style="display:flex;flex-direction:column;gap:6px"><div class="n g">Accounts svc + DB</div><div class="n g">Payments svc + DB</div><div class="n g">Customers svc + DB</div></div>
   </div>
+  <p class="tip">Gateway, BFF, composition, sync vs async and API contracts are explained in <a href="#ms-api">11.5 Microservice API patterns</a>.</p>
   <div class="remember"><ul>
     <li><b>Database per service</b> keeps services independent. Share data through APIs or events, never through each other's tables.</li>
     <li><b>Anti-corruption layer (ACL)</b>: a translation layer that stops a legacy model from leaking into your new domain.</li>
@@ -375,9 +377,170 @@ app.MapHealthChecks("/health");</code></pre>
 </div>
   </section>
 
+<!-- MS API PATTERNS -->
+<section class="concept" id="ms-api">
+  <h2><span class="num">11.5</span> Microservice API patterns <span class="tag-added">Added</span></h2>
+  <p class="oneliner">How clients reach many services through <b>one front door</b>, and how services call each other <b>without turning into a distributed monolith</b>.</p>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Five ways a request travels","interval":3400,
+ "frames":[
+  {"label":"Gateway","caption":"<b>Gateway routing</b>: one public entry point. It routes by path and handles TLS, token checks and rate limits. No business logic.","rows":[
+   [{"t":"Client","c":"blue"},{"k":"arrow","g":"→","t":"/accounts"},{"t":"API gateway","sub":"auth · TLS · rate limit","c":"purple"},{"k":"arrow","g":"→"},{"t":"Accounts svc","c":"green"}]]},
+  {"label":"Composition","caption":"<b>API composition (BFF)</b>: one call from the phone. The BFF calls three services in parallel and returns one response shaped for the screen.","rows":[
+   [{"t":"Mobile app","c":"blue"},{"k":"arrow","g":"→","t":"1 call"},{"t":"Mobile BFF","sub":"fan out in parallel","c":"purple"},{"k":"arrow","g":"⇉","t":"3 calls"},{"t":"Accounts · Cards · Payments","sub":"each owns its data","c":"green"},{"k":"text","t":"1 merged response","c":"green"}]]},
+  {"label":"Chained","caption":"<b>Chained calls</b>: every hop adds latency and a failure point. Four services at 99.9% each gives about 99.6% overall. Keep chains to 2–3 hops.","rows":[
+   [{"t":"Web","c":"blue"},{"k":"arrow","g":"→"},{"t":"Orders","c":"amber"},{"k":"arrow","g":"→"},{"t":"Pricing","c":"amber"},{"k":"arrow","g":"→"},{"t":"Stock","c":"amber"},{"k":"arrow","g":"→"},{"t":"Tax","c":"red"},{"k":"text","t":"latency adds up","c":"red"}]]},
+  {"label":"Async reply","caption":"<b>Async request-reply</b>: for slow work, return <b>202 Accepted</b> with a status URL. The client polls or gets a webhook, so nobody holds a connection open for minutes.","rows":[
+   [{"t":"Client","c":"blue"},{"k":"arrow","g":"→","t":"POST /exports"},{"t":"Export API","c":"purple"},{"k":"text","t":"202 + Location: /exports/42","c":"amber"}],
+   [{"t":"Client","c":"blue"},{"k":"arrow","g":"→","t":"GET /exports/42"},{"t":"Export API","c":"purple"},{"k":"text","t":"200 done + file link","c":"green"}]]},
+  {"label":"Events","caption":"<b>Event-driven</b>: the publisher doesn't know who listens. Add a new consumer without touching the publisher.","ms":3800,"rows":[
+   [{"t":"Payments svc","c":"purple"},{"k":"arrow","g":"→","t":"publish"},{"t":"PaymentCompleted","sub":"topic","c":"amber"},{"k":"arrow","g":"⇉","t":"subscribe"},{"t":"Notifications · Ledger · Rewards","sub":"react on their own","c":"green"}]]}
+ ]}
+</script></figure>
+  <ul>
+    <li><b>Edge patterns</b> decide how clients get in: gateway, BFF, composition.</li>
+    <li><b>Service-to-service patterns</b> decide how services talk: sync, async, events.</li>
+    <li><b>Contract patterns</b> decide how APIs change without breaking anyone: versioning, tolerant reader, contract tests.</li>
+  </ul>
+
+  <h3>API composition with a slow service</h3>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Return what you have, flag what's missing","actors":[{"t":"Mobile app","c":"blue"},{"t":"Dashboard BFF","c":"purple"},{"t":"Accounts","c":"green"},{"t":"Cards","c":"teal"}],"colW":150,
+ "steps":[
+  {"from":0,"to":1,"t":"GET /dashboard"},
+  {"from":1,"to":2,"t":"GET balances"},
+  {"from":1,"to":3,"t":"GET cards"},
+  {"note":"Both calls run in parallel, each with an 800 ms budget","over":[1,3],"c":"amber"},
+  {"from":2,"to":1,"t":"200 balances","dash":true,"c":"green"},
+  {"note":"Cards times out ✗","over":[3,3],"c":"red"},
+  {"from":1,"to":0,"t":"200 + cards: degraded","c":"green"},
+  {"note":"Balances show now; the cards tile says 'try again'","over":[0,1],"c":"green"}
+ ]}
+</script></figure>
+
+  <h3>1. Edge patterns: how clients get in</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Pattern</th><th>What it does</th><th>Use when</th><th>Watch out</th></tr>
+    <tr><td><b>API gateway</b> (routing + offloading)</td><td>One entry point. Routes by path and handles TLS, token validation, rate limits and CORS</td><td>You expose more than a couple of services</td><td>Keep business logic out. A <b>"smart gateway"</b> becomes the new monolith</td></tr>
+    <tr><td><b>Gateway aggregation</b></td><td>The gateway merges several backend calls into one response</td><td>Simple, read-only merges</td><td>Logic creeps in. Use a BFF for anything screen-specific</td></tr>
+    <tr><td><b>Backend for Frontend (BFF)</b></td><td>One API per client type (mobile, web, partner), owned by that client's team</td><td>Clients need very different shapes, or a SPA needs secure cookie auth</td><td>Don't copy domain rules into each BFF. Keep them in the services</td></tr>
+    <tr><td><b>API composition</b></td><td>A composer calls several services and joins the results in memory</td><td>Read queries that span services</td><td>Big joins, sorting and paging get slow. Use a <a href="#cqrs">CQRS read model</a> instead</td></tr>
+  </table></div>
+
+  <h3>2. Service-to-service: how services talk</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Pattern</th><th>What it does</th><th>Use when</th><th>Watch out</th></tr>
+    <tr><td><b>Sync request/response</b> (REST, gRPC)</td><td>The caller waits for the answer</td><td>The caller needs the answer to continue, e.g. "is the balance enough?"</td><td><b>Temporal coupling</b>: if B is down, A fails. Always set a timeout</td></tr>
+    <tr><td><b>Chained calls</b></td><td>A calls B, which calls C, which calls D</td><td>Rarely, and only short chains</td><td>Latency and failure multiply. More than 2–3 hops is a design smell</td></tr>
+    <tr><td><b>Scatter-gather</b> (branch)</td><td>Fan out in parallel, then combine the answers</td><td>Quotes or search across several providers</td><td>Set a total deadline and return partial results</td></tr>
+    <tr><td><b>Async request-reply</b></td><td>202 Accepted + a status URL, then poll or webhook</td><td>Work that takes seconds to minutes: exports, KYC checks, reports</td><td>Make the POST idempotent and expire old status records</td></tr>
+    <tr><td><b>Async messaging and events</b></td><td>Commands to a queue, or events on a topic</td><td>Side effects other teams care about: notify, ledger, analytics</td><td>Eventual consistency. Needs the outbox, idempotent consumers and clear ordering rules</td></tr>
+  </table></div>
+
+  <h3>3. Finding and securing services</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Pattern</th><th>What it does</th><th>Use when</th><th>Watch out</th></tr>
+    <tr><td><b>Server-side discovery</b></td><td>The caller uses a stable name; a load balancer or Kubernetes Service picks the instance</td><td>Kubernetes and most PaaS (the default)</td><td>One extra hop, but the simplest option</td></tr>
+    <tr><td><b>Client-side discovery</b></td><td>The caller looks up a registry and picks an instance itself</td><td>Aspire, Consul, or smart client load balancing</td><td>Discovery logic lives in every client</td></tr>
+    <tr><td><b>Service mesh</b></td><td>Sidecars handle mTLS, retries and traffic splits</td><td>Many services, many languages, zero trust</td><td>Real operational cost. See <a href="#mesh">Sidecar &amp; Service Mesh</a></td></tr>
+    <tr><td><b>Token exchange</b> (RFC 8693)</td><td>The edge validates the user's token; each service swaps it for a narrower token for the next call</td><td>Zero trust and least privilege</td><td>Don't forward one all-powerful token through every service</td></tr>
+  </table></div>
+
+  <h3>4. Contracts: changing APIs without breaking anyone</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Pattern</th><th>What it does</th><th>Use when</th><th>Watch out</th></tr>
+    <tr><td><b>Contract-first</b></td><td>Write the OpenAPI or <code>.proto</code> file first, then generate servers and clients</td><td>Many consumers, teams working in parallel</td><td>The spec must be the source of truth and checked in CI</td></tr>
+    <tr><td><b>Tolerant reader</b></td><td>Consumers ignore unknown fields and read only what they need</td><td>Always</td><td>This is what lets producers add fields safely</td></tr>
+    <tr><td><b>Expand and contract</b> (parallel change)</td><td>Add the new field or endpoint, move consumers over, then remove the old one</td><td>Any breaking change</td><td>Track who still calls the old shape before removing it</td></tr>
+    <tr><td><b>Versioning</b> (two in production)</td><td>v1 and v2 run side by side for a fixed period</td><td>Only for real breaking changes</td><td>Announce the end date with the <code>Deprecation</code> and <code>Sunset</code> headers</td></tr>
+    <tr><td><b>Consumer-driven contract tests</b></td><td>Consumers publish what they rely on; the provider's CI verifies it</td><td>To stop breaking consumers you didn't know about</td><td>Contracts need an owner and a broker</td></tr>
+  </table></div>
+
+  <h3>5. Message and payload patterns</h3>
+  <p>Small decisions inside each API, from the book <i>Patterns for API Design</i> (Zimmermann et al.):</p>
+  <div class="grid">
+    <div class="box blue"><h4>📄 Pagination</h4><ul><li>Cursor paging for big or changing lists</li><li>Offset paging only for small, stable lists</li></ul></div>
+    <div class="box green"><h4>🎯 Wish list</h4><ul><li>Let callers pick fields: <code>?fields=id,balance</code></li><li>Smaller payloads for mobile</li></ul></div>
+    <div class="box purple"><h4>📦 Request bundle</h4><ul><li>Send many items in one call</li><li>Return a result per item</li></ul></div>
+    <div class="box teal"><h4>🔁 Conditional request</h4><ul><li><code>ETag</code> + <code>If-None-Match</code> returns 304</li><li><code>If-Match</code> stops lost updates</li></ul></div>
+    <div class="box amber"><h4>🔗 Embed or link</h4><ul><li>Embed small related data</li><li>Link to large or rarely used data</li></ul></div>
+    <div class="box red"><h4>🛡 Safe retries and errors</h4><ul><li><code>Idempotency-Key</code> on POST</li><li>Errors as Problem Details (RFC 9457)</li><li>429 + <code>Retry-After</code> for rate limits</li></ul></div>
+  </div>
+
+  <p class="warn"><b>Smells to call out in a design review:</b> chatty APIs (many calls per screen), synchronous chains of 4+ services, two services sharing one database, CRUD-per-table services, business rules in the gateway, breaking changes without a version, and retries on calls that aren't idempotent.</p>
+
+  <div class="remember"><ul>
+    <li>Design APIs around <b>business capabilities and tasks</b>, not database tables.</li>
+    <li>Use <b>sync for answers you need now</b>, and <b>async for side effects</b>.</li>
+    <li>Every remote call needs a <b>timeout</b>, retries only if it is <b>idempotent</b>, and a <b>fallback</b>.</li>
+    <li>Pass a <b>deadline</b> and a <b>trace ID</b> (W3C <code>traceparent</code>) through every hop.</li>
+    <li>Adding fields is free. A breaking change costs a <b>version</b> and a migration plan.</li>
+    <li>Prefer fewer, coarser calls across the network. <b>Chatty is the enemy.</b></li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Pattern</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>API gateway</b></td><td><code>Yarp.ReverseProxy</code></td><td>Routes and transforms; add auth, rate limiting and output caching with normal ASP.NET Core middleware</td></tr>
+    <tr><td><b>BFF / composition</b></td><td><span class="pill builtin">built-in</span> Minimal APIs + typed <code>HttpClient</code>; <code>Duende.BFF</code> <span class="pill lic">commercial licence</span></td><td>Fan out in parallel, give each call its own timeout. Duende BFF adds secure cookie auth for SPAs</td></tr>
+    <tr><td><b>Service discovery</b></td><td><code>Microsoft.Extensions.ServiceDiscovery</code></td><td><code>https+http://cards</code> resolves from config, Aspire or Kubernetes DNS</td></tr>
+    <tr><td><b>Resilience</b></td><td><code>Microsoft.Extensions.Http.Resilience</code></td><td><code>AddStandardResilienceHandler</code>: timeout, retry and circuit breaker per client</td></tr>
+    <tr><td><b>gRPC</b></td><td><code>Grpc.AspNetCore</code>, <code>Grpc.Net.ClientFactory</code></td><td>Fast, typed internal calls with deadlines built in</td></tr>
+    <tr><td><b>Contract-first</b></td><td><span class="pill builtin">built-in</span> <code>Microsoft.AspNetCore.OpenApi</code> (<code>AddOpenApi</code>, OpenAPI 3.1 in .NET 10); <code>Refit</code> or Kiota (<code>Microsoft.OpenApi.Kiota</code> tool) for clients</td><td>Publish the spec from the service and generate typed clients from it</td></tr>
+    <tr><td><b>Versioning</b></td><td><code>Asp.Versioning.Http</code></td><td>URL, header or query versioning, and reports supported versions</td></tr>
+    <tr><td><b>Errors</b></td><td><span class="pill builtin">built-in</span> <code>AddProblemDetails</code></td><td>Standard RFC 9457 error bodies across all services</td></tr>
+    <tr><td><b>Contract tests</b></td><td><code>PactNet</code></td><td>Consumer-driven contracts, verified in the provider's CI</td></tr>
+    <tr><td><b>Events and commands</b></td><td><code>Azure.Messaging.ServiceBus</code>; <code>WolverineFx</code>; <code>Dapr.Client</code></td><td>Pub/sub, queues and sidecar-based service invocation</td></tr>
+  </table>
+<pre class="code"><code>// Dashboard BFF: one call from the app, two services behind it
+builder.Services.AddServiceDiscovery();
+builder.Services.ConfigureHttpClientDefaults(h =&gt; h.AddServiceDiscovery());
+
+builder.Services.AddHttpClient&lt;AccountsClient&gt;(c =&gt; c.BaseAddress = new("https+http://accounts"))
+    .AddStandardResilienceHandler();
+builder.Services.AddHttpClient&lt;CardsClient&gt;(c =&gt; c.BaseAddress = new("https+http://cards"))
+    .AddStandardResilienceHandler(o =&gt; o.AttemptTimeout.Timeout = TimeSpan.FromMilliseconds(800));
+builder.Services.AddProblemDetails();   // RFC 9457 errors
+builder.Services.AddOpenApi();          // contract at /openapi/v1.json
+
+var app = builder.Build();
+app.MapOpenApi();
+
+app.MapGet("/dashboard", async (ClaimsPrincipal user,
+    AccountsClient accounts, CardsClient cards, CancellationToken ct) =&gt;
+{
+    var id = user.FindFirstValue(ClaimTypes.NameIdentifier)!;
+    var balancesTask = accounts.GetAsync(id, ct);       // required
+    var cardsTask    = Try(cards.GetAsync(id, ct));     // optional tile, runs in parallel
+
+    var balances = await balancesTask;                  // let a required call fail
+    var myCards  = await cardsTask;
+    return TypedResults.Ok(new DashboardView(balances, myCards, Degraded: myCards is null));
+}).RequireAuthorization();
+
+app.Run();
+
+static async Task&lt;T?&gt; Try&lt;T&gt;(Task&lt;T&gt; call) where T : class
+{
+    try { return await call; }
+    catch (Exception ex) when (ex is HttpRequestException
+        or TimeoutRejectedException or BrokenCircuitException)
+    { return null; }                                    // degrade, don't fail the page
+}</code></pre>
+  <p class="warn"><code>Task.WhenAll</code> on its own fails the whole response when one call fails. Decide per call: <b>required</b> calls may fail the request, <b>optional</b> calls degrade.</p>
+</div>
+  <div class="post">
+    <p>Most microservice pain shows up at the API layer, not in the code 🔌</p>
+    <p>5 API patterns I check in every design review:</p>
+    <p>1️⃣ Gateway: one front door. Routing, auth, rate limits. Zero business logic.<br>2️⃣ BFF: one API per client type. Mobile shouldn't pay for web's payload.<br>3️⃣ Composition: fan out in parallel, and return partial data when a tile is slow.<br>4️⃣ Async request-reply: 202 + a status URL for anything slower than a few seconds.<br>5️⃣ Events: publish what happened, and let others subscribe.</p>
+    <p>One smell to watch: if a request crosses 4 services synchronously, you've built a distributed monolith.</p>
+    <p>#Microservices #APIDesign #SoftwareArchitecture #SystemDesign</p>
+  </div>
+</section>
+
 <!-- SAGA -->
 <section class="concept" id="saga">
-  <h2><span class="num">11.5</span> Saga pattern <span class="tag-added">Added</span></h2>
+  <h2><span class="num">11.6</span> Saga pattern <span class="tag-added">Added</span></h2>
   <p class="oneliner">A long business transaction split into local transactions. If one step fails, <b>compensating actions</b> undo the earlier steps.</p>
 <figure class="viz" data-viz="frames"><script type="application/json">
 {"title":"Payment saga","interval":2600,
@@ -432,7 +595,7 @@ public static async Task PaymentSaga([OrchestrationTrigger] TaskOrchestrationCon
 
 <!-- CQRS -->
 <section class="concept" id="cqrs">
-  <h2><span class="num">11.6</span> CQRS &amp; Event Sourcing <span class="tag-added">Added</span></h2>
+  <h2><span class="num">11.7</span> CQRS &amp; Event Sourcing <span class="tag-added">Added</span></h2>
   <p class="oneliner"><b>CQRS</b>: separate the write model (commands) from the read model (queries). <b>Event sourcing</b>: store every change as an event and rebuild state from them.</p>
   <div class="flow">
     <div class="n">Command<small>"Transfer $100"</small></div><div class="ar">→</div><div class="n p">Write model<small>validates rules</small></div><div class="ar">→</div>
@@ -478,7 +641,7 @@ var account = await session.Events.AggregateStreamAsync&lt;Account&gt;(accountId
 
 <!-- STRANGLER -->
 <section class="concept" id="strangler">
-  <h2><span class="num">11.7</span> Strangler Fig pattern <span class="tag-added">Added</span></h2>
+  <h2><span class="num">11.8</span> Strangler Fig pattern <span class="tag-added">Added</span></h2>
   <p class="oneliner">Modernise a legacy system bit by bit: put a façade in front, route one feature at a time to new services, and retire the old system once it's empty.</p>
 <figure class="viz" data-viz="frames"><script type="application/json">
 {"title":"Strangler fig migration","interval":2600,
@@ -524,7 +687,7 @@ app.Run();</code></pre>
 
 <!-- MESH -->
 <section class="concept" id="mesh">
-  <h2><span class="num">11.8</span> Sidecar &amp; Service Mesh <span class="tag-added">Added</span></h2>
+  <h2><span class="num">11.9</span> Sidecar &amp; Service Mesh <span class="tag-added">Added</span></h2>
   <p class="oneliner">A <b>sidecar</b> is a helper container that runs next to your service. A <b>service mesh</b> puts a sidecar proxy next to every service to handle networking concerns.</p>
   <div class="flow">
     <div class="n g">Service A</div><div class="ar">⇄</div><div class="n p">Envoy proxy</div>
@@ -562,7 +725,7 @@ app.MapPost("/on-payment", (Payment p) =&gt; Results.Ok())
 
 <!-- DDD -->
 <section class="concept" id="ddd">
-  <h2><span class="num">11.9</span> Domain-Driven Design essentials <span class="tag-added">Added</span></h2>
+  <h2><span class="num">11.10</span> Domain-Driven Design essentials <span class="tag-added">Added</span></h2>
   <p class="oneliner">Model software around the business domain, and draw service boundaries where the business language changes.</p>
   <div class="grid">
     <div class="box"><h4>Bounded context</h4><p>A boundary inside which a model and its terms have one meaning. "Account" in Lending ≠ "Account" in Login.</p></div>
@@ -611,7 +774,7 @@ modelBuilder.Entity&lt;Account&gt;().Ignore(a =&gt; a.DomainEvents);</code></pre
 
 <!-- EVENT STORMING -->
 <section class="concept" id="eventstorming">
-  <h2><span class="num">11.10</span> Event storming <span class="tag-added">Added</span></h2>
+  <h2><span class="num">11.11</span> Event storming <span class="tag-added">Added</span></h2>
   <p class="oneliner">A fast sticky-note workshop (created by Alberto Brandolini) where business and tech people map a domain as a timeline of events, then find the boundaries in it.</p>
 <figure class="viz" data-viz="frames" style="min-height:265px"><script type="application/json">
 {"title":"A payment flow on the wall, one layer of stickies at a time","interval":2800,
@@ -628,7 +791,7 @@ modelBuilder.Entity&lt;Account&gt;().Ignore(a =&gt; a.DomainEvents);</code></pre
    {"label":"Read models (green)","items":[{"t":"Available balance","c":"green"},{"t":"Held payments list","c":"green"}]}]},
   {"label":"Hotspots","caption":"<b>Hotspots</b> mark questions, conflicts and risks. They're where the real learning is.","ms":3200,"rows":[
    {"label":"Hotspots","items":[{"t":"❓ Who may release a held payment?","c":"red"},{"t":"❓ \"Account\" means different things to Ops and Lending","c":"red"}]}]},
-  {"label":"Boundaries","caption":"Where language and ownership change, draw lines: these are candidate <b>bounded contexts</b> (11.9).","ms":3600,"rows":[
+  {"label":"Boundaries","caption":"Where language and ownership change, draw lines: these are candidate <b>bounded contexts</b> (11.10).","ms":3600,"rows":[
    {"label":"Payments","items":[{"t":"Payment submitted","c":"amber"},{"t":"Payment sent","c":"amber"},{"t":"Payment settled","c":"amber"}]},
    {"label":"Fraud","items":[{"t":"Fraud check passed","c":"amber"},{"t":"Payment held","c":"amber"}]},
    {"label":"Notifications","items":[{"t":"Customer notified","c":"amber"}]}]}
@@ -653,7 +816,7 @@ modelBuilder.Entity&lt;Account&gt;().Ignore(a =&gt; a.DomainEvents);</code></pre
     <tr><td>Notes used</td><td>Events, hotspots, actors, external systems</td><td>+ commands, policies, read models</td><td>+ aggregates</td></tr>
     <tr><td>Output</td><td>A shared timeline, pivotal events, candidate bounded contexts</td><td>An agreed flow with rules and unknowns</td><td>Aggregates, commands and events ready to code</td></tr>
   </table></div>
-  <h3>How it feeds DDD (11.9)</h3>
+  <h3>How it feeds DDD (11.10)</h3>
   <div class="flow">
     <div class="n a">Events on a timeline</div><div class="ar">→</div>
     <div class="n">Pivotal events &amp; swimlanes</div><div class="ar">→</div>
@@ -677,9 +840,9 @@ modelBuilder.Entity&lt;Account&gt;().Ignore(a =&gt; a.DomainEvents);</code></pre
   <table>
     <tr><th>Sticky</th><th>.NET building block</th><th>Notes</th></tr>
     <tr><td><b>Command</b> (blue)</td><td><span class="pill builtin">built-in</span> a <code>record</code> + a handler class; or a <code>WolverineFx</code> handler</td><td>One handler per command, named in the business language</td></tr>
-    <tr><td><b>Aggregate</b> (yellow)</td><td><span class="pill builtin">built-in</span> a class with private setters and rule-checking methods</td><td>See the <code>Account</code> example in 11.9</td></tr>
+    <tr><td><b>Aggregate</b> (yellow)</td><td><span class="pill builtin">built-in</span> a class with private setters and rule-checking methods</td><td>See the <code>Account</code> example in 11.10</td></tr>
     <tr><td><b>Domain event</b> (orange)</td><td><span class="pill builtin">built-in</span> a past-tense <code>record</code> raised by the aggregate</td><td>Publish to other contexts through an outbox (10.6)</td></tr>
-    <tr><td><b>Policy</b> (lilac)</td><td>An event handler that sends the next command (Wolverine, Service Bus subscriber)</td><td>Long-running policies become sagas (11.5)</td></tr>
+    <tr><td><b>Policy</b> (lilac)</td><td>An event handler that sends the next command (Wolverine, Service Bus subscriber)</td><td>Long-running policies become sagas (11.6)</td></tr>
   </table>
 </div>
   <div class="post">
@@ -696,7 +859,7 @@ modelBuilder.Entity&lt;Account&gt;().Ignore(a =&gt; a.DomainEvents);</code></pre
 
 <!-- SERVERLESS -->
 <section class="concept" id="serverless">
-  <h2><span class="num">11.11</span> Serverless architecture</h2>
+  <h2><span class="num">11.12</span> Serverless architecture</h2>
   <p class="oneliner">You write the code or configuration. The cloud runs, scales (even to zero) and bills it per execution. Servers still exist, you just don't manage them.</p>
   <div class="flow">
     <div class="n">Trigger<small>HTTP · queue · blob · timer · event</small></div><div class="ar">→</div>
@@ -763,7 +926,7 @@ modelBuilder.Entity&lt;Account&gt;().Ignore(a =&gt; a.DomainEvents);</code></pre
 
 <!-- 12 FACTOR -->
 <section class="concept" id="twelve">
-  <h2><span class="num">11.12</span> The 12-Factor App <span class="tag-added">Added</span></h2>
+  <h2><span class="num">11.13</span> The 12-Factor App <span class="tag-added">Added</span></h2>
   <p class="oneliner">Twelve principles for building cloud-native apps that are portable and scalable.</p>
   <div class="tablewrap"><table>
     <tr><td>1. Codebase: one repo, many deploys</td><td>7. Port binding: self-contained service</td></tr>
@@ -803,7 +966,7 @@ builder.Logging.AddJsonConsole();                    // logs as an event stream<
 
 <!-- MULTI-TENANCY -->
 <section class="concept" id="multitenancy">
-  <h2><span class="num">11.13</span> Multi-tenancy patterns <span class="tag-added">Added</span></h2>
+  <h2><span class="num">11.14</span> Multi-tenancy patterns <span class="tag-added">Added</span></h2>
   <p class="oneliner">One system serves many customers (tenants). The key design question is how much they <b>share</b>: everything (pool), nothing (silo), or a mix (bridge).</p>
 <figure class="viz" data-viz="frames"><script type="application/json">
 {"title":"Silo vs bridge vs pool","interval":3000,
@@ -917,6 +1080,8 @@ builder.Services.AddRateLimiter(o =&gt;
   <details class="qa"><summary>Hexagonal vs Clean vs Onion: what's the difference?</summary><p>Very little. All three put the domain at the centre and make dependencies point inwards, with infrastructure at the edge. Hexagonal talks about ports and adapters; Onion and Clean draw concentric layers, and Clean names them (entities, use cases, interface adapters, frameworks). For simple CRUD, a vertical slice structure is often a better fit.</p></details>
   <details class="qa"><summary>What do you get out of an event storming workshop?</summary><p>A shared timeline of domain events, the commands, actors, policies and external systems around them, a list of hotspots (open questions and risks), and candidate bounded contexts where the language and ownership change. That feeds the DDD context map and the service boundaries.</p></details>
   <details class="qa"><summary>How do you isolate tenants in a shared database?</summary><p>Resolve the tenant from the token or host, never from the request body. Add a TenantId to every row and enforce it with an EF Core global query filter (named, so it's never switched off by accident) and ideally database row-level security as a second layer. Prefix cache keys with the tenant, rate limit per tenant, and test for cross-tenant leaks in CI. Move large or regulated tenants to their own database.</p></details>
+  <details class="qa"><summary>API gateway or BFF: which one?</summary><p>Usually both. The gateway is the shared front door: routing, TLS, token validation and rate limits, with no business logic. A BFF sits behind it, one per client type, and shapes data for that client by calling several services. If one generic API keeps growing "mobile-only" or "web-only" fields, it is time for a BFF.</p></details>
+  <details class="qa"><summary>How do you query data owned by several microservices?</summary><p>For simple reads, use API composition: call the owning services in parallel and merge the results, with a timeout per call and a partial response when an optional part is slow. For large joins, search, sorting or paging, build a CQRS read model fed by events. Never read another service's tables directly.</p></details>
 </div>
 
 <div class="pager"><a href="10-integration-messaging.html">← 10 · Integration &amp; Messaging</a><a class="next" href="12-security-iam.html">12 · Security &amp; IAM →</a></div>

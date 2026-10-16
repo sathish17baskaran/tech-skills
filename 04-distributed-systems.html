@@ -479,7 +479,7 @@ foreach (var batch in await LoadBatchesAsync(ct))
     <li>Brokers, NoSQL stores and HTTP APIs usually don't support XA at all.</li>
     <li>Locks held across services kill throughput and couple teams' availability together.</li>
     <li>The coordinator is a single point of failure.</li>
-    <li>Instead: a <b>saga</b> (<a href="11-architecture-patterns.html#saga">11.4</a>) for the business flow, plus the <b>transactional outbox</b> (<a href="10-integration-messaging.html#eip">10.5</a>) so each step's DB write and event publish stay atomic.</li>
+    <li>Instead: a <b>saga</b> (<a href="11-architecture-patterns.html#saga">11.6</a>) for the business flow, plus the <b>transactional outbox</b> (<a href="10-integration-messaging.html#eip">10.5</a>) so each step's DB write and event publish stay atomic.</li>
   </ul>
   <div class="remember"><ul>
     <li>2PC gives atomicity at the cost of availability: it's CP, and it blocks.</li>
@@ -491,7 +491,7 @@ foreach (var batch in await LoadBatchesAsync(ct))
   <table>
     <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
     <tr><td><b>TransactionScope</b></td><td><span class="pill builtin">built-in</span> <code>System.Transactions</code></td><td>An ambient transaction around your DB work. Escalation to a distributed (MSDTC) transaction works on <b>Windows only</b> since .NET 7 and needs <code>TransactionManager.ImplicitDistributedTransactions = true</code></td></tr>
-    <tr><td><b>Orchestrated sagas</b></td><td><code>Microsoft.Azure.Functions.Worker.Extensions.DurableTask</code>, <code>Temporalio</code></td><td>Saga steps and compensations as durable workflow code (see <a href="11-architecture-patterns.html#saga">11.4</a>)</td></tr>
+    <tr><td><b>Orchestrated sagas</b></td><td><code>Microsoft.Azure.Functions.Worker.Extensions.DurableTask</code>, <code>Temporalio</code></td><td>Saga steps and compensations as durable workflow code (see <a href="11-architecture-patterns.html#saga">11.6</a>)</td></tr>
     <tr><td><b>Outbox</b></td><td><code>WolverineFx.EntityFrameworkCore</code> or a hand-rolled outbox table</td><td>Commit the DB change and the outgoing event together, no 2PC needed (see <a href="10-integration-messaging.html#eip">10.5</a>)</td></tr>
   </table>
 <pre class="code"><code>// Works anywhere: one database, one local transaction
