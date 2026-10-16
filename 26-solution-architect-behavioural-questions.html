@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>26 · Solution Architect Behavioural Questions | Tech Concepts Prep</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<nav class="top"><a href="25-interview-readiness.html">← Interview Readiness</a><span class="here">26 · Solution Architect Behavioural Questions</span><a href="27-solution-designer-behavioural-questions.html">Next: Solution Designer Questions →</a></nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">Section 26</div>
+  <h1>Solution architect: behavioural questions</h1>
+  <p>These are 25 behavioural questions for solution architect roles, covering strategy and roadmaps, governance, cloud and resilience, integration, API and data strategy, AI/GenAI strategy, stakeholders and regulation. Each one has a full STAR(R) answer built on an unusual example, plus the psychology behind the question (what the interviewer is really testing) and the philosophy behind a strong answer, with the key words in bold.</p>
+  <div class="toc">
+    <a href="#howto" class="added">How to use these answers</a>
+    <a href="#strategy" class="added">Strategy &amp; roadmaps</a>
+    <a href="#governance" class="added">Governance &amp; standards</a>
+    <a href="#cloud" class="added">Cloud, resilience &amp; vendors</a>
+    <a href="#integration" class="added">Integration, API &amp; data</a>
+    <a href="#ai" class="added">AI &amp; GenAI strategy</a>
+    <a href="#delivery" class="added">Delivery &amp; stakeholders</a>
+    <a href="#ethics" class="added">Risk, regulation &amp; ethics</a>
+  </div>
+</header>
+
+<!-- HOWTO -->
+<section class="concept" id="howto">
+  <h2><span class="num">26.1</span> How to use these answers <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Behavioural rounds test how you think, decide and lead when things are messy. These answers show the structure and depth to aim for. They are not scripts to memorise.</p>
+  <p class="tip">This page is for <b>solution architect</b> roles: strategy, standards, cloud, integration, AI and risk across many teams. Other role-specific sets: <a href="27-solution-designer-behavioural-questions.html">27 Solution designer</a> (one solution, in depth) and <a href="28-engineering-manager-behavioural-questions.html">28 Engineering manager</a> (people and delivery).</p>
+  <h3>What a solution architect round tests</h3>
+  <ul>
+    <li><b>Business alignment</b>: can you turn a strategy into a <b>target state</b>, a <b>roadmap</b> and a <b>business case</b>?</li>
+    <li><b>Judgement across many teams</b>: standards, <b>trade-offs</b> and <b>risk</b> at portfolio level, not inside one system.</li>
+    <li><b>Technical credibility</b>: cloud, integration, API, data and AI choices you can defend two levels deep.</li>
+    <li><b>Influence</b>: executives, delivery teams and vendors follow your lead without reporting to you.</li>
+    <li>Senior answers show <b>scope</b> (many teams, real risk), <b>ownership</b> (I, not we) and <b>learning</b> (what you'd change).</li>
+  </ul>
+  <h3>How each answer is laid out</h3>
+  <div class="grid">
+    <div class="box amber"><h4>🧠 Psychology</h4><p>The hidden competency behind the question, the <b>red flags</b> the interviewer listens for, and what separates a senior answer from a mid-level one.</p></div>
+    <div class="box teal"><h4>🧭 Philosophy</h4><p>The principle or mental model a strong answer rests on, such as "make the right thing the easy thing" or "decisions are bets". Name it lightly in your answer; don't lecture.</p></div>
+    <div class="box blue"><h4>⭐ STAR(R) recap</h4><ul>
+      <li><b>S</b>ituation: 2–3 sentences of context.</li>
+      <li><b>T</b>ask: what <i>you</i> were accountable for.</li>
+      <li><b>A</b>ction: what <b>I</b> did, the options and why.</li>
+      <li><b>R</b>esult: numbers, for the business and people.</li>
+      <li><b>R+</b> Reflection: what you learned. More in <a href="25-interview-readiness.html#star">25.2</a>.</li>
+    </ul></div>
+  </div>
+  <div class="box red">
+    <h4>⚠️ Integrity note: read this first</h4>
+    <p>Every example on this page is an <b>illustrative composite</b>. The stories and numbers are invented to show structure and depth. <b>Never present them as your own.</b> Interviewers probe two or three levels deep, and a borrowed story falls apart fast.</p>
+    <p>Use each one as a prompt: find the <b>real story from your career</b> with the same shape, and keep your <b>real numbers honest</b>. If you don't know an exact figure, say "roughly" or give a range.</p>
+  </div>
+  <h3>Your story bank (one-table template)</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Question theme</th><th>Your real story</th><th>Metric</th><th>Lesson</th></tr>
+    <tr><td><b>Strategy to roadmap</b> (Q1)</td><td>[the business goal, the capability gaps]</td><td>[time to first release, reuse]</td><td>[what you'd sequence differently]</td></tr>
+    <tr><td><b>A decision that was wrong</b> (Q6)</td><td>[the decision, the signal you missed]</td><td>[cost, time to reverse]</td><td>[the review trigger you now use]</td></tr>
+    <tr><td><b>A business case</b> (Q2)</td><td>[the investment, who had to say yes]</td><td>[cost, risk reduced]</td><td>[the assumption you got wrong]</td></tr>
+    <tr><td><b>Saying no to a senior leader</b> (Q22)</td><td>[the request, the risk you saw]</td><td>[what shipped instead, when]</td><td>[how you'd frame it now]</td></tr>
+  </table></div>
+  <h3>Delivery tips</h3>
+  <ul>
+    <li>Keep it to <b>about 2 minutes</b>, then stop and let them probe.</li>
+    <li><b>Lead with the result headline</b>: "I cut review lead time from three weeks to two days. Here's how."</li>
+    <li>Say <b>"I", not "we"</b>, for your actions. Use "we" only for the team's result.</li>
+    <li>Have a <b>failure story</b> ready (Q6). Every senior loop asks for one.</li>
+    <li>Pause before answering. Picking the right story matters more than starting fast.</li>
+  </ul>
+<figure class="viz" data-viz="steps"><script type="application/json">
+{"title":"Building your story bank, step by step","stepMs":1100,
+ "items":[
+  {"k":"1 · List","t":"<b>List 12–15 moments</b> from the last 3–5 years where you changed an outcome","c":"slate"},
+  {"k":"2 · Tag","t":"<b>Tag each one</b> with themes: strategy, governance, cloud, integration, AI, stakeholders, risk","c":"blue"},
+  {"k":"3 · Map","t":"<b>Map stories to the 25 questions</b> below. One strong story can answer 2–3 questions","c":"purple"},
+  {"k":"gap","t":"Find the gaps, e.g. no failure story or no people story, and dig for one","c":"purple","indent":1},
+  {"k":"4 · Measure","t":"<b>Add honest numbers</b>: time, cost, incidents, adoption, people outcomes","c":"teal"},
+  {"k":"5 · Shape","t":"<b>Write STAR(R) bullets</b>, not scripts. Add the psychology and the principle","c":"green"},
+  {"k":"6 · Rehearse","t":"<b>Say each one out loud</b> in under 2 minutes, then ask a friend to probe it","c":"amber"}
+ ]}
+</script></figure>
+  <div class="remember"><ul>
+    <li>The examples here are composites. Map each one to a real story of your own; never borrow it.</li>
+    <li>Spend most of each answer on the Action: your options, your trade-off and how you brought people along.</li>
+    <li>Close with a Reflection. It shows you learn, which is what seniority looks like.</li>
+  </ul></div>
+</section>
+
+<!-- STRATEGY -->
+<section class="concept" id="strategy">
+  <h2><span class="num">26.2</span> Strategy, roadmaps &amp; business cases <span class="tag-added">Added</span></h2>
+  <p class="oneliner">This theme tests whether you can turn a business goal into a <b>target state</b>, a staged <b>roadmap</b> and a business case an executive will fund, while staying technically credible.</p>
+<figure class="viz" data-viz="lanes"><script type="application/json">
+{"title":"From an executive goal to a funded roadmap: capability gaps, transition states and funding gates (illustrative, Q1)","max":12,"labelW":150,"rowH":36,"dur":6000,
+ "rows":[
+  {"label":"Identity check","blocks":[{"s":0,"e":2,"t":"Buy: IDV","c":"purple"},{"s":2,"e":7,"t":"Integrate and pilot","c":"purple"},{"s":7,"e":12,"t":"Tune fraud rules","c":"green"}]},
+  {"label":"Credit decisioning","blocks":[{"s":0,"e":2,"t":"Rules design","c":"slate"},{"s":2,"e":7,"t":"Build: decision service","c":"blue"},{"s":7,"e":12,"t":"Add new products","c":"green"}]},
+  {"label":"Document handling","blocks":[{"s":2,"e":5,"t":"Reuse: doc platform","c":"teal"},{"s":5,"e":7,"t":"Add SMB forms","c":"teal"}]},
+  {"label":"Digital channel","blocks":[{"s":2,"e":7,"t":"Apply-online journey","c":"amber"},{"s":7,"e":12,"t":"Self-serve servicing","c":"amber"}]},
+  {"label":"Funding","blocks":[{"s":0,"e":2,"t":"Seed","c":"pink"},{"s":2,"e":7,"t":"Tranche 1","c":"pink"},{"s":7,"e":12,"t":"Tranche 2","c":"pink"}]}
+ ],
+ "markers":[{"at":2,"t":"Gate 1","c":"purple"},{"at":7,"t":"Gate 2 · first release","c":"green"}],
+ "spans":[{"s":0,"e":7,"t":"Transition state 1: one customer segment","c":"blue"},{"s":7,"e":12,"t":"Transition state 2: scale","c":"green"}],
+ "ticks":[{"at":0,"t":"0"},{"at":3,"t":"3"},{"at":6,"t":"6"},{"at":9,"t":"9"},{"at":12,"t":"12"}],
+ "axis":"months (each gate releases the next tranche on evidence)"}
+</script></figure>
+
+<article class="bq" id="q1">
+  <div class="bq-q"><span class="qnum">Q1</span><span>Tell me about turning a business strategy into a target-state architecture and roadmap.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>🧠 Psychology: what they're really testing</h5><p>Can you go from an executive slogan to a plan people can fund? Red flags are jumping straight to technology, or a beautiful target state with no path to it. Senior answers show <b>capability thinking</b>, staged delivery and clear reuse, buy or build calls tied to business value.</p></div>
+    <div class="bq-phi"><h5>🧭 Philosophy: the principle behind a strong answer</h5><p>A target state without <b>transition states</b> is a poster, not a plan. Gregor Hohpe's <b>"architect elevator"</b> describes the job: ride between the boardroom and the engine room, and translate in both directions. Map capabilities, not systems, so the conversation stays about the business.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> The executive committee set a goal: "launch a digital small-business lending offer in 12 months". Lending was branch-based and paper-heavy, with about 3 weeks to a decision. Teams and vendors were already pitching their own solutions.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> As the solution architect, I had to turn the goal into a target-state architecture and a roadmap the investment committee could fund in stages.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I started with business capabilities, not systems.</p><ul>
+      <li>I built a <b>capability map</b> of the 14 capabilities the offer needed. Eleven existed in some form. Three were real gaps: identity verification, credit decisioning and document handling.</li>
+      <li>I made a <b>reuse, buy or build</b> call per gap, based on differentiation. We bought identity verification (a commodity), reused the enterprise document platform, and built credit decisioning, because risk appetite is where we compete.</li>
+      <li>I defined two releasable transition states, each with a <b>funding gate</b> and exit criteria such as decision time and pilot loss rate.</li>
+      <li>Executives got one page of trade-offs and a "not doing" list; engineers got the integration views.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> The first release reached one customer segment in about 7 months, with 60% of applications decided in under 10 minutes. Gate 2 was funded on evidence. The capability map and roadmap template were <b>reused for two later products</b>, which cut their planning from months to weeks.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> I'd bring risk and operations in earlier. The manual-review workload was the gap I nearly missed.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> capability map · transition states · funding gates · reuse, buy or build · differentiate vs commodity · architect elevator</p>
+</article>
+
+<article class="bq" id="q2">
+  <div class="bq-q"><span class="qnum">Q2</span><span>Tell me about building a business case for an architecture investment.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>🧠 Psychology: what they're really testing</h5><p>Can you speak the language of money? Red flags are "it's best practice", inflated savings and ignoring the cost of the transition itself. Senior answers show <b>total cost of ownership</b>, honest assumptions, a range rather than one number, and good timing.</p></div>
+    <div class="bq-phi"><h5>🧭 Philosophy: the principle behind a strong answer</h5><p>A business case is a decision tool, not a sales pitch. Showing the <b>sensitivity range</b> and your weakest assumption builds more trust than one big number. Timing matters too: the cheapest moment to leave a platform is just before you renew it.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> After three mergers and one shadow-IT purchase, the bank ran four overlapping integration platforms. Each had its own licence, specialist team and runbooks. Three licence renewals fell within the next 18 months.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I was asked whether we should consolidate and, if so, to build a case the investment committee could test hard.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I built the case with finance, not for them.</p><ul>
+      <li>I modelled four cost lines: licences and hosting, specialist skills, incident cost, and change lead time as <b>cost of delay</b>.</li>
+      <li>I wrote down every assumption with an owner, and <b>agreed the assumptions with finance</b> before showing any totals.</li>
+      <li>I showed pessimistic, expected and optimistic cases. Even the pessimistic case paid back in under 3 years.</li>
+      <li>I <b>timed the migration to the renewal cycle</b>: no renewal for the two platforms we were retiring, and a short extension with a break clause for the third.</li>
+      <li>I counted dual running and retraining honestly, and showed the <b>cost of doing nothing</b>: two platforms were near end of support.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> The case was approved first time. By year 3 it removed about $2.4M a year in run cost, folded four skill silos into one integration community, and cut interface change lead time by about 35%. At the 12-month review, actuals sat inside the expected range.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> Agreeing assumptions first was the key move. Next time I'd also price <b>key-person risk</b>: two platforms each depended on one expert.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> total cost of ownership · sensitivity range · cost of delay · timed to the renewal cycle · cost of doing nothing · assumptions agreed with finance</p>
+</article>
+
+<article class="bq" id="q3">
+  <div class="bq-q"><span class="qnum">Q3</span><span>Tell me about defining a modernisation strategy for a core legacy platform.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>🧠 Psychology: what they're really testing</h5><p>Do you weigh risk, money and time to value, not just patterns? Red flags are rewrite enthusiasm, or "leave it alone forever". Senior answers compare options openly, choose a path that <b>delivers value early</b>, and stop the core from growing.</p></div>
+    <div class="bq-phi"><h5>🧭 Philosophy: the principle behind a strong answer</h5><p>A big-bang replacement puts all the risk at the end and delivers value last. <b>Hollowing out the core</b> moves value out early and shrinks the core over time. The first rule is to <b>stop feeding the core</b>: new capability is built outside it.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> A 25-year-old core lending platform held about 400,000 loans. Every change went through one vendor team, with a 9-month backlog. The vendor offered a 3-year big-bang replacement at a large fixed price.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I owned the modernisation strategy and the recommendation to the executive team and the board technology committee.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I compared options on cost, risk, <b>time to first value</b> and reversibility.</p><ul>
+      <li>I showed that big-bang replacement delivered nothing for about 3 years and ended in one high-risk cutover. Re-hosting kept every problem.</li>
+      <li>I recommended progressive modernisation. <b>CDC events</b> stream changes out of the core, so new services read data without touching it.</li>
+      <li>New capabilities, such as hardship handling and pricing, were built outside the core. A <b>strangler at the channel layer</b> routed journeys to new services, domain by domain.</li>
+      <li>I set a policy: no new features in the core without an architecture exception.</li>
+      <li>I tied each domain move to an outcome, so the board saw progress every quarter.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> The first two domains, hardship and repayment variations, moved within 12 months. Change requests into the core fell about 45%, and its backlog shrank from 9 months to about 3. The board funded the next domains one at a time instead of one large bet.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> Data was harder than code. Next time I'd fund <b>data reconciliation</b> from day one.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> hollow out the core · stop feeding the core · time to first value · CDC events · strangler at the channel layer · reversible, domain by domain</p>
+</article>
+
+  <div class="remember"><ul>
+    <li>Start from the <b>business outcome</b> and the capabilities it needs, then talk technology.</li>
+    <li>Always show money: ranges, timing, transition cost and the <b>cost of doing nothing</b>.</li>
+    <li>Show the path, not just the destination: transition states, funding gates and reversible steps.</li>
+  </ul></div>
+  <div class="post">
+    <p>A target-state diagram without a path is a poster, not a strategy 🗺️</p>
+    <p>🧩 Map capabilities, not systems. Executives fund outcomes, not boxes.</p>
+    <p>🚦 Break the journey into transition states, each releasable and each with a funding gate.</p>
+    <p>💰 Show a range, not one number. Your weakest assumption, said out loud, builds trust.</p>
+    <p>⏳ Time big moves to the renewal calendar. The cheapest exit is just before you sign again.</p>
+    <p>Strategy is a series of funded bets. How do you stage yours?</p>
+    <p>#SolutionArchitecture #EnterpriseArchitecture #BusinessCase #Roadmap</p>
+  </div>
+</section>
+
+<!-- GOVERNANCE -->
+<section class="concept" id="governance">
+  <h2><span class="num">26.3</span> Governance &amp; standards <span class="tag-added">Added</span></h2>
+  <p class="oneliner">This theme tests whether you can protect the organisation with standards and reviews <b>without</b> becoming the bottleneck, and whether you can admit when your own decision was wrong.</p>
+<figure class="viz" data-viz="journey"><script type="application/json">
+{"title":"Risk-tiered governance: route each design to the right level of review","stepMs":1300,
+ "steps":[
+  {"icon":"📝","t":"Team drafts a one-page ADR","d":"Problem, options, decision and consequences, written before building","c":"slate"},
+  {"icon":"⚖️","t":"Self-assess risk with a short checklist","d":"Data sensitivity, external exposure, reversibility, cost","c":"blue"},
+  {"icon":"🟢","t":"Tier 1: low risk, two-way door","d":"Self-certify, publish the ADR, random spot checks","c":"green","indent":1,"tag":"same day"},
+  {"icon":"🟡","t":"Tier 2: medium risk","d":"Async review in a shared channel with a 3-day reply rule","c":"amber","indent":1,"tag":"≤ 3 days"},
+  {"icon":"🔴","t":"Tier 3: high risk, one-way door","d":"Full board session, security and risk in the room","c":"red","indent":1,"tag":"deep review"},
+  {"icon":"💬","t":"Office hours for early advice","d":"Talk before you write. Most issues are cheapest to fix here","c":"teal"},
+  {"icon":"📊","t":"Measure and tune the process","d":"Lead time, rework found later, bypass attempts","c":"purple"}
+ ]}
+</script></figure>
+
+<article class="bq" id="q4">
+  <div class="bq-q"><span class="qnum">Q4</span><span>Tell me about a time you had to enforce an architecture standard that a delivery team strongly resisted.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>🧠 Psychology: what they're really testing</h5><p>Can you hold a line without becoming the "architecture police"? Red flags are "I escalated to their manager" or caving in completely. A senior answer shows you found out <b>why</b> the team resisted and changed the economics, not just the rule.</p></div>
+    <div class="bq-phi"><h5>🧭 Philosophy: the principle behind a strong answer</h5><p>Governance works best when it <b>makes the right thing the easy thing</b>. If complying costs more than bypassing, people will bypass. So a standard is really a product, and a <b>paved road</b> is its best feature.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> A payments team had a partner integration due in four weeks. They wanted to call the partner directly from their service, bypassing the API gateway, "just temporarily". Our standard said all external traffic must go through the gateway for auth, throttling and audit.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> As the integration architect I owned the standard, but I also needed the team to hit their date.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I sat with the lead and asked what the gateway really cost them: two weeks of tickets, manual policy setup and hand-built certificates.</p><ul>
+      <li>I judged that "temporary" bypasses rarely get removed, and the <b>blast radius</b> of an unaudited partner link at a bank was not acceptable.</li>
+      <li>Instead of escalating, I paired with the platform team to build a <b>paved-road template</b>: one config file generated the gateway route, mTLS, rate limits and dashboards.</li>
+      <li>I made this team's integration the template's first customer, so a real need shaped it.</li>
+      <li>I agreed a simple rule with the platform lead: use the template, or raise an <b>exception with an expiry date</b>.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> Gateway onboarding fell from about 10 days to under 1. The partner went live on time and fully audited. Within six months 14 integrations had used the template, with zero bypass requests. The team that resisted later demoed it at the engineering guild.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> Resistance is usually <b>data about friction</b>, not attitude. Next time I'd measure the cost of compliance before publishing a standard, not after.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> paved road · make the right thing the easy thing · blast radius · exception with an expiry date · compliance by design</p>
+</article>
+
+<article class="bq" id="q5">
+  <div class="bq-q"><span class="qnum">Q5</span><span>Describe a time governance was slowing delivery and you changed it.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>🧠 Psychology: what they're really testing</h5><p>Do you see governance as a system with a cost, and can you improve it without dropping safety? Red flags are "I removed the review" or defending process for its own sake. Senior answers show <b>proportionality</b> and use data to prove it worked.</p></div>
+    <div class="bq-phi"><h5>🧭 Philosophy: the principle behind a strong answer</h5><p>Not every decision deserves the same process. Jeff Bezos called reversible choices <b>"two-way doors"</b> that should be made quickly, while "one-way doors" deserve care. Good governance spends its scarce attention where the <b>risk</b> is.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> Our architecture review board met fortnightly, and the queue had grown to about three weeks. Teams waited for a slot even to add a field to an internal API. Some started skipping review or calling their changes "not architecture".</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I chaired the board, so the queue was my problem. My goal was faster flow without letting real risk through.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I started with evidence, not opinions.</p><ul>
+      <li>I reviewed six months of submissions: about 70% were low risk, and nearly all had been approved unchanged.</li>
+      <li>I proposed <b>risk-tiered reviews</b> with a one-page checklist covering data sensitivity, external exposure, reversibility and cost.</li>
+      <li>Tier 1 became a <b>self-certified lightweight ADR</b>, published and spot-checked. Tier 2 became an <b>async review</b> with a 3-day reply rule. Only Tier 3 came to the board.</li>
+      <li>I added weekly <b>office hours</b>, so teams could get advice before writing anything.</li>
+      <li>I ran it as a 3-month pilot with monthly metrics, so sceptical board members could judge the data.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> Median review <b>lead time</b> fell from about 15 working days to 2. Board sessions now covered the 10–15% of high-risk designs, and each got roughly twice the time. Office hours caught two privacy issues early, and skipping review stopped.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> Governance is a product with users. Next time I'd publish the tier criteria and the stats openly from day one, so trust builds faster.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> risk-tiered · proportionate governance · two-way door · lightweight ADR · lead time · spend attention where the risk is</p>
+</article>
+
+<article class="bq" id="q6">
+  <div class="bq-q"><span class="qnum">Q6</span><span>Tell me about an architecture decision you made that later proved wrong.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>🧠 Psychology: what they're really testing</h5><p>This tests <b>intellectual honesty</b> and ego. Red flags are a "failure" that is really a humblebrag, or blaming others. Senior answers own the decision, explain why it looked right at the time, and show how they <b>reversed it cleanly</b>.</p></div>
+    <div class="bq-phi"><h5>🧭 Philosophy: the principle behind a strong answer</h5><p>Decisions are bets made with incomplete information. Annie Duke calls judging a decision only by its outcome <b>"resulting"</b>; the better habit is to review the <b>decision process</b>. Conway's law adds that a schema owned by everyone forces every team to coordinate.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> At a large bank I championed one enterprise <b>canonical event schema</b> for customer events, to keep 20+ consuming systems consistent. Nine months later, even adding a preferred-name field needed sign-off from six teams and took about five weeks.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> It was my decision, so I owned fixing it, and telling people it was wrong.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I treated it like an incident review of my own decision.</p><ul>
+      <li>I gathered evidence: change lead times, teams involved per change and the blocked backlog.</li>
+      <li>I told the architecture forum plainly, "my decision didn't hold up", with no blame on teams.</li>
+      <li>I proposed <b>domain-owned contracts</b>: each domain publishes its own versioned events, plus a <b>translation layer</b> for consumers that still needed the old shape.</li>
+      <li>I migrated consumers in waves, starting with the noisiest, and kept the old schema behind the translator until the last one moved.</li>
+      <li>I wrote a <b>decision post-mortem ADR</b> that superseded my original, recording what I knew then and which signals I missed.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> Change lead time for customer events fell from about five weeks to under one. Six teams no longer met for every field. Two other architects wrote superseding ADRs of their own in the next quarter, which made owning mistakes normal.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> I now add <b>review triggers</b> to big decisions up front, such as "revisit if more than three teams must approve one change".</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> decision post-mortem · superseded my own ADR · review the process, not just the outcome · domain-owned contracts · review trigger · I owned it</p>
+</article>
+
+  <article class="bq" id="q7">
+  <div class="bq-q"><span class="qnum">Q7</span><span>Tell me about how you measured the value of architecture.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>🧠 Psychology: what they're really testing</h5><p>Can you prove what architecture is worth in business terms? Red flags are counting documents written or reviews held. Senior answers pick a few <b>outcome metrics</b>, report them honestly, and accept being held to them.</p></div>
+    <div class="bq-phi"><h5>🧭 Philosophy: the principle behind a strong answer</h5><p>Measure outcomes, not activity. <b>Goodhart's law</b> warns that when a measure becomes a target, it stops being a good measure, so use a small, balanced set and pair speed with quality. Trust follows <b>transparency</b>, including the bad numbers.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> In budget planning, the architecture team was called an "ivory tower", and its budget was marked for a 30% cut. Delivery teams saw us as reviewers who slowed them down, and nobody could point to our impact.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> As lead solution architect, I had to show our value, or change what we did.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I asked our customers before choosing metrics.</p><ul>
+      <li>I interviewed 6 delivery leads and 2 executives: "What would make architecture worth paying for?"</li>
+      <li>I chose four metrics: <b>pattern reuse rate</b>, <b>design-approval lead time</b>, incidents traced to architecture decisions, and <b>cost avoided</b> (licences not bought, platforms retired).</li>
+      <li>I baselined them honestly, including the bad ones. Approval lead time was 18 days.</li>
+      <li>I agreed the cost-avoided method with finance, so we weren't marking our own homework.</li>
+      <li>I published a <b>one-page quarterly report</b>: four numbers, the trend, one story and one thing we got wrong.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> Over four quarters, reuse rose from 20% to 55%, approval lead time fell from 18 days to 5, and architecture-related incidents dropped from 6 to 2 a quarter. Finance validated about $3M of cost avoided. The budget was kept, two roles were added, and delivery leads started inviting architects in early.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> The "what we got wrong" line earned more trust than any good number. I'd start it from the first report.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> outcome metrics, not activity · pattern reuse rate · design-approval lead time · cost avoided, validated by finance · one-page quarterly report · Goodhart's law</p>
+</article>
+<div class="remember"><ul>
+    <li>Show that you understood <b>why</b> people resisted or bypassed governance before you changed anything.</li>
+    <li>Prove proportionality with numbers: faster for low risk, deeper for high risk.</li>
+    <li>For the "wrong decision" story, own it in the first sentence and spend most of the time on how you reversed it.</li>
+  </ul></div>
+  <div class="post">
+    <p>If your architecture standard is harder to follow than to ignore, people will ignore it 🛣️</p>
+    <p>🧱 Teams don't bypass standards because they're careless. They bypass them because the standard costs more than the shortcut.</p>
+    <p>⚡ Make compliance the fastest path: templates, generated config, one-click onboarding.</p>
+    <p>⚖️ Tier your reviews. Low-risk, reversible changes don't need a board.</p>
+    <p>📝 When your own decision proves wrong, supersede it in writing. It makes owning mistakes normal.</p>
+    <p>Good governance makes the right thing the easy thing. What's the most effective "paved road" you've seen?</p>
+    <p>#SolutionArchitecture #EngineeringLeadership #Governance #PlatformEngineering</p>
+  </div>
+</section>
+
+<!-- CLOUD -->
+<section class="concept" id="cloud">
+  <h2><span class="num">26.4</span> Cloud, resilience &amp; vendor strategy <span class="tag-added">Added</span></h2>
+  <p class="oneliner">This theme tests portfolio-level judgement on cloud, <b>operational resilience</b>, systemic risk and vendors, where shared dependencies and contract terms matter as much as code.</p>
+<figure class="viz" data-viz="bars"><script type="application/json">
+{"title":"Composite availability: a 99.5% SaaS can't carry a 99.9% journey on its own (downtime hours per year, illustrative, Q11)","max":60,
+ "threshold":{"v":8.8,"t":"target 8.8 h (99.9%)"},
+ "rows":[
+  {"label":"Our services","v":4.4,"show":"<b>4.4 h</b>","c":"green","note":"99.95%"},
+  {"label":"Network and gateway","v":4.4,"show":"<b>4.4 h</b>","c":"green","note":"99.95%"},
+  {"label":"SaaS platform","v":43.8,"show":"<b>43.8 h</b>","c":"amber","note":"99.5% SLA"},
+  {"label":"Composite chain","v":52.5,"show":"<b>~52 h</b>","c":"red","note":"about 99.4%: target missed"},
+  {"label":"With degradation mode","v":7,"show":"<b>~7 h</b>","c":"teal","note":"queue, retry, cached reads"}
+ ]}
+</script></figure>
+
+<article class="bq" id="q8">
+  <div class="bq-q"><span class="qnum">Q8</span><span>Tell me about a cloud strategy decision at portfolio level.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>🧠 Psychology: what they're really testing</h5><p>Can you push back on a fashionable mandate with evidence, while respecting the real worry behind it? Red flags are dismissing lock-in, or saying yes to everything. Senior answers separate the <b>risk</b> (concentration, exit) from the proposed <b>solution</b> (active-active multi-cloud).</p></div>
+    <div class="bq-phi"><h5>🧭 Philosophy: the principle behind a strong answer</h5><p>Gregor Hohpe's article <b>"Don't get locked up into avoiding lock-in"</b> argues that avoiding lock-in has its own cost. Lock-in is a trade-off to manage, not a sin. The goal is a credible, <b>tested exit</b> at a sensible price, not zero switching cost.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> After a widely reported cloud outage elsewhere in the industry, board members asked for "multi-cloud to avoid lock-in" across our portfolio of about 120 applications. Several vendors were keen to help.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I was asked to recommend the portfolio cloud strategy to the board technology committee.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I reframed the question as "which risk are we buying down?"</p><ul>
+      <li>I named three risks: <b>concentration risk</b>, a provider-wide failure, and a commercial dispute we couldn't leave.</li>
+      <li>I modelled active-active multi-cloud: roughly double the platform engineering, skills and security tooling, and a <b>lowest common denominator</b> of services. Run cost rose about 1.8 to 2 times, and delivery slowed.</li>
+      <li>I proposed a primary cloud with <b>portable layers</b>: containers, open standards, infrastructure as code and data in open formats.</li>
+      <li>I wrote an exit plan per critical service, and proved it by rebuilding two services in a second cloud.</li>
+      <li>The second cloud got one narrow job: immutable backups and a cold rebuild path for critical data.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> The board accepted the strategy and avoided an estimated 60–80% platform cost uplift. The exit test rebuilt a critical service in 3 days against a 5-day target. Auditors' concentration-risk questions were answered with <b>test evidence</b>, not slides.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> The board cared more about "what if the provider fails?" than the cost table. Next time I'd lead with the risk story.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> concentration risk · tested exit plan · portable layers · the cost of avoiding lock-in · lowest common denominator · evidence, not slides</p>
+</article>
+
+<article class="bq" id="q9">
+  <div class="bq-q"><span class="qnum">Q9</span><span>Tell me about designing for operational resilience across many systems.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>🧠 Psychology: what they're really testing</h5><p>Do you think in business services, not systems? The red flag is "every app has a DR plan". Senior answers map a service <b>end to end</b> across teams, set tolerances from customer harm, and test hard scenarios instead of assuming.</p></div>
+    <div class="bq-phi"><h5>🧭 Philosophy: the principle behind a strong answer</h5><p>Customers don't experience systems; they experience services. Resilience belongs to the whole chain. In Australia, APRA's <b>CPS 230</b>, in force since 1 July 2025, sets this out: identify <b>critical operations</b>, set board-approved tolerance levels and test against <b>severe but plausible</b> scenarios.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> Every team's DR test passed. But nobody owned "customer makes a payment" end to end. It crossed about 17 components and 5 teams, including two vendors.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I led the architecture work to make the payment service demonstrably resilient, ready for the board to approve its tolerances.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I mapped the service before judging any system.</p><ul>
+      <li>I drew an <b>end-to-end service map</b>: channels, login, fraud checks, payments hub, core banking, scheme gateway and shared infrastructure.</li>
+      <li>With the business owner I set <b>impact tolerances</b>: at most 2 hours of disruption, and no loss of accepted payments.</li>
+      <li>I designed scenarios such as region loss, ransomware on shared infrastructure and a key vendor outage. We ran tabletop and live tests.</li>
+      <li>The tests found a <b>shared single point of failure</b>: all payment signing depended on one HSM cluster in one data centre.</li>
+      <li>I priced the fix against the cost of a tolerance breach and put it in the investment plan.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> A second, active HSM cluster (about $1.1M) was funded in one cycle. The retest recovered in 38 minutes, well inside the 2-hour tolerance. The method was reused for four more critical operations.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> The biggest risk hid in shared platforms nobody counted as part of the service. Now I map <b>shared infrastructure</b> first.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> critical operation · impact tolerance · severe but plausible · end-to-end service map · shared single point of failure · tested, not assumed</p>
+</article>
+
+<article class="bq" id="q10">
+  <div class="bq-q"><span class="qnum">Q10</span><span>Tell me about finding a systemic architecture risk across the portfolio.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>🧠 Psychology: what they're really testing</h5><p>Can you see risks that sit between projects, where no single project sees them? Red flags are noticing only after an outage, or proposing a big-bang fix. Senior answers use data, express the <b>blast radius</b> in business terms and fix by priority.</p></div>
+    <div class="bq-phi"><h5>🧭 Philosophy: the principle behind a strong answer</h5><p>Portfolio risk hides in <b>shared dependencies</b>. Each project made a locally sensible choice to reuse something, and together they built one huge failure domain. Fix in order of <b>risk and change frequency</b>, so each dollar removes the most exposure.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> Reviewing a year of incidents, I noticed several unrelated outages shared a root cause: one database cluster. Nobody knew how many systems used it.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> No one owned this cross-portfolio risk. I raised it with the architecture board and was asked to own the plan.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I made the risk visible first.</p><ul>
+      <li>I built a <b>dependency map</b> from connection strings, network flows and the configuration database. It showed 23 applications on the cluster, 4 of them customer-facing.</li>
+      <li>I scored each app on business criticality, change frequency and coupling, such as cross-schema joins.</li>
+      <li>I told the executives what one failure meant: 23 apps down together, and payments delayed for customers.</li>
+      <li>I set a target pattern of a <b>database per service</b>, with data shared through APIs or events, plus a <b>"no new tenants"</b> rule from that day.</li>
+      <li>Moves were funded through each app's own roadmap where possible, with a small central fund for the rest.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> The first 8 apps, including all 4 customer-facing ones, moved within 3 quarters. The next cluster incident hit internal apps only, and no customers. The average blast radius per incident fell by about 65%, and patching no longer needed 23 teams to coordinate.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> The "no new tenants" rule was the cheapest win. I'd apply that kind of rule the day a risk is found.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> systemic risk · blast radius · dependency map · ordered by risk and change frequency · no new tenants · database per service</p>
+</article>
+
+<article class="bq" id="q11">
+  <div class="bq-q"><span class="qnum">Q11</span><span>Tell me about negotiating NFRs or an SLA with a SaaS vendor.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>🧠 Psychology: what they're really testing</h5><p>Do you know that buying SaaS doesn't buy away accountability? Red flags are accepting the vendor's SLA as fixed, or demanding impossible numbers. Senior answers do the maths, <b>design around the gap</b> and use the contract as a lever.</p></div>
+    <div class="bq-phi"><h5>🧭 Philosophy: the principle behind a strong answer</h5><p>Availability in series multiplies: 99.95% × 99.95% × 99.5% is about 99.4%. You can't contract your way to a number the design can't reach, so combine <b>graceful degradation</b> with commercial terms. <b>The contract is part of the architecture</b>: exit and data rights are NFRs too.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> We picked a SaaS platform for small-business account servicing. Its standard SLA was 99.5%, about 44 hours of downtime a year. The customer journey needed 99.9%, about 9 hours.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> As the solution architect I owned the NFRs, and I joined procurement for the negotiation.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I treated it as a design problem and a commercial problem together.</p><ul>
+      <li>I showed the <b>composite availability</b> maths to the business and the vendor. Even with perfect systems on our side, the chain reached only about 99.4%.</li>
+      <li>I asked for the vendor's real availability history. It was near 99.8%, which gave us room to negotiate.</li>
+      <li>I designed a <b>degradation mode</b>: writes are queued with idempotent retry, and customers see balances and status from a read-only cache during outages.</li>
+      <li>I negotiated a 99.7% SLA with tiered <b>service credits</b> and root-cause reports within 5 days.</li>
+      <li>I also secured <b>data export rights</b> in an open format, an exit-assistance clause and 12 months' notice of breaking API changes.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> With degradation, customer-visible downtime was modelled at about 7 hours a year, inside the target. In year one the vendor had two outages, 3 hours in total. Customers kept read access and no requests were lost. The terms became our standard SaaS schedule for three later purchases.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> Leverage is highest before selection. Next time I'd put these terms in the RFP.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> composite availability · graceful degradation · service credits · data export rights · exit clause · the contract is part of the architecture</p>
+</article>
+
+  <div class="remember"><ul>
+    <li>Address the real worry (concentration, customer harm) before debating the proposed solution.</li>
+    <li>Bring maths and evidence: composite availability, dependency maps, <b>test results</b>.</li>
+    <li>Treat exit plans, tolerances and contract terms as <b>architecture artefacts</b>, not paperwork.</li>
+  </ul></div>
+  <div class="post">
+    <p>Multi-cloud is not a resilience strategy. A tested exit plan is ☁️</p>
+    <p>💸 Active-active across two clouds can roughly double your skills and platform cost.</p>
+    <p>🧱 Portable layers (containers, open standards, IaC) keep your options open for far less.</p>
+    <p>🧮 Availability multiplies: 99.95% × 99.95% × 99.5% is about 99.4%. Design for the gap.</p>
+    <p>📜 Data export and exit clauses are NFRs too. Negotiate them before you sign.</p>
+    <p>Lock-in is a trade-off to manage, not a sin. When did you last test your exit plan?</p>
+    <p>#SolutionArchitecture #CloudStrategy #OperationalResilience #VendorManagement</p>
+  </div>
+</section>
+
+<!-- INTEGRATION -->
+<section class="concept" id="integration">
+  <h2><span class="num">26.5</span> Integration, API &amp; data strategy <span class="tag-added">Added</span></h2>
+  <p class="oneliner">This theme tests whether you can set <b>integration, API and data direction</b> across many systems and teams: picking the right style for each job, treating shared interfaces as products, and moving ownership to where the knowledge is.</p>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"From point-to-point sprawl to a target integration estate (illustrative, Q12)","interval":3000,
+ "frames":[
+  {"label":"Sprawl","caption":"<b>Point-to-point sprawl.</b> 60+ hand-built links, no full inventory, and every change risks breaking a consumer nobody knew about.","rows":[
+   [{"t":"Channels","sub":"web, mobile, branch","c":"slate"},{"k":"arrow"},{"t":"60+ direct links","sub":"undocumented, no owner","c":"red","big":true},{"k":"arrow"},{"t":"Core systems","sub":"lending, cards, CRM","c":"slate"}]]},
+  {"label":"Inventory","caption":"<b>Find them all first.</b> Network flows, code scans and team interviews feed one catalogue with an owner per link.","rows":[
+   [{"t":"Network flows","c":"blue"},{"t":"Code scans","c":"blue"},{"t":"Interviews","c":"blue"},{"k":"arrow"},{"t":"Integration catalogue","sub":"owner, style, criticality","c":"teal"}]]},
+  {"label":"Target","caption":"<b>Pick the style by the shape of the interaction.</b> Need an answer now: layered APIs. Something changed: events. Big volumes: managed file transfer.","ms":4200,"rows":[
+   {"label":"Request / response","items":[{"t":"Experience API","sub":"per channel","c":"purple"},{"k":"arrow"},{"t":"Process API","sub":"orchestration","c":"blue"},{"k":"arrow"},{"t":"System API","sub":"wraps a core","c":"teal"}]},
+   {"label":"State change","items":[{"t":"Event stream","sub":"e.g. AddressChanged","c":"amber"},{"k":"arrow"},{"t":"Subscribers","sub":"react in their own time","c":"amber"}]},
+   {"label":"Bulk","items":[{"t":"Managed file transfer","sub":"monitored, encrypted","c":"slate"},{"k":"arrow"},{"t":"Nightly ledgers, statements","c":"slate"}]}]},
+  {"label":"Result","caption":"<b>Retire as you go.</b> About 40% of links gone in 18 months, and every remaining one has an owner.","ms":3400,"rows":[
+   [{"t":"~40% retired","sub":"in 18 months","c":"green","big":true},{"t":"100% catalogued","sub":"owner per link","c":"teal"},{"t":"Change lead time","sub":"weeks to days","c":"blue"}]]}
+ ]}
+</script></figure>
+
+<article class="bq" id="q12">
+  <div class="bq-q"><span class="qnum">Q12</span><span>Tell me about defining an integration strategy across many systems.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>&#x1F9E0; Psychology: what they're really testing</h5><p>Can you set direction for a whole <b>estate</b>, not just one interface? Red flags are a single-tool answer ("we bought an ESB" or "everything goes on Kafka") or a strategy that was only a slide. A senior answer shows a <b>decision framework</b> teams can apply without you, and proof that the estate actually got simpler.</p></div>
+    <div class="bq-phi"><h5>&#x1F9ED; Philosophy: the principle behind a strong answer</h5><p>There is no single best integration style. Hohpe and Woolf's <i>Enterprise Integration Patterns</i> describes file transfer, shared database, remote procedure call and messaging, each with real trade-offs. Choose by the <b>shape of the interaction</b>, and make the choice explicit so it's repeatable.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> After years of project-funded delivery, a bank's lending and cards estate had grown 60+ <b>point-to-point integrations</b>. Nobody had a full list. A core upgrade had just broken two consumers that weren't in any document.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> As solution architect for the portfolio, I was asked to set an integration strategy that 9 delivery teams would follow.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I started with facts, then made the target simple enough to remember.</p><ul>
+      <li>I built an <b>inventory</b> from network flow logs, code scans and team interviews, and gave every link an owner and a criticality rating.</li>
+      <li>I set three defaults: <b>layered APIs</b> (system, process, experience) when a caller needs an answer now, <b>events</b> for state changes others care about, and <b>managed file transfer</b> for bulk.</li>
+      <li>I rejected a big-bang re-platform. Instead, any project touching a link had to move it to the target, funded as part of that change.</li>
+      <li>I published a one-page decision tree and an integration catalogue, so teams could self-serve the choice.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> About 40% of the point-to-point links were retired in 18 months. The next core upgrade had a known <b>blast radius</b>, with every consumer listed. Typical integration change lead time fell from weeks to days.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> The inventory was the strategy's real foundation. Next time I'd make the catalogue a release gate from day one, so it never goes stale.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> integration estate &middot; shape of the interaction &middot; API-led layers &middot; events for state change &middot; retire as you go &middot; integration catalogue</p>
+</article>
+
+<article class="bq" id="q13">
+  <div class="bq-q"><span class="qnum">Q13</span><span>Tell me about treating APIs as products across the organisation.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>&#x1F9E0; Psychology: what they're really testing</h5><p>Do you understand that API reuse is an <b>organisational problem</b>, not a technical one? Red flags are "we wrote a standard" with no adoption story, or a central team that approves every API. A senior answer creates <b>ownership, discoverability and measurement</b>, then lets teams move on their own.</p></div>
+    <div class="bq-phi"><h5>&#x1F9ED; Philosophy: the principle behind a strong answer</h5><p>An API nobody can find gets rebuilt. Treat each API as a <b>product</b> with users, an owner and a roadmap, and treat the developers who call it as customers. Consistency should come from <b>automation</b>, not from review meetings.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> A bank had about 200 internal APIs, each in a different style. There were <b>three different customer APIs</b>, built by three teams, each with a slightly different idea of what a "customer" was. New consumers spent weeks working out which one to trust.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I owned API direction across the portfolio. I had to raise consistency and reuse without becoming a bottleneck.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I pulled several levers at once.</p><ul>
+      <li>I wrote a short <b>API style guide</b> and turned its rules into <b>linting in CI</b>, so feedback came in minutes, not at a review board.</li>
+      <li>I stood up a <b>catalogue and developer portal</b> with docs, sandbox keys and self-service onboarding.</li>
+      <li>I named an <b>API product owner</b> for each core domain API, with a roadmap and a deprecation policy.</li>
+      <li>For the three customer APIs, I ran a consumer survey, picked the strongest as the base, and gave the others a published sunset date.</li>
+      <li>I reported <b>reuse metrics</b> quarterly: consumers per API and time to first call.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> Time to first successful call fell from about 3 weeks to 2 days. Two duplicate customer APIs were retired within a year. Lint pass rates went from about 40% to over 90%, with no extra reviewers.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> Product owners made the difference, not the guide. Next time I'd fund those roles before writing a single rule.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> API as a product &middot; developers are customers &middot; linting in CI &middot; developer portal &middot; sunset date &middot; time to first call</p>
+</article>
+
+<article class="bq" id="q14">
+  <div class="bq-q"><span class="qnum">Q14</span><span>Tell me about integrating an acquired company or a new platform alongside existing systems.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>&#x1F9E0; Psychology: what they're really testing</h5><p>Can you protect the value of what was bought while still joining it up safely? Red flags are "we migrated everything on day one" or "we left it alone forever". A senior answer separates <b>coexistence</b> from <b>convergence</b>, and puts the customer experience first.</p></div>
+    <div class="bq-phi"><h5>&#x1F9ED; Philosophy: the principle behind a strong answer</h5><p>Integrate at the edges first and merge the cores later, if ever. Eric Evans' <b>anti-corruption layer</b> stops one system's model leaking into another, so both can change without breaking each other.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> A bank acquired a small fintech with about 80,000 customers, a popular savings app, and its own identity provider and customer database. Around 30% of its customers already banked with us, so they had <b>two logins</b> and two profiles.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I owned the integration architecture. The board wanted one customer experience quickly, without losing the fintech's speed.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I designed a <b>coexistence architecture</b> instead of a rushed migration.</p><ul>
+      <li>I used <b>identity federation</b>, so our identity provider became the front door while the fintech's stayed live behind it.</li>
+      <li>I put an <b>anti-corruption layer</b> between the two customer models, so neither team had to adopt the other's schema.</li>
+      <li>I added a <b>customer-matching service</b>. High-confidence matches linked automatically, and low-confidence ones went to a human review queue.</li>
+      <li>I planned <b>phased migration</b> by product, with a rollback path at each step, and left the fintech's app front end untouched.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> Customers had a <b>single login</b> in about 4 months. Matching linked about 92% of shared customers automatically, with no wrong-account incidents. The fintech team kept shipping weekly through the whole period.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> I underestimated data quality in the matching work. Next time I'd profile both customer datasets during due diligence, before the deal closes.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> coexistence before convergence &middot; anti-corruption layer &middot; identity federation &middot; customer matching &middot; phased migration &middot; protect acquired value</p>
+</article>
+
+<article class="bq" id="q15">
+  <div class="bq-q"><span class="qnum">Q15</span><span>Tell me about a data platform or data strategy decision.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>&#x1F9E0; Psychology: what they're really testing</h5><p>Can you apply a popular idea <b>pragmatically</b>, rather than as a buzzword rollout? Red flags are "we implemented data mesh" with no mention of governance, or a central team that simply got bigger. A senior answer knows the theory, adapts it to <b>team maturity</b>, and measures outcomes.</p></div>
+    <div class="bq-phi"><h5>&#x1F9ED; Philosophy: the principle behind a strong answer</h5><p>Zhamak Dehghani's data mesh has four principles: <b>domain ownership</b>, <b>data as a product</b>, a self-serve platform and federated computational governance. The point is to put ownership where the knowledge is, but domains only own data well when the platform makes it easy and the rules are automated.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> A central data team of 12 served the whole bank. Their backlog was about <b>6 months</b>. Domain teams knew their data best, but had to raise tickets and wait, so shadow spreadsheets were spreading.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I was asked to set the data platform direction and fix the bottleneck without losing control of quality or privacy.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I adopted data mesh <b>principles</b>, not a big-bang reorganisation.</p><ul>
+      <li>I started with two domains that had strong engineering teams, payments and lending, rather than forcing every domain at once.</li>
+      <li>I made each dataset a <b>data product</b> with an owner, documentation and a freshness target.</li>
+      <li>I introduced <b>data contracts</b> (schema, quality checks, service levels) checked automatically in the pipeline.</li>
+      <li>I turned the central team into a <b>platform team</b> offering templates, a catalogue and access controls as self-service.</li>
+      <li>Privacy classification and retention rules became <b>policy as code</b>, so governance ran on every publish.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> Time to a new governed dataset fell from about 6 months to 3 weeks in the pilot domains. The central backlog halved in two quarters. Four more domains joined by request, not by mandate.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> Not every domain was ready to own data. Next time I'd publish clear readiness criteria, so "not yet" felt fair rather than political.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> domain ownership &middot; data as a product &middot; data contracts &middot; self-serve platform &middot; federated governance &middot; pragmatic, not dogmatic</p>
+</article>
+
+  <div class="remember"><ul>
+    <li>Show a <b>framework</b> teams can apply without you, such as "answer now = API, something changed = event, bulk = file".</li>
+    <li>Treat shared interfaces and datasets as <b>products</b> with owners, users and metrics, not as project outputs.</li>
+    <li>Prove simplification with numbers: links retired, duplicates removed, lead time cut.</li>
+  </ul></div>
+  <div class="post">
+    <p>Most integration "strategies" are really a tool purchase &#x1F527;</p>
+    <p>&#x1F50D; Start with an inventory. You can't simplify what you can't see.</p>
+    <p>&#x1F500; Pick the style by the interaction: need an answer now, use an API. Something changed, publish an event. Bulk, use managed file transfer.</p>
+    <p>&#x1F4E6; Treat APIs and datasets as products, with an owner, users and a roadmap.</p>
+    <p>&#x1F5D1;&#xFE0F; Retire as you go. Every project that touches a point-to-point link moves it to the target.</p>
+    <p>The best strategy is one teams can apply without asking you. What's your integration rule of thumb?</p>
+    <p>#SolutionArchitecture #Integration #APIStrategy #DataMesh #EnterpriseArchitecture</p>
+  </div>
+</section>
+
+<!-- AI -->
+<section class="concept" id="ai">
+  <h2><span class="num">26.6</span> AI &amp; GenAI strategy <span class="tag-added">Added</span></h2>
+  <p class="oneliner">This theme tests whether you can set <b>enterprise AI direction</b>: one governed platform instead of many ungoverned experiments, a value-and-risk lens on use cases, and a disciplined way to adopt fast-moving technology.</p>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"One AI gateway: every model call passes the same guardrails (illustrative, Q16)","stepMs":950,
+ "actors":[{"t":"Product team app","c":"blue"},{"t":"AI gateway","c":"purple"},{"t":"Approved model","c":"teal"},{"t":"Eval & cost","c":"amber"}],
+ "steps":[
+  {"from":0,"to":1,"t":"Prompt + team identity","c":"blue"},
+  {"note":"Central auth, quota and token budget","over":[1,1],"c":"purple"},
+  {"note":"Redact PII, screen for prompt injection","over":[1,1],"c":"red"},
+  {"from":1,"to":2,"t":"Route via model catalogue","c":"teal"},
+  {"from":2,"to":1,"t":"Draft response","c":"teal","dash":true},
+  {"note":"Content safety check on the output","over":[1,1],"c":"red"},
+  {"from":1,"to":3,"t":"Log tokens, cost, eval sample","c":"amber"},
+  {"from":1,"to":0,"t":"Safe response","c":"green","dash":true},
+  {"note":"One place to switch models, rotate keys and update guardrails","c":"green"}
+ ]}
+</script></figure>
+
+<article class="bq" id="q16">
+  <div class="bq-q"><span class="qnum">Q16</span><span>Tell me about defining an enterprise AI or GenAI platform or reference architecture.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>&#x1F9E0; Psychology: what they're really testing</h5><p>Can you turn scattered AI experiments into a <b>governed platform</b> without killing momentum? Red flags are banning AI until a policy is written, or naming a favourite model as "the strategy". A senior answer separates the <b>stable layer</b> (controls, identity, cost) from the fast-changing layer (models).</p></div>
+    <div class="bq-phi"><h5>&#x1F9ED; Philosophy: the principle behind a strong answer</h5><p>Models change every few months; controls shouldn't. Put the guardrails in one <b>choke point</b> so every team gets them for free. The OWASP Top 10 for LLM Applications (2025) gives a shared risk language, such as <b>prompt injection</b> (LLM01), sensitive information disclosure (LLM02) and unbounded consumption (LLM10).</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> Within six months, <b>14 teams</b> were calling large language models directly. Each had its own API keys, no shared PII controls and no view of cost. One prototype had sent unmasked customer notes to an external model.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I was asked to define the enterprise GenAI reference architecture, and get teams onto it without stopping their work.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I designed an <b>AI gateway</b> as the single path to any model.</p><ul>
+      <li>It provided <b>central auth</b> and per-team quotas, so keys left team code and runaway spend was capped.</li>
+      <li>It added <b>PII redaction</b>, prompt-injection screening and content safety on inputs and outputs.</li>
+      <li>I set up a <b>model catalogue</b> of approved models, each with a risk rating and data-handling terms.</li>
+      <li>I added an <b>evaluation service</b> so teams could test quality before release, and token cost tracking per product.</li>
+      <li>I made migration cheap: an SDK swap of about a day, and the first three teams got hands-on help.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> All 14 teams moved within a quarter. Time to a first AI feature fell from about 10 weeks to 3. When a cheaper model met our evaluation bar, we switched five products in a day, cutting token cost by about 35%.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> I'd add the evaluation service first next time. Teams adopted the gateway fastest once it helped them prove quality.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> AI gateway &middot; one choke point for guardrails &middot; model catalogue &middot; evaluation before release &middot; token budget &middot; swap models, keep controls</p>
+</article>
+
+<article class="bq" id="q17">
+  <div class="bq-q"><span class="qnum">Q17</span><span>Tell me about assessing AI use cases for value and risk before committing.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>&#x1F9E0; Psychology: what they're really testing</h5><p>Can you say no, or "not yet", to exciting AI ideas with evidence rather than fear? Red flags are funding whatever the loudest executive wants, or treating all AI as equally risky. A senior answer uses a <b>repeatable intake</b>, and matches controls to <b>risk tier</b>.</p></div>
+    <div class="bq-phi"><h5>&#x1F9ED; Philosophy: the principle behind a strong answer</h5><p>Treat AI ideas as a <b>portfolio of bets</b>, not a queue. Risk depends on the impact on people, not on how clever the model is. Responsible AI principles such as fairness, transparency and accountability apply most where decisions affect someone's money or access.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> After a GenAI showcase, the business sent in <b>20 AI ideas</b> in a month, from meeting summaries to an AI that recommended credit limits. There was budget for about three.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I was asked to recommend which ideas to fund, and to make the selection process repeatable.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I set up a light <b>intake process</b> with the risk and data teams.</p><ul>
+      <li>Each idea was scored on <b>value</b>, feasibility, <b>data readiness</b> and a risk tier based on who could be harmed.</li>
+      <li>I used the EU AI Act as a reference point: its Annex III lists <b>creditworthiness assessment</b> as high-risk, which matched our own instinct.</li>
+      <li>We picked three: complaint triage, policy search for staff and document classification.</li>
+      <li>I deliberately <b>deferred</b> the credit-limit idea. I offered a <b>human-in-the-loop</b> version instead, where the model only drafted reasons for an analyst.</li>
+      <li>Each funded idea had a stage gate with a measurable success target.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> Value landed from two of the three. Complaint triage cut routing time by about 60%. Document classification failed its data-readiness gate at week 6 and was stopped cheaply. The intake became the standard path for all AI ideas.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> Stopping one at a gate was a success, not a failure. Next time I'd show that to the business up front, so a "stop" isn't seen as a loss.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> portfolio of bets &middot; risk tier by impact on people &middot; data readiness &middot; human-in-the-loop &middot; stage gate &middot; stop cheaply</p>
+</article>
+
+<article class="bq" id="q18">
+  <div class="bq-q"><span class="qnum">Q18</span><span>Tell me about evaluating an emerging technology and deciding whether to adopt it.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>&#x1F9E0; Psychology: what they're really testing</h5><p>Are you a <b>hype filter</b> or a hype amplifier? Red flags are adopting because a vendor demo looked good, or blocking because it's new. A senior answer sets criteria <b>before</b> the trial, gives a nuanced verdict, and builds in a date to look again.</p></div>
+    <div class="bq-phi"><h5>&#x1F9ED; Philosophy: the principle behind a strong answer</h5><p>A <b>technology radar</b> makes adoption explicit and visible. Thoughtworks uses four rings: Adopt, Trial, Assess and Caution (Caution replaced the older "Hold"). The answer can differ by context: the same tool can be safe for internal use and unsafe for customers.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> Several teams wanted to build with <b>agentic AI frameworks</b>, where models plan and call tools on their own. Two had prototypes, and one was already talking about letting an agent update customer records.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I owned the technology radar for the portfolio. I had to give a clear position without killing the teams' energy.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I ran a <b>time-boxed trial</b> instead of a debate.</p><ul>
+      <li>I agreed four criteria up front: <b>observability</b> (can we trace every step and tool call?), <b>security</b> (least-privilege tool access), <b>cost control</b> (token budgets that stop runaway loops) and maturity.</li>
+      <li>Two teams built the same internal workflow, reconciliation exception triage, on two frameworks over six weeks.</li>
+      <li>I scored the results in the open, with the teams in the room.</li>
+      <li>I published a split verdict on the radar, with the evidence behind each part.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> The verdict was <b>"Trial for internal workflows, Caution for customer-facing"</b>, revisited quarterly. The internal pilot cut triage effort by about 40%. One framework was dropped after an agent looped and burned a week's token budget in an hour, which our cap caught.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> The runaway loop taught more than any slide. I now always include a deliberate failure test in a trial.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> technology radar &middot; criteria before the trial &middot; time-boxed &middot; Trial internal, Caution external &middot; least-privilege tools &middot; revisit quarterly</p>
+</article>
+
+  <div class="remember"><ul>
+    <li>Separate what changes fast (models) from what should stay stable (guardrails, identity, cost control), and put the stable part in <b>one place</b>.</li>
+    <li>Tier AI risk by the <b>impact on people</b>. Anything touching credit, money or access gets stronger controls or a human in the loop.</li>
+    <li>Agree evaluation criteria <b>before</b> any trial, and treat a cheap "stop" as a good outcome.</li>
+  </ul></div>
+  <div class="post">
+    <p>14 teams calling AI models directly isn't innovation. It's 14 attack surfaces &#x1F6A8;</p>
+    <p>&#x1F6AA; Give every team one AI gateway: central auth, PII redaction and content safety.</p>
+    <p>&#x1F4CA; Track token cost per product, so spend is visible before it surprises you.</p>
+    <p>&#x2696;&#xFE0F; Tier use cases by impact on people. Credit decisions are not meeting summaries.</p>
+    <p>&#x1F9EA; Trial new tech against criteria you set first, and keep "Caution" as an honest answer.</p>
+    <p>Models will keep changing. Your guardrails shouldn't have to. How does your organisation govern AI?</p>
+    <p>#ResponsibleAI #GenAI #SolutionArchitecture #AIGovernance #TechStrategy</p>
+  </div>
+</section>
+
+<!-- DELIVERY -->
+<section class="concept" id="delivery">
+  <h2><span class="num">26.7</span> Delivery &amp; stakeholders <span class="tag-added">Added</span></h2>
+  <p class="oneliner">These questions test whether you can deliver through other people. They look at how you handle bad news, competing priorities, a failing programme and a senior leader who wants something risky.</p>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"From hidden risk to an informed decision (Q19)","interval":2800,
+ "frames":[
+  {"label":"Hidden","caption":"<b>Watermelon status.</b> Green on the report, red underneath. The risk grows quietly.","rows":[
+   [{"t":"Status report","sub":"all green","c":"green"},{"k":"arrow"},{"t":"Real state","sub":"vendor change breaks the API","c":"red"},{"k":"arrow"},{"t":"Go-live","sub":"failed cutover","c":"off"}]]},
+  {"label":"Surfaced","caption":"<b>Raise it early.</b> Get evidence and put the impact in business terms before the date becomes a promise.","rows":[
+   [{"t":"Evidence","sub":"14 of 60 tests fail","c":"amber"},{"k":"arrow"},{"t":"Impact","sub":"300 applications/day rework","c":"amber"},{"k":"arrow"},{"t":"Steering committee","sub":"this week","c":"blue"}]]},
+  {"label":"Options","caption":"<b>Bring choices, not problems.</b> Three options and one clear recommendation.","rows":[
+   [{"t":"A: hotfix","sub":"high risk","c":"red"},{"t":"B: vendor delays","sub":"not in our control","c":"amber"},{"t":"C: move 3 weeks","sub":"recommended","c":"green","big":true}]]},
+  {"label":"Decided","caption":"<b>Decide, then re-plan on evidence.</b> Checkpoints make the new date believable.","ms":3400,"rows":[
+   [{"t":"Decision","sub":"option C","c":"green"},{"k":"arrow"},{"t":"Checkpoints","sub":"weekly","c":"blue"},{"k":"arrow"},{"t":"Clean cutover","sub":"zero rollback","c":"green"}]]}
+ ]}
+</script></figure>
+
+<article class="bq" id="q19">
+  <div class="bq-q"><span class="qnum">Q19</span><span>Tell me about a time you delivered bad news to senior stakeholders.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>&#x1F9E0; Psychology: what they're really testing</h5><p>Do you <b>surface risk early</b>, or hide it until it explodes ("watermelon" status: green outside, red inside)? Red flags: blaming the vendor, or bringing a problem with no options. A mid-level answer escalates. A senior answer brings <b>options and a recommendation</b>.</p></div>
+    <div class="bq-phi"><h5>&#x1F9ED; Philosophy: the principle behind a strong answer</h5><p>Bad news does not get better with age. Trust grows when you are <b>early, specific and calm</b>. The rule is <b>no surprises</b>: give decision-makers choices, not problems.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> I was integration lead for a go-live linking a new broker portal to the core banking platform. Six weeks before cutover, the vendor announced a core upgrade due two weeks before our date. It changed a field format in the account-opening API we relied on.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> Confirm the impact fast, and give the steering committee an honest picture and a clear choice.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b></p><ul>
+      <li>I got a pre-release environment from the vendor and ran our <b>contract tests</b> against it within 48 hours: 14 of 60 cases failed.</li>
+      <li>I put the impact in <b>business terms</b>: a failed cutover meant manual rework of about 300 applications a day and an outage for brokers.</li>
+      <li>I framed three options. A: go live with a quick hotfix (untested under load). B: ask the vendor to delay (not in our control). C: move go-live 3 weeks. I recommended C, with B as a fallback.</li>
+      <li>I took a one-page <b>decision paper</b> to the steering committee that week, not at the next monthly report.</li>
+      <li>I agreed weekly checkpoints, so the new date was an <b>evidence-based re-plan</b>, not a guess.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> The date moved 3 weeks. Cutover was clean with zero rollback and only 2 defects in week one (similar launches had 15 or more). The sponsor asked me to use the same format on other programmes.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> I now add vendor release calendars to the <b>risk register</b> on day one, so the warning comes months early, not weeks.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> early warning · options with a recommendation · impact in business terms · no surprises · decision paper · evidence-based re-plan</p>
+</article>
+
+<article class="bq" id="q20">
+  <div class="bq-q"><span class="qnum">Q20</span><span>Describe delivering with competing priorities from multiple stakeholders.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>&#x1F9E0; Psychology: what they're really testing</h5><p>They're testing <b>prioritisation under politics</b>. Do you find a win-win, or just pick favourites or say yes to everyone? Red flags: "I escalated and let them fight it out", or heroics like "we did all three by working weekends". Senior answers <b>reframe the problem</b>: find the shared need and make the trade-offs visible.</p></div>
+    <div class="bq-phi"><h5>&#x1F9ED; Philosophy: the principle behind a strong answer</h5><p>Prioritise <b>outcomes over requests</b>. Stakeholders often want the same thing in different words. A <b>transparent roadmap</b> turns politics into a visible queue, and a shared platform needs a product-owner mindset.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> I owned a shared customer-profile API used by about 20 apps. In one quarter, three business units (cards, home lending and wealth) each asked for changes for launches in the same month. Each called theirs "priority one", and their requests clashed on the address and contact-preference model.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> Deliver what the launches really needed without three breaking changes, and without the platform team becoming the bottleneck everyone blamed.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b></p><ul>
+      <li>I ran a 90-minute <b>contract clinic</b> with product and tech leads from all three units. We mapped each request to the fields and behaviour it needed, and why.</li>
+      <li>About 80% of the asks overlapped. All three needed a structured address and consent per channel; the differences were naming and edge cases.</li>
+      <li>I proposed <b>one versioned change</b>: a v2 with additive fields, with v1 kept for 6 months. I rejected separate endpoints per unit, because that meant triple the maintenance and slow drift.</li>
+      <li>For the other 20%, I published a <b>roadmap</b> ordered by launch date and customer impact, agreed in the room.</li>
+      <li>I set a weekly 15-minute check-in, so nobody needed to escalate.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> One release shipped 2 weeks before the earliest launch, and all three launches were on time. The other 17 consumers saw <b>zero breaking changes</b>. Escalations stopped, and the clinic became our <b>intake process</b> for platform changes.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> I learned to ask "what outcome do you need?" before "what change do you want?". Next time I'd publish the roadmap before demand peaks.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> outcome over request · shared contract · versioning · transparent roadmap · one change, many consumers · intake process</p>
+</article>
+
+<article class="bq" id="q21">
+  <div class="bq-q"><span class="qnum">Q21</span><span>Tell me about a programme going off track that you turned around.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>&#x1F9E0; Psychology: what they're really testing</h5><p>They want to see if you <b>diagnose the root cause</b> and change the system, or just push people harder. They listen for measurement, honesty and morale. Red flags: overtime heroics, blaming the team, or replacing people first. A senior answer <b>redefines "done"</b> and makes reality visible before it tries to go faster.</p></div>
+    <div class="bq-phi"><h5>&#x1F9ED; Philosophy: the principle behind a strong answer</h5><p>What gets measured gets managed, but only if the measure is honest. Self-reported "percent done" hides risk. The Agile Manifesto says <b>working software</b> is the primary measure of progress. <b>Visibility before velocity.</b></p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> I joined a programme connecting a new CRM to about 50 back-end interfaces. For three months, status reports had shown 40% of the interfaces as "90% done". Go-live had slipped twice and the sponsor had lost confidence.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> Find out where we really were, and get the programme onto a plan people could believe.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b></p><ul>
+      <li>I redefined the <b>definition of done</b> as "running in a prod-like environment with real masked data and passing end-to-end tests". By that measure only 12 of 50 were done, not the 35 or so that had been reported.</li>
+      <li>I put every interface on one board (built, deployed, data-tested, done) as the <b>single source of truth</b>.</li>
+      <li>The board showed the <b>real bottleneck</b>: test data and environment access, not code. I got a masked-data refresh pipeline prioritised and a shared environment booking system set up.</li>
+      <li>I changed the daily stand-up to 15 minutes on the oldest blocked card, not status reporting.</li>
+      <li>I <b>re-baselined</b> with the sponsor using the measured burn-down rate, not hope.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> We went from 12 to 50 interfaces done in 10 weeks and went live inside the new window, with zero P1 incidents in week one. Reports finally matched reality. The team said stress dropped because "done" was clear at last.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> The problem was the definition, not the people. Now I agree "done" on day one and audit it regularly.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> definition of done · single source of truth · visible flow · real bottleneck · re-baseline · working software</p>
+</article>
+
+<article class="bq" id="q22">
+  <div class="bq-q"><span class="qnum">Q22</span><span>Tell me about a time you said no to a senior leader.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>&#x1F9E0; Psychology: what they're really testing</h5><p>They're checking <b>courage and judgement</b>: can you push back respectfully and keep the relationship? Red flags: a flat "no", or caving in. A senior answer is "no, and here's how we get you what you want safely", starting from the leader's <b>underlying goal</b>.</p></div>
+    <div class="bq-phi"><h5>&#x1F9ED; Philosophy: the principle behind a strong answer</h5><p>Say <b>"yes, if"</b> or "not yet", not just "no". Respect the intent, challenge the method. Match the risk to the <b>blast radius</b>: start where a human is in the loop, then widen.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> A competitor launched a customer chatbot. Our general manager asked for a customer-facing GenAI assistant in 3 weeks to answer product and fee questions. We had no evaluation framework and no guardrails, and the content was spread across out-of-date PDFs.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> As lead architect, I had to advise whether it could be done safely, and offer an alternative if it couldn't.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b></p><ul>
+      <li>I met the GM to understand the real goal: to be seen as innovative, and to cut calls about simple questions.</li>
+      <li>I named three risks in plain words: wrong fee answers (conduct risk), privacy and reputation. Then I showed a short demo of a prototype quoting a fee from a 2-year-old PDF.</li>
+      <li>I proposed <b>internal agent-assist</b> first: the same assistant helping call-centre staff, with a <b>human in the loop</b> and cited sources, delivered in 3 weeks.</li>
+      <li>I set measurable <b>evaluation gates</b> for going customer-facing: <b>groundedness</b> above an agreed level on a 300-question test set, red-team results, and compliance sign-off.</li>
+      <li>I suggested announcing the internal launch together, so the GM still had a story to tell.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> The internal launch went live in 3 weeks, and handling time for product questions fell by about 18%. Testing found 40+ stale documents, which we fixed. The customer launch followed about 3 months later at about 97% groundedness on the test set, with no conduct incidents.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> The "no" landed because I came with a faster "yes" to the real goal. Next time I'd show the demo even earlier.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> underlying goal · yes, if · human in the loop · evaluation gate · groundedness · blast radius</p>
+</article>
+
+  <article class="bq" id="q23">
+  <div class="bq-q"><span class="qnum">Q23</span><span>Tell me about explaining a complex technical topic to executives or a board.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>🧠 Psychology: what they're really testing</h5><p>Can you make a complex topic simple without dumbing it down or overselling it? Red flags are jargon, or "the model won't make mistakes". Senior answers use a <b>plain analogy</b>, show controls and <b>accountability</b>, and frame a clear decision for the board.</p></div>
+    <div class="bq-phi"><h5>🧭 Philosophy: the principle behind a strong answer</h5><p>Boards decide on risk and accountability, not architecture. <b>Lead with the answer</b> and the decision you need, then give the minimum of how it works. One good analogy plus <b>one clear metric</b> beats twenty slides.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> Our first customer-facing GenAI pilots were heading to production. The board risk committee asked two blunt questions: "Can GenAI make mistakes? And who is accountable when it does?"</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I had 15 minutes to explain the risk and get agreement to an AI risk appetite statement.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I built the session around their two questions.</p><ul>
+      <li>I opened with the answer: "Yes, it can make mistakes. The accountable executive is the product owner, the same as for any other channel."</li>
+      <li>I explained hallucination with an analogy: a very well-read new graduate who answers confidently even when unsure, unless you hand them the policy manual and check their work.</li>
+      <li>I showed the controls as <b>layers</b>: grounding on approved content, evaluation before release, human review for high-risk answers, and live monitoring with a kill switch.</li>
+      <li>I gave one metric: the <b>groundedness rate</b> on a fixed test set, with a 98% target, reported monthly.</li>
+      <li>I proposed three tiers, so the board could say where AI may act alone, may only assist, or must not be used.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> The committee approved the <b>AI risk appetite statement</b> in that session, including "no credit decisions without a human". Two pilots went live at 98.6% groundedness. The questions shifted from "is it safe?" to "where else can we use it?"</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> Pre-briefing the committee chair a week early surfaced the accountability question, so I walked in with the answer ready.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> lead with the answer · plain analogy · layered controls · one clear metric · accountable owner · risk appetite statement</p>
+</article>
+<div class="remember"><ul>
+    <li>Always arrive with <b>options and a recommendation</b>, never just a problem.</li>
+    <li>Make reality visible: honest definitions of done and one shared board beat optimistic status reports.</li>
+    <li>When you push back, serve the <b>underlying goal</b> with a safer path that is just as fast or faster.</li>
+  </ul></div>
+  <div class="post">
+    <p>The best project managers I've worked with share one habit: they deliver bad news early 📣</p>
+    <p>🍉 "Green on the report, red underneath" is how programmes fail quietly</p>
+    <p>🔬 Get evidence first: tests, numbers, impact in business terms</p>
+    <p>🧭 Bring 3 options and 1 recommendation, not just a problem</p>
+    <p>📅 Re-plan on evidence, with checkpoints people can see</p>
+    <p>Bad news doesn't age well. Trust comes from being early, specific and calm. How do you raise risk in your team?</p>
+    <p>#Leadership #Delivery #StakeholderManagement #SolutionArchitect</p>
+  </div>
+</section>
+
+<!-- ETHICS -->
+<section class="concept" id="ethics">
+  <h2><span class="num">26.8</span> Risk, regulation &amp; ethics <span class="tag-added">Added</span></h2>
+  <p class="oneliner">This question tests your integrity under deadline pressure, and whether you treat privacy, security and compliance as design inputs rather than blockers.</p>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"A safe and fast path to training data (Q24)","stepMs":900,
+ "actors":[{"t":"Data science","c":"blue"},{"t":"Privacy pipeline","c":"teal"},{"t":"Privacy officer","c":"purple"},{"t":"Sandbox","c":"green"}],
+ "steps":[
+  {"from":0,"to":1,"t":"Request training data","c":"blue"},
+  {"from":1,"to":2,"t":"Privacy review in week 1","c":"purple"},
+  {"from":2,"to":1,"t":"Acceptance tests agreed","c":"purple","dash":true},
+  {"from":1,"to":1,"t":"Mask and tokenise identifiers","c":"teal"},
+  {"from":1,"to":1,"t":"Add synthetic rare cases","c":"teal"},
+  {"from":1,"to":2,"t":"Re-identification risk check","c":"amber"},
+  {"from":1,"to":3,"t":"Load safe dataset","c":"green"},
+  {"note":"No raw personal data leaves production. Data ready in 2 weeks","c":"green"}
+ ]}
+</script></figure>
+
+<article class="bq" id="q24">
+  <div class="bq-q"><span class="qnum">Q24</span><span>Tell me about balancing speed with compliance, security or an ethical concern.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>&#x1F9E0; Psychology: what they're really testing</h5><p>They're testing <b>integrity under pressure</b>, and whether you see compliance as a design input or an obstacle. Red flags: "it was urgent, so I approved it", or "I refused and walked away". A senior finds a path that is <b>both fast and safe</b>, involves privacy and risk early, and makes the solution <b>reusable</b>.</p></div>
+    <div class="bq-phi"><h5>&#x1F9ED; Philosophy: the principle behind a strong answer</h5><p>Ann Cavoukian's <b>privacy by design</b>: build protection in by default, not as an afterthought. Speed and safety aren't opposites when the safe path is the <b>paved road</b>. A good ethics test is: "Could I explain this decision to the customer?"</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> A data-science team was building a model to spot customers heading into financial hardship. They wanted a full copy of production customer data in a sandbox to train it. They had an executive deadline and argued "it's internal, so it's fine".</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> Unblock them quickly without exposing personal information or breaching our privacy obligations.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b></p><ul>
+      <li>I acknowledged the deadline and the value: spotting hardship early helps customers.</li>
+      <li>I explained the risk: a sandbox copy with weaker controls would widen access to very sensitive data, including hardship indicators. That breaks <b>data minimisation</b>.</li>
+      <li>I proposed a pipeline: <b>masking and tokenising</b> direct identifiers, plus <b>synthetic data</b> for rare cases, with the privacy review at the start, not the end.</li>
+      <li>I brought the privacy officer in during week 1, and we agreed acceptance tests: <b>re-identification risk</b> checks and no raw identifiers.</li>
+      <li>In a controlled environment, we compared model quality on masked data with production-like samples to prove it was fit for purpose.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> Training data was ready in 2 weeks, not the 6–8 weeks that approval for a production copy would have taken. There was zero personal data exposure, and model accuracy stayed within about 1 percentage point. Four more teams have reused the pipeline as a standard pattern.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> A plain "no" would have pushed the team towards a workaround. Offering a faster safe path kept them working with us.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> privacy by design · data minimisation · masking and synthetic data · privacy review up front · reusable pattern · explain it to the customer</p>
+</article>
+
+  <article class="bq" id="q25">
+  <div class="bq-q"><span class="qnum">Q25</span><span>Tell me about designing an architecture to meet a regulatory or data-residency requirement.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>&#x1F9E0; Psychology: what they're really testing</h5><p>Do you treat regulation as a <b>design input</b> or a late blocker? Red flags are "legal signed it off, so it was fine", or ticking one box while data leaks through logs. A senior answer traces <b>every copy of the data</b>, including the hidden ones, and turns the solution into a reusable pattern.</p></div>
+    <div class="bq-phi"><h5>&#x1F9ED; Philosophy: the principle behind a strong answer</h5><p>Compliance is a property of the whole data flow, not of one component. Data residency covers <b>derived data</b> too: prompts, logs, caches, backups and embeddings. Design it once, prove it with evidence, and make it the <b>paved road</b>.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> A bank wanted a GenAI assistant to help staff answer customer questions using account notes. A regulatory obligation and our own policy said this customer data <b>must not leave the country</b>. The first prototype used a model hosted overseas.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I owned the solution architecture, and had to meet the residency rule without dropping the business case.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I mapped every place customer data could go, then closed each one.</p><ul>
+      <li>I chose <b>in-region model deployment</b> in an in-country cloud region, and kept the vector store and caches there too.</li>
+      <li>I used <b>private networking</b>, so no traffic crossed the public internet.</li>
+      <li>I agreed <b>no data retention</b> by the model provider, in both the contract and the service configuration.</li>
+      <li>I added tamper-evident <b>audit logging</b>, with the logs themselves held in-country.</li>
+      <li>I designed disaster recovery to a second in-country region. I refused a cheaper overseas failover, because residency had to hold during an outage too.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> The service passed internal and external audit with no findings. It went live about 6 weeks later than the overseas prototype would have. Three more GenAI services reused the pattern, each saving weeks of design and review.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> The biggest risk was the logs, not the model. I now start residency work with a <b>data-flow map</b> of every copy.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> regulation as a design input &middot; every copy of the data &middot; in-region deployment &middot; no data retention &middot; residency during failover &middot; reusable pattern</p>
+</article>
+<div class="remember"><ul>
+    <li>Never present the choice as "fast or safe". Show how you made <b>the safe path the fast path</b>.</li>
+    <li>Bring privacy, security and risk in <b>at the start</b>, with clear acceptance tests, not at the end as a gate.</li>
+    <li>Integrity stories land best when the fix becomes a <b>reusable pattern</b> others can follow.</li>
+  </ul></div>
+  <div class="post">
+    <p>"It's internal, so it's fine" is how sensitive data ends up in the wrong place 🔐</p>
+    <p>📦 The ask: copy production customer data to a sandbox to train a model</p>
+    <p>🎭 The answer: masked, tokenised and synthetic data, with privacy in the room from week 1</p>
+    <p>⏱️ Training data in 2 weeks, faster than approval for a production copy</p>
+    <p>♻️ Now 4 more teams use the same pipeline</p>
+    <p>The best way to stop workarounds is to make the safe path the fast path. How does your team handle training data?</p>
+    <p>#PrivacyByDesign #DataGovernance #ResponsibleAI #Leadership #SolutionArchitect</p>
+  </div>
+</section>
+
+<div class="qa-wrap">
+  <h2>⚡ Quick-fire Q&amp;A</h2>
+  <details class="qa"><summary>What if I don't have a story for this question?</summary><p>Say so honestly, then offer the closest real story: "I haven't led that exact situation, but here's a time I faced something similar." A true, adjacent story beats an invented one, because interviewers probe for details.</p></details>
+  <details class="qa"><summary>How long should a behavioural answer be?</summary><p>About two minutes. Open with a one-line result headline, keep Situation and Task short, spend most of the time on your Actions, finish with numbers and a one-line Reflection, then stop and let them ask follow-ups.</p></details>
+  <details class="qa"><summary>Can I use a failure story?</summary><p>Yes, and you should have one ready. Pick a real failure with real impact, own it in the first sentence, and spend most of the answer on how you fixed it and what you changed so it won't happen again. Avoid humblebrags like "I worked too hard".</p></details>
+  <details class="qa"><summary>How strategic vs technical should a solution architect's answer be?</summary><p>Lead with the business outcome and the decision, then prove you understand the mechanism in one or two plain sentences ("a primary cloud with a tested exit plan", "an AI gateway with central guardrails"). Expect the interviewer to dig two levels into the technology, so know the numbers and the failure modes, but don't open with them.</p></details>
+  <details class="qa"><summary>What if I've never owned a budget or written a business case?</summary><p>Use a story where you shaped a funding decision: you sized the options, put numbers on risk or run cost, and someone with a budget said yes because of your analysis. Be honest that you didn't own the money, and show you understand total cost of ownership, cost of delay and how sensitive your numbers were to the assumptions.</p></details>
+  <details class="qa"><summary>How do I show leadership without managing people?</summary><p>Solution architects lead through influence. Use stories where teams adopted a standard because you made it the easy path, an executive changed course because of your evidence, or a design deadlock ended because you agreed the criteria first. Show that people followed you when they didn't have to, and give the numbers.</p></details>
+</div>
+
+<div class="pager"><a href="25-interview-readiness.html">← 25 · Interview Readiness</a><a class="next" href="27-solution-designer-behavioural-questions.html">27 · Solution Designer Behavioural Questions →</a></div>
+</main>
+<footer>Tech Concepts Prep · Section 26</footer>
+<script src="assets/menu-data.js"></script>
+<script src="assets/menu.js"></script>
+<script src="assets/app.js"></script>
+<script src="assets/viz.js"></script>
+</body>
+</html>

@@ -9,7 +9,7 @@ Add-Type -AssemblyName System.Web
 function Clean([string]$html) { [System.Web.HttpUtility]::HtmlDecode(($html -replace '<[^>]+>', '')).Trim() }
 
 $menu = @()
-foreach ($file in Get-ChildItem $root -Filter '*.html' | Where-Object { $_.Name -match '^\d{2}-' } | Sort-Object Name) {
+foreach ($file in Get-ChildItem $root -Filter '*.html' | Where-Object { $_.Name -match '^\d{2}-' -and -not ([IO.File]::ReadAllText($_.FullName) -match 'http-equiv="refresh"') } | Sort-Object Name) {
   $html = [IO.File]::ReadAllText($file.FullName)
   $title = [regex]::Match($html, '<title>\d{2}\s*\S\s*(.*?)\s*\|').Groups[1].Value
   $toc = [regex]::Match($html, '<div class="toc">([\s\S]*?)</div>').Groups[1].Value
