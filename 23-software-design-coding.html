@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>23 · Software Design &amp; Coding | Tech Concepts Prep</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<nav class="top"><a href="22-dotnet-engineering-deep-dive.html">← .NET Deep Dive</a><span class="here">23 · Software Design &amp; Coding</span><a href="24-architecture-practice.html">Next: Architecture Practice →</a></nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">Section 23</div>
+  <h1>Software design &amp; coding fundamentals</h1>
+  <p>How to write code that stays easy to change: the core design principles, SOLID, the classic design patterns as they show up in .NET, the smells to catch in code review, and the Big-O and problem-solving patterns you need for a live coding round. Examples use modern C# (.NET 10 / C# 14) and banking scenarios.</p>
+  <div class="toc">
+    <a href="#principles" class="added">Design principles</a>
+    <a href="#solid" class="added">SOLID</a>
+    <a href="#creational" class="added">Creational patterns</a>
+    <a href="#structural" class="added">Structural patterns</a>
+    <a href="#behavioural" class="added">Behavioural patterns</a>
+    <a href="#smells" class="added">Anti-patterns &amp; smells</a>
+    <a href="#cleancode" class="added">Clean code &amp; review</a>
+    <a href="#bigo" class="added">Big-O &amp; collections</a>
+    <a href="#patterns" class="added">Coding interview patterns</a>
+  </div>
+</header>
+
+<!-- DESIGN PRINCIPLES -->
+<section class="concept" id="principles">
+  <h2><span class="num">23.1</span> Design principles <span class="tag-added">Added</span></h2>
+  <p class="oneliner">A handful of rules of thumb that keep code <b>easy to change</b>. Each one is good in moderation and harmful when pushed to the extreme.</p>
+  <div class="grid">
+    <div class="box blue"><h4>🔁 DRY</h4><p><b>Don't repeat yourself.</b> Each piece of <i>knowledge</i> (a rule, a formula) lives in one place.</p></div>
+    <div class="box blue"><h4>💡 KISS</h4><p><b>Keep it simple.</b> The simplest design that meets today's needs wins.</p></div>
+    <div class="box blue"><h4>✋ YAGNI</h4><p><b>You aren't gonna need it.</b> Don't build for a future that may never come.</p></div>
+    <div class="box green"><h4>🧱 Separation of concerns</h4><p>UI, business rules and data access live in different places, so each can change alone.</p></div>
+    <div class="box green"><h4>🧲 High cohesion, low coupling</h4><p>Things that change together stay together. Modules know as little about each other as possible.</p></div>
+    <div class="box green"><h4>🧩 Composition over inheritance</h4><p>Build behaviour by combining small objects, not by deep class trees.</p></div>
+    <div class="box purple"><h4>🗣 Law of Demeter</h4><p>Talk to your direct friends only. Avoid <code>a.B.C.D.Do()</code> train wrecks.</p></div>
+    <div class="box purple"><h4>📣 Tell, don't ask</h4><p>Tell an object what to do. Don't pull its data out and decide for it.</p></div>
+    <div class="box purple"><h4>🚨 Fail fast</h4><p>Reject bad input at the edge, loudly, before it spreads and corrupts data.</p></div>
+  </div>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Paying from a wallet: ask vs tell","interval":3000,
+ "frames":[
+  {"label":"Ask (train wreck)","caption":"Checkout reaches through three objects and makes the decision itself. Any change to Customer or Wallet breaks it.","rows":[
+   [{"t":"Checkout","c":"red"},{"k":"arrow","g":"→","t":"order.Customer"},{"t":"Customer","c":"off"},{"k":"arrow","g":"→","t":".Wallet"},{"t":"Wallet","c":"off"},{"k":"arrow","g":"→","t":".Balance -= total"},{"t":"Balance","c":"red"}]]},
+  {"label":"Tell","caption":"Checkout tells the order to pay. The wallet owns its own rule (enough funds?). Checkout knows one object.","rows":[
+   [{"t":"Checkout","c":"green"},{"k":"arrow","g":"→","t":"order.Pay(total)"},{"t":"Order","c":"blue"},{"k":"arrow","g":"→","t":"wallet.Debit(total)"},{"t":"Wallet","sub":"checks its own funds","c":"blue"}]]},
+  {"label":"Fail fast","caption":"A negative amount is rejected at the first line of <code>Pay</code>, not three layers later in the ledger.","ms":3400,"rows":[
+   [{"t":"Pay(-50)","c":"amber"},{"k":"arrow","g":"→"},{"t":"Guard clause","sub":"ThrowIfNegativeOrZero","c":"red","big":true},{"k":"arrow","g":"✕","t":"never reaches"},{"t":"Ledger","c":"off"}]]}
+ ]}
+</script></figure>
+  <h3>When each one is over-applied</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Principle</th><th>Over-applied looks like</th><th>Balance</th></tr>
+    <tr><td><b>DRY</b></td><td>Two services share a "common" helper and can no longer change alone</td><td>Duplicate code is fine if the <i>reasons</i> differ. Rule of three</td></tr>
+    <tr><td><b>KISS</b></td><td>No error handling, no tests, "simple" copy-paste</td><td>Simple ≠ easy. Simple means few moving parts</td></tr>
+    <tr><td><b>YAGNI</b></td><td>Ignoring known needs: security, audit, idempotency</td><td>Skip speculative features, not known non-functionals</td></tr>
+    <tr><td><b>Separation of concerns</b></td><td>Seven layers to save one row</td><td>Separate by change rate. Vertical slices are fine</td></tr>
+    <tr><td><b>Low coupling</b></td><td>Interfaces and events everywhere; nobody can follow a call</td><td>Decouple across boundaries, not inside one module</td></tr>
+    <tr><td><b>Composition</b></td><td>Twenty tiny objects for one rule</td><td>Shallow inheritance (one level) is still fine</td></tr>
+    <tr><td><b>Law of Demeter</b></td><td>Wrapper methods that just forward every call</td><td>Applies to behaviour, not to DTOs and fluent APIs</td></tr>
+    <tr><td><b>Fail fast</b></td><td>One bad record stops a 1-million-row batch</td><td>Fail fast on requests; isolate and park bad records in batches</td></tr>
+  </table></div>
+  <div class="remember"><ul>
+    <li>All principles serve one goal: <b>cheap, safe change</b>. Use that to settle arguments.</li>
+    <li>DRY is about <b>knowledge</b>, not text. Two identical lines with different reasons to change are not duplication.</li>
+    <li>YAGNI never applies to security, observability or data integrity.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Guard helpers</b></td><td><span class="pill builtin">built-in</span> <code>ArgumentNullException.ThrowIfNull</code>, <code>ArgumentOutOfRangeException.ThrowIfNegativeOrZero</code></td><td>Fail fast in one line per check</td></tr>
+    <tr><td><b>Roslyn analyzers</b></td><td><span class="pill builtin">built-in</span> <code>&lt;AnalysisLevel&gt;latest-recommended&lt;/AnalysisLevel&gt;</code> + <code>.editorconfig</code></td><td>Catch smells at build time; CA1506 flags heavy class coupling</td></tr>
+    <tr><td><b>Nullable reference types</b></td><td><span class="pill builtin">built-in</span> <code>&lt;Nullable&gt;enable&lt;/Nullable&gt;</code></td><td>The compiler fails fast on null mistakes</td></tr>
+    <tr><td><b>Architecture tests</b></td><td><code>TngTech.ArchUnitNET.xUnit</code></td><td>Unit tests that enforce layering (e.g. Domain must not reference Infrastructure)</td></tr>
+  </table>
+  <pre class="code"><code>public sealed class Order(Wallet wallet)
+{
+    public void Pay(decimal total, string reference)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(total);   // fail fast
+        ArgumentException.ThrowIfNullOrWhiteSpace(reference);
+        wallet.Debit(total, reference);    // tell, don't ask: Wallet checks funds
+    }
+}</code></pre>
+</div>
+  <div class="post">
+    <p>Every design principle is right… until you push it too far ⚖️</p>
+    <p>🔁 DRY: share knowledge, not text. A "common" library can couple two teams forever</p>
+    <p>✋ YAGNI: skip speculative features, never skip security or audit</p>
+    <p>🧲 Low coupling: decouple across boundaries, not inside one small module</p>
+    <p>📣 Tell, don't ask: order.Pay(total) beats order.Customer.Wallet.Balance -= total</p>
+    <p>🚨 Fail fast on requests, but park bad rows in a batch instead of stopping it</p>
+    <p>The real goal is cheap, safe change. Which principle have you seen overdone?</p>
+    <p>#SoftwareDesign #CleanCode #DotNet #Architecture</p>
+  </div>
+</section>
+
+<!-- SOLID -->
+<section class="concept" id="solid">
+  <h2><span class="num">23.2</span> SOLID <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Five object-oriented principles that keep classes small, swappable and testable, so a change in one place doesn't ripple everywhere.</p>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"S-O-L-I-D: before ❌ and after ✅","interval":3200,
+ "frames":[
+  {"label":"S","caption":"<b>Single responsibility</b>: one reason to change. Fee rules, PDF layout and email each change for different people.","rows":[
+   {"label":"❌","items":[{"t":"StatementService","sub":"load · fees · PDF · email","c":"red","big":true}]},
+   {"label":"✅","items":[{"t":"FeeCalculator","c":"green"},{"t":"StatementPdf","c":"green"},{"t":"StatementMailer","c":"green"}]}]},
+  {"label":"O","caption":"<b>Open/closed</b>: add a new payment rail by adding a class, not by editing a tested switch statement.","rows":[
+   {"label":"❌","items":[{"t":"switch (rail)","sub":"edit for every new rail","c":"red","big":true}]},
+   {"label":"✅","items":[{"t":"IFeeRule","c":"blue"},{"k":"arrow","g":"←"},{"t":"NppFee","c":"green"},{"t":"BpayFee","c":"green"},{"t":"PayToFee","sub":"new, nothing else edited","c":"teal"}]}]},
+  {"label":"L","caption":"<b>Liskov substitution</b>: a subtype must keep the base type's promises. If callers need <code>if (x is ReadOnlyAccount)</code>, the hierarchy is wrong.","rows":[
+   {"label":"❌","items":[{"t":"Account.Deposit()","c":"blue"},{"k":"arrow","g":"→"},{"t":"ReadOnlyAccount","sub":"throws NotSupported","c":"red"}]},
+   {"label":"✅","items":[{"t":"IReadableAccount","c":"green"},{"t":"IDepositable","c":"green"}]}]},
+  {"label":"I","caption":"<b>Interface segregation</b>: small, client-shaped interfaces. A report job should not have to depend on <code>Pay()</code>.","rows":[
+   {"label":"❌","items":[{"t":"IAccountService","sub":"Get · Pay · Close · Export","c":"red","big":true}]},
+   {"label":"✅","items":[{"t":"IAccountReader","c":"green"},{"t":"IPaymentSender","c":"green"},{"t":"IStatementExporter","c":"green"}]}]},
+  {"label":"D","caption":"<b>Dependency inversion</b>: business code depends on an abstraction. The DI container plugs in SQL, Cosmos or a test fake.","ms":3600,"rows":[
+   {"label":"❌","items":[{"t":"TransferService","c":"blue"},{"k":"arrow","g":"→","t":"new"},{"t":"SqlAccountRepo","c":"red"}]},
+   {"label":"✅","items":[{"t":"TransferService","c":"blue"},{"k":"arrow","g":"→"},{"t":"IAccountRepository","c":"purple"},{"k":"arrow","g":"←","t":"DI"},{"t":"SqlAccountRepo","c":"green"}]}]}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>Principle</th><th>Smell it prevents</th><th>In ASP.NET Core</th></tr>
+    <tr><td><b>S</b> · Single responsibility</td><td>God classes, merge conflicts, huge test setups</td><td>Thin endpoints; one handler or service per use case</td></tr>
+    <tr><td><b>O</b> · Open/closed</td><td>Growing switch statements, risky edits</td><td>Register many <code>IFeeRule</code>s; inject <code>IEnumerable&lt;T&gt;</code> or keyed services</td></tr>
+    <tr><td><b>L</b> · Liskov substitution</td><td><code>NotSupportedException</code> overrides, type checks</td><td>Any registered implementation must work in every consumer</td></tr>
+    <tr><td><b>I</b> · Interface segregation</td><td>Fat interfaces, fake methods in mocks</td><td><code>IOptions&lt;T&gt;</code> per feature, small service interfaces</td></tr>
+    <tr><td><b>D</b> · Dependency inversion</td><td><code>new</code> of infrastructure inside business code</td><td>Constructor injection via the built-in container</td></tr>
+  </table></div>
+  <div class="grid wide">
+    <div class="box"><h4>S · Single responsibility</h4><pre class="code"><code><span class="bad">// ❌ data, fees, PDF and email together</span>
+class StatementService
+{
+    void Load() { }   void CalcFees() { }
+    void ToPdf() { }  void Email() { }
+}
+<span class="ok">// ✅ one reason to change each</span>
+class FeeCalculator { }
+class StatementPdf { }
+class StatementMailer { }</code></pre></div>
+    <div class="box"><h4>O · Open/closed</h4><pre class="code"><code><span class="bad">// ❌ edit for every new rail</span>
+decimal Fee(Payment p) =&gt; p.Rail switch
+{
+    "NPP" =&gt; 0m, "BPAY" =&gt; 0.50m,
+    _ =&gt; throw new NotSupportedException()
+};
+<span class="ok">// ✅ add a class, edit nothing</span>
+interface IFeeRule { decimal Fee(Payment p); }
+sealed class NppFee : IFeeRule
+{
+    public decimal Fee(Payment p) =&gt; 0m;
+}</code></pre></div>
+    <div class="box"><h4>L · Liskov substitution</h4><pre class="code"><code><span class="bad">// ❌ subtype breaks the base promise</span>
+class ReadOnlyAccount : Account
+{
+    public override void Deposit(decimal a)
+        =&gt; throw new NotSupportedException();
+}
+<span class="ok">// ✅ split the abstraction</span>
+interface IReadableAccount
+{
+    decimal Balance { get; }
+}
+interface IDepositable { void Deposit(decimal a); }</code></pre></div>
+    <div class="box"><h4>I · Interface segregation</h4><pre class="code"><code><span class="bad">// ❌ report job must "implement" Pay()</span>
+interface IAccountService
+{
+    Account Get(int id); void Pay(Payment p);
+    void Close(int id);  Report Export();
+}
+<span class="ok">// ✅ small, client-shaped interfaces</span>
+interface IAccountReader { Account Get(int id); }
+interface IPaymentSender { void Pay(Payment p); }</code></pre></div>
+    <div class="box"><h4>D · Dependency inversion</h4><pre class="code"><code><span class="bad">// ❌ business code news up the detail</span>
+class TransferService
+{
+    readonly SqlAccountRepo repo = new();
+}
+<span class="ok">// ✅ depend on an abstraction</span>
+class TransferService(IAccountRepository repo)
+{
+}</code></pre></div>
+  </div>
+  <div class="remember"><ul>
+    <li>DIP is the principle; <b>DI</b> (the container) is just one way to apply it.</li>
+    <li>Add interfaces at <b>seams</b>: I/O, external systems, things you swap or fake in tests. Not for every class.</li>
+    <li>LSP violations show up as type checks and <code>NotSupportedException</code>. Fix the hierarchy, not the callers.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Dependency injection</b></td><td><span class="pill builtin">built-in</span> <code>Microsoft.Extensions.DependencyInjection</code></td><td>Constructor injection, lifetimes (D)</td></tr>
+    <tr><td><b>Many implementations</b></td><td><span class="pill builtin">built-in</span> <code>IEnumerable&lt;T&gt;</code> injection, keyed services (<code>AddKeyedScoped</code>)</td><td>Plug in new rules without edits (O)</td></tr>
+    <tr><td><b>Options pattern</b></td><td><span class="pill builtin">built-in</span> <code>IOptions&lt;T&gt;</code>, <code>IOptionsMonitor&lt;T&gt;</code></td><td>Small config objects per feature (I)</td></tr>
+    <tr><td><b>Assembly scanning</b></td><td><code>Scrutor</code></td><td>Register every <code>IFeeRule</code> by convention</td></tr>
+  </table>
+  <pre class="code"><code>var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddScoped&lt;IAccountRepository, SqlAccountRepository&gt;();  // D
+builder.Services.AddSingleton&lt;IFeeRule, NppFee&gt;();    // O: add a rule,
+builder.Services.AddSingleton&lt;IFeeRule, BpayFee&gt;();   // edit nothing else
+builder.Host.UseDefaultServiceProvider(o =&gt;
+{
+    o.ValidateScopes = true;    // catch scoped services captured by singletons
+    o.ValidateOnBuild = true;   // fail fast on missing registrations
+});
+// A consumer asks for IEnumerable&lt;IFeeRule&gt; to get every rule.</code></pre>
+  <p class="warn">An interface with one implementation and no test fake is ceremony. Extract it when a second implementation or a seam appears.</p>
+</div>
+  <div class="post">
+    <p>SOLID in one line each, with the smell it kills 🧱</p>
+    <p>🅢 Single responsibility: one reason to change. Kills god classes</p>
+    <p>🅞 Open/closed: add a class, don't edit the switch. Kills risky edits</p>
+    <p>🅛 Liskov: subtypes keep promises. Kills NotSupportedException overrides</p>
+    <p>🅘 Interface segregation: small interfaces. Kills fake methods in mocks</p>
+    <p>🅓 Dependency inversion: depend on abstractions. Kills new SqlRepo() in business code</p>
+    <p>DI is a tool for D, not the whole of SOLID. Which letter do you see broken most?</p>
+    <p>#SOLID #DotNet #CSharp #SoftwareDesign</p>
+  </div>
+</section>
+
+<!-- CREATIONAL -->
+<section class="concept" id="creational">
+  <h2><span class="num">23.3</span> Creational patterns <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Patterns that control <b>how objects get created</b>, so callers don't depend on concrete classes or complex setup steps.</p>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Who creates the object?","interval":2900,
+ "frames":[
+  {"label":"new everywhere","caption":"Every caller knows the concrete class and its setup. Changing it means editing every caller.","rows":[
+   [{"t":"Controller A","c":"slate"},{"t":"Job B","c":"slate"},{"t":"Service C","c":"slate"}],
+   [{"k":"text","t":"new SmtpClient(host, port, creds) × 3 copies","c":"red"}]]},
+  {"label":"Factory method","caption":"One method decides which class to build. Callers ask for \"a logger for this category\" and don't care how.","rows":[
+   [{"t":"Caller","c":"slate"},{"k":"arrow","g":"→","t":"CreateLogger(\"Payments\")"},{"t":"ILoggerFactory","c":"blue","big":true},{"k":"arrow","g":"→"},{"t":"ILogger","c":"green"}]]},
+  {"label":"Builder","caption":"Step-by-step setup with a readable, fluent API, then one <code>Build()</code> call produces the finished object.","rows":[
+   [{"t":"CreateBuilder()","c":"purple"},{"k":"arrow","g":"→"},{"t":".Services.Add…","c":"purple"},{"k":"arrow","g":"→"},{"t":".Configuration","c":"purple"},{"k":"arrow","g":"→"},{"t":"Build()","c":"green","big":true}]]},
+  {"label":"DI container","caption":"The container is the factory for everything. Lifetime (singleton, scoped, transient) is one line of config, not a static field.","ms":3400,"rows":[
+   [{"t":"Program.cs","sub":"registrations","c":"blue"},{"k":"arrow","g":"→"},{"t":"IServiceProvider","c":"teal","big":true},{"k":"arrow","g":"→","t":"inject"},{"t":"Your classes","sub":"no new, no statics","c":"green"}]]}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>Pattern</th><th>Problem it solves</th><th>Where .NET uses it</th></tr>
+    <tr><td><b>Factory method</b></td><td>Caller shouldn't pick the concrete class</td><td><code>ILoggerFactory.CreateLogger</code>, <code>IHttpClientFactory.CreateClient</code></td></tr>
+    <tr><td><b>Abstract factory</b></td><td>Create a <i>family</i> of related objects that must match</td><td><code>DbProviderFactory</code> (connection + command + parameter)</td></tr>
+    <tr><td><b>Builder</b></td><td>Many optional steps; readable setup</td><td><code>WebApplication.CreateBuilder</code>, <code>StringBuilder</code>, <code>UriBuilder</code>, <code>DbContextOptionsBuilder</code></td></tr>
+    <tr><td><b>Singleton</b></td><td>Exactly one shared instance</td><td><code>AddSingleton</code>, <code>ArrayPool&lt;T&gt;.Shared</code>, <code>TimeProvider.System</code></td></tr>
+    <tr><td><b>Prototype</b></td><td>Copy an existing object, then tweak it</td><td>Record <code>with</code> expressions</td></tr>
+  </table></div>
+  <div class="cols2">
+    <div class="box red"><h4>❌ Static singleton</h4><ul>
+      <li><code>static readonly Instance</code>: hidden global dependency.</li>
+      <li>Can't swap it in tests; state leaks between tests.</li>
+      <li>Hand-rolled thread safety (<code>Lazy&lt;T&gt;</code>, locks).</li>
+    </ul></div>
+    <div class="box green"><h4>✅ DI singleton</h4><ul>
+      <li><code>AddSingleton&lt;IFxCache, FxCache&gt;()</code>: visible in the constructor.</li>
+      <li>Swap for a fake in tests; one line to change lifetime.</li>
+      <li>The container handles thread-safe creation and disposal.</li>
+    </ul></div>
+  </div>
+  <div class="remember"><ul>
+    <li>In ASP.NET Core the <b>DI container is your main factory</b>. Write your own factory only when the choice depends on runtime data.</li>
+    <li>A singleton must be thread-safe and must never hold a scoped service (e.g. a <code>DbContext</code>).</li>
+    <li>Builders shine for test data: <code>new PaymentBuilder().WithAmount(250m).Build()</code>.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Factory delegates</b></td><td><span class="pill builtin">built-in</span> <code>AddSingleton&lt;T&gt;(sp =&gt; …)</code></td><td>Pick an implementation from config at startup</td></tr>
+    <tr><td><b>ActivatorUtilities</b></td><td><span class="pill builtin">built-in</span> <code>Microsoft.Extensions.DependencyInjection</code></td><td>Create a type with DI services plus runtime arguments</td></tr>
+    <tr><td><b>IHttpClientFactory</b></td><td><span class="pill builtin">built-in</span> <code>Microsoft.Extensions.Http</code></td><td>Factory that pools handlers and avoids socket exhaustion</td></tr>
+    <tr><td><b>Object pooling</b></td><td><code>Microsoft.Extensions.ObjectPool</code>; <span class="pill builtin">built-in</span> <code>ArrayPool&lt;T&gt;</code></td><td>Reuse expensive objects and buffers on hot paths</td></tr>
+  </table>
+  <pre class="code"><code>// Factory delegate: the container builds the right client from config
+builder.Services.AddSingleton&lt;IFxRateClient&gt;(sp =&gt;
+{
+    var opts = sp.GetRequiredService&lt;IOptions&lt;FxOptions&gt;&gt;().Value;
+    return opts.UseStub ? new StubFxClient() : new LiveFxClient(opts.BaseUrl);
+});
+
+// Prototype with records: copy, then change one field
+public sealed record Payment(string Id, decimal Amount, int Attempt);
+var retry = payment with { Attempt = payment.Attempt + 1 };</code></pre>
+</div>
+  <div class="post">
+    <p>Stop writing static singletons in .NET 🛑</p>
+    <p>🏭 Factory method: ILoggerFactory, IHttpClientFactory already do it for you</p>
+    <p>🧰 Builder: WebApplication.CreateBuilder is the pattern you use every day</p>
+    <p>1️⃣ Singleton: AddSingleton beats a static field. Testable, visible, one line to change</p>
+    <p>🧬 Prototype: a record with expression is a safe copy</p>
+    <p>In ASP.NET Core the DI container is the factory. What do you still create with new?</p>
+    <p>#DesignPatterns #DotNet #DependencyInjection #CSharp</p>
+  </div>
+</section>
+
+<!-- STRUCTURAL -->
+<section class="concept" id="structural">
+  <h2><span class="num">23.4</span> Structural patterns <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Patterns that <b>wrap or combine objects</b> to change an interface, add behaviour, or hide complexity, without editing the original class.</p>
+  <div class="grid">
+    <div class="box blue"><h4>🔌 Adapter</h4><p>Makes an existing class fit the interface you need. Wrap a vendor SDK behind <code>IFraudScorer</code>.</p></div>
+    <div class="box green"><h4>🎁 Decorator</h4><p>Same interface, extra behaviour: caching, logging, retries. Stack them like layers.</p></div>
+    <div class="box purple"><h4>🏛 Facade</h4><p>One simple entry point over many subsystems. <code>OnboardingService</code> calls KYC, core banking and email.</p></div>
+    <div class="box amber"><h4>🛡 Proxy</h4><p>Same interface, controls access: lazy loading, remote calls, permission checks.</p></div>
+    <div class="box teal"><h4>🌳 Composite</h4><p>Treat a tree of items like one item. A product bundle's price is the sum of its parts.</p></div>
+  </div>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Decorators stacked on an FX rate service","stepMs":900,
+ "actors":[{"t":"Caller","c":"slate"},{"t":"Logging","c":"purple"},{"t":"Caching","c":"teal"},{"t":"FxRateService","c":"blue"}],
+ "steps":[
+  {"from":0,"to":1,"t":"GetRate(AUD/USD)","c":"slate"},
+  {"from":1,"to":2,"t":"GetRate","c":"purple","sub":"start timer"},
+  {"from":2,"to":2,"t":"cache miss","c":"amber"},
+  {"from":2,"to":3,"t":"GetRate","c":"teal"},
+  {"from":3,"to":2,"t":"0.66","c":"blue","dash":true},
+  {"from":2,"to":1,"t":"0.66 (cached 60 s)","c":"teal","dash":true},
+  {"from":1,"to":0,"t":"0.66","c":"purple","dash":true,"sub":"logged: 42 ms"},
+  {"note":"All three implement IFxRateService. The caller can't tell how many layers there are.","c":"green"}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>Pattern</th><th>Interface</th><th>Use when</th><th>.NET example</th></tr>
+    <tr><td><b>Adapter</b></td><td>Changes it</td><td>Third-party or legacy API doesn't match yours</td><td><code>StreamReader</code> over a <code>Stream</code></td></tr>
+    <tr><td><b>Decorator</b></td><td>Same, adds behaviour</td><td>Cross-cutting concerns without touching the class</td><td><code>DelegatingHandler</code>, <code>GZipStream</code>, <code>DelegatingChatClient</code></td></tr>
+    <tr><td><b>Proxy</b></td><td>Same, controls access</td><td>Lazy load, remote call, security check</td><td>EF Core lazy-loading proxies, gRPC client, <code>DispatchProxy</code></td></tr>
+    <tr><td><b>Facade</b></td><td>New, simpler</td><td>Callers need one task, not ten subsystems</td><td><code>File.ReadAllTextAsync</code>, <code>HttpClient</code></td></tr>
+    <tr><td><b>Composite</b></td><td>Same for leaf and group</td><td>Tree structures: menus, bundles, rules</td><td><code>CompositeFileProvider</code>, configuration sections</td></tr>
+  </table></div>
+  <div class="remember"><ul>
+    <li>Decorator vs proxy: same shape. A decorator <b>adds</b> behaviour; a proxy <b>controls access</b> to the real object.</li>
+    <li>Put an adapter around every vendor SDK. Swapping vendors then touches one class (an anti-corruption layer in DDD terms).</li>
+    <li>Order matters when stacking decorators: cache outside retry, or retry outside cache? Decide on purpose.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Scrutor <code>Decorate</code></b></td><td><code>Scrutor</code></td><td>Wrap any registered service with a decorator</td></tr>
+    <tr><td><b>DelegatingHandler</b></td><td><span class="pill builtin">built-in</span> <code>System.Net.Http</code> + <code>AddHttpMessageHandler</code></td><td>Decorators around every outbound HTTP call</td></tr>
+    <tr><td><b>IChatClient middleware</b></td><td><code>Microsoft.Extensions.AI</code></td><td><code>ChatClientBuilder</code> stacks caching, telemetry, tool calling</td></tr>
+    <tr><td><b>DispatchProxy</b></td><td><span class="pill builtin">built-in</span> <code>System.Reflection</code></td><td>Runtime proxy for any interface (not AOT-friendly)</td></tr>
+    <tr><td><b>Lazy-loading proxies</b></td><td><code>Microsoft.EntityFrameworkCore.Proxies</code></td><td>Proxy pattern in EF Core; watch for N+1 queries</td></tr>
+  </table>
+  <pre class="code"><code>builder.Services.AddScoped&lt;IFxRateService, FxRateService&gt;();
+builder.Services.Decorate&lt;IFxRateService, CachedFxRateService&gt;();   // Scrutor
+builder.Services.Decorate&lt;IFxRateService, LoggedFxRateService&gt;();   // outermost
+
+builder.Services.AddTransient&lt;CorrelationIdHandler&gt;();
+builder.Services.AddHttpClient&lt;FxApiClient&gt;()
+    .AddHttpMessageHandler&lt;CorrelationIdHandler&gt;();   // decorates HttpClient
+
+builder.Services.AddChatClient(innerClient)   // IChatClient decorators
+    .UseDistributedCache()
+    .UseOpenTelemetry()
+    .UseFunctionInvocation();</code></pre>
+</div>
+  <div class="post">
+    <p>Four patterns that look the same but aren't 🎁🛡🔌🏛</p>
+    <p>🎁 Decorator: same interface, adds behaviour (cache, log, retry)</p>
+    <p>🛡 Proxy: same interface, controls access (lazy load, remote, auth)</p>
+    <p>🔌 Adapter: changes the interface to fit yours (wrap that vendor SDK!)</p>
+    <p>🏛 Facade: one simple door into many subsystems</p>
+    <p>In .NET you already use them: DelegatingHandler, EF Core proxies, StreamReader, HttpClient. Which one do you reach for most?</p>
+    <p>#DesignPatterns #DotNet #CSharp #SoftwareArchitecture</p>
+  </div>
+</section>
+
+<!-- BEHAVIOURAL -->
+<section class="concept" id="behavioural">
+  <h2><span class="num">23.5</span> Behavioural patterns <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Patterns about <b>how objects share work and talk</b>: swapping algorithms, reacting to events, and passing a request along a pipeline.</p>
+  <div class="tablewrap"><table>
+    <tr><th>Pattern</th><th>Idea</th><th>.NET example</th></tr>
+    <tr><td><b>Strategy</b></td><td>Swap an algorithm behind one interface</td><td>Keyed services per payment rail; <code>IComparer&lt;T&gt;</code></td></tr>
+    <tr><td><b>Observer</b></td><td>Subscribers react when something happens</td><td>C# <code>event</code>, <code>IObservable&lt;T&gt;</code>, domain events</td></tr>
+    <tr><td><b>Mediator</b></td><td>Objects talk through one hub, not to each other</td><td>Request/handler libraries (see below)</td></tr>
+    <tr><td><b>Command</b></td><td>A request as an object: queue, log, undo, retry</td><td><code>record TransferFunds(…)</code> sent to a queue</td></tr>
+    <tr><td><b>Chain of responsibility</b></td><td>Each link handles or passes on</td><td>ASP.NET Core middleware, <code>DelegatingHandler</code> pipeline</td></tr>
+    <tr><td><b>Template method</b></td><td>Base class fixes the steps, subclass fills one in</td><td><code>BackgroundService.ExecuteAsync</code></td></tr>
+    <tr><td><b>State</b></td><td>Behaviour depends on current state; explicit transitions</td><td>Payment lifecycle; <code>Stateless</code> library</td></tr>
+    <tr><td><b>Specification</b></td><td>A business rule as a reusable, combinable object</td><td><code>Ardalis.Specification</code> for EF Core queries</td></tr>
+  </table></div>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Mediator + pipeline: one command, cross-cutting steps, then events","stepMs":850,
+ "actors":[{"t":"Endpoint","c":"slate"},{"t":"Mediator","c":"purple"},{"t":"Validation","c":"amber"},{"t":"Handler","c":"blue"},{"t":"Event handlers","c":"green"}],
+ "steps":[
+  {"from":0,"to":1,"t":"Send(TransferFunds)","c":"slate"},
+  {"from":1,"to":2,"t":"pipeline behaviour","c":"purple"},
+  {"from":2,"to":2,"t":"rules OK","c":"amber"},
+  {"from":2,"to":3,"t":"next()","c":"amber"},
+  {"from":3,"to":3,"t":"debit + credit","c":"blue"},
+  {"from":3,"to":4,"t":"Publish(event)","c":"green","sub":"FundsTransferred"},
+  {"from":3,"to":0,"t":"TransferResult","c":"blue","dash":true}
+ ]}
+</script></figure>
+  <h3>State: a payment lifecycle</h3>
+  <div class="flow">
+    <div class="n">Created</div><div class="ar">→</div><div class="n p">Authorised</div><div class="ar">→</div><div class="n t">Submitted</div><div class="ar">→</div><div class="n g">Settled</div><div class="ar">⇢</div><div class="n r">Returned<small>only from Settled</small></div>
+  </div>
+  <p class="tip">Model allowed transitions explicitly. "Settle a payment that was never authorised" should be impossible, not just "checked somewhere".</p>
+  <div class="box amber"><h4>⚖️ MediatR licence change</h4><p><b>MediatR v13.0 and later</b> (July 2025, Lucky Penny Software) is dual-licensed: RPL-1.5 or a paid commercial licence. A free Community licence covers organisations under US$5M annual revenue (plus other criteria). Versions before 13 stay under their original open-source licence but get no updates. Free alternatives: <b>Mediator</b> by martinothamar (source-generated, MIT), <b>Wolverine</b> (MIT), or plain handler classes injected directly.</p></div>
+  <div class="remember"><ul>
+    <li>Strategy + DI = open/closed in practice. Keyed services (.NET 8+) pick the strategy by name.</li>
+    <li>You may not need a mediator at all. Injecting <code>TransferHandler</code> directly is simpler and easier to navigate.</li>
+    <li>Chain of responsibility is the shape of every ASP.NET Core request: middleware order is behaviour.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Keyed services</b></td><td><span class="pill builtin">built-in</span> <code>AddKeyedScoped</code>, <code>[FromKeyedServices]</code></td><td>Strategy chosen by key</td></tr>
+    <tr><td><b>Observer</b></td><td><span class="pill builtin">built-in</span> <code>event</code>, <code>IObservable&lt;T&gt;</code>; <code>System.Reactive</code></td><td>In-process events and reactive streams</td></tr>
+    <tr><td><b>Mediator (source-generated)</b></td><td><code>Mediator.SourceGenerator</code> + <code>Mediator.Abstractions</code></td><td>MIT, MediatR-like API, AOT-friendly</td></tr>
+    <tr><td><b>MediatR</b></td><td><code>MediatR</code> <span class="pill lic">commercial licence</span></td><td>v13+: paid, or free Community tier if eligible</td></tr>
+    <tr><td><b>State machine</b></td><td><code>Stateless</code></td><td>Explicit states, triggers and guards</td></tr>
+    <tr><td><b>Specification</b></td><td><code>Ardalis.Specification</code>, <code>Ardalis.Specification.EntityFrameworkCore</code></td><td>Reusable query rules for repositories</td></tr>
+  </table>
+  <pre class="code"><code>builder.Services.AddKeyedScoped&lt;IPaymentRail, NppRail&gt;("npp");
+builder.Services.AddKeyedScoped&lt;IPaymentRail, BpayRail&gt;("bpay");
+
+// Strategy fixed per endpoint
+app.MapPost("/pay/npp",
+    ([FromKeyedServices("npp")] IPaymentRail rail, PayRequest req) =&gt;
+        rail.SendAsync(req));
+
+// Strategy chosen at runtime from the request
+app.MapPost("/pay", (PayRequest req, IServiceProvider sp) =&gt;
+    sp.GetRequiredKeyedService&lt;IPaymentRail&gt;(req.Rail).SendAsync(req));</code></pre>
+</div>
+  <div class="post">
+    <p>You're already using behavioural patterns every day in ASP.NET Core 🔄</p>
+    <p>⛓ Chain of responsibility: middleware and DelegatingHandler</p>
+    <p>🎯 Strategy: keyed services, one per payment rail</p>
+    <p>📣 Observer: domain events after a transfer</p>
+    <p>🧭 State: Created → Authorised → Settled, with illegal moves made impossible</p>
+    <p>⚖️ Heads-up: MediatR v13+ needs a commercial licence unless you qualify for the free Community tier. Mediator (source-generated, MIT) and Wolverine are free options</p>
+    <p>Do you still need a mediator, or would plain handlers do?</p>
+    <p>#DesignPatterns #DotNet #MediatR #CSharp</p>
+  </div>
+</section>
+
+<!-- SMELLS -->
+<section class="concept" id="smells">
+  <h2><span class="num">23.6</span> Anti-patterns &amp; code smells <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Warning signs that code will be <b>hard and risky to change</b>, and the small, safe refactoring moves that fix them.</p>
+  <div class="tablewrap"><table>
+    <tr><th>Smell</th><th>Symptom</th><th>Refactoring move</th></tr>
+    <tr><td><b>God class</b></td><td>3,000-line <code>PaymentService</code>, 20 dependencies</td><td>Extract class per responsibility</td></tr>
+    <tr><td><b>Anaemic domain model</b></td><td>Entities are bags of setters; rules live in services</td><td>Move behaviour into the entity (<code>account.Debit()</code>)</td></tr>
+    <tr><td><b>Primitive obsession</b></td><td><code>string bsb, string acct, decimal amt</code> everywhere</td><td>Value objects: <code>Bsb</code>, <code>Money</code></td></tr>
+    <tr><td><b>Shotgun surgery</b></td><td>One change edits ten files</td><td>Move related code together (cohesion)</td></tr>
+    <tr><td><b>Feature envy</b></td><td>A method uses another class's data more than its own</td><td>Move method to that class</td></tr>
+    <tr><td><b>Long parameter list</b></td><td>Six or more arguments, easy to swap by mistake</td><td>Introduce parameter object (a record)</td></tr>
+    <tr><td><b>Magic numbers</b></td><td><code>if (amount &gt; 10000)</code></td><td>Named constant or options value</td></tr>
+    <tr><td><b>Leaky abstraction</b></td><td>Repository returns <code>IQueryable</code>; SQL errors reach the UI</td><td>Return results, translate errors at the boundary</td></tr>
+    <tr><td><b>Pattern-itis</b></td><td>Factory of strategy of decorator for one <code>if</code></td><td>Inline it. Add patterns when a second case appears</td></tr>
+  </table></div>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Refactoring a god class, one safe move at a time","interval":3000,
+ "frames":[
+  {"label":"Before","caption":"One class validates, prices, posts to the ledger and sends notifications. Every change risks everything.","rows":[
+   [{"t":"PaymentService","sub":"3,000 lines · 20 dependencies","c":"red","big":true}],
+   [{"k":"text","t":"Pay(string bsb, string acct, decimal amt, string cur, string reference, bool urgent)","c":"red"}]]},
+  {"label":"Extract class","caption":"Pull each responsibility into its own class. Tests already passing? Keep them green after every move.","rows":[
+   [{"t":"PaymentService","sub":"orchestrates","c":"blue"}],
+   [{"t":"PaymentValidator","c":"green"},{"t":"FeeCalculator","c":"green"},{"t":"LedgerPoster","c":"green"},{"t":"Notifier","c":"green"}]]},
+  {"label":"Parameter object","caption":"Six loose arguments become one record with value objects. The compiler now stops a BSB being passed as an account number.","rows":[
+   [{"t":"Pay(PaymentRequest)","c":"green","big":true}],
+   [{"k":"text","t":"record PaymentRequest(Bsb Bsb, AccountNo Account, Money Amount, string Reference)","c":"green"}]]},
+  {"label":"Polymorphism","caption":"A switch on payment type becomes one class per type. New types are new classes (open/closed).","ms":3400,"rows":[
+   [{"t":"switch (type)","c":"off"},{"k":"arrow","g":"→"},{"t":"IPaymentType","c":"purple"},{"k":"arrow","g":"←"},{"t":"Domestic","c":"green"},{"t":"International","c":"green"},{"t":"Scheduled","c":"green"}]]}
+ ]}
+</script></figure>
+  <div class="cols2">
+    <div class="box amber"><h4>🩸 Anaemic model: a smell when…</h4><ul>
+      <li>Rules (overdraft limits, state changes) are spread across services.</li>
+      <li>Anyone can set <code>Balance</code> directly and break invariants.</li>
+    </ul></div>
+    <div class="box green"><h4>👍 Anaemic model: fine when…</h4><ul>
+      <li>It's CRUD, reporting or a simple data API with no real rules.</li>
+      <li>Records are DTOs crossing a boundary, not domain objects.</li>
+    </ul></div>
+  </div>
+  <div class="remember"><ul>
+    <li>Refactor in <b>small, behaviour-preserving steps</b> with tests green after each one.</li>
+    <li>Value objects kill primitive obsession and make invalid data unrepresentable.</li>
+    <li>Over-engineering is a smell too. Patterns should remove pain you already have.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>IDE refactorings</b></td><td><span class="pill builtin">built-in</span> Visual Studio / VS Code C# Dev Kit / Rider</td><td>Extract method, extract interface, move type, rename safely</td></tr>
+    <tr><td><b>Code metrics</b></td><td><code>Microsoft.CodeAnalysis.Metrics</code>; CA1502 / CA1506 rules</td><td>Find complex and over-coupled classes in CI</td></tr>
+    <tr><td><b>Value objects</b></td><td><span class="pill builtin">built-in</span> <code>readonly record struct</code>; <code>Vogen</code></td><td>Replace primitives; Vogen generates validation and converters</td></tr>
+  </table>
+  <pre class="code"><code>// ❌ Pay(string bsb, string acct, decimal amt, string cur, string reference)
+// ✅ value object + parameter object
+public readonly partial record struct Bsb
+{
+    public string Value { get; }
+    public Bsb(string value) =&gt; Value = Format().IsMatch(value)
+        ? value : throw new ArgumentException("BSB must be 000-000", nameof(value));
+
+    [GeneratedRegex(@"^\d{3}-\d{3}$")]
+    private static partial Regex Format();
+}
+public sealed record PaymentRequest(Bsb Bsb, string Account, decimal Amount,
+    string Reference);</code></pre>
+</div>
+  <div class="post">
+    <p>Nine code smells I flag in almost every review 👃</p>
+    <p>🐘 God class: 3,000 lines, 20 dependencies → extract class</p>
+    <p>🔢 Primitive obsession: string bsb, string acct → value objects</p>
+    <p>🔫 Shotgun surgery: one change, ten files → move related code together</p>
+    <p>📜 Long parameter list → introduce a parameter object (a record)</p>
+    <p>🏗 Pattern-itis: a factory of strategies for one if → inline it</p>
+    <p>Refactor in tiny steps with tests green after each. Which smell bugs you most?</p>
+    <p>#CleanCode #Refactoring #DotNet #CodeReview</p>
+  </div>
+</section>
+
+<!-- CLEAN CODE -->
+<section class="concept" id="cleancode">
+  <h2><span class="num">23.7</span> Clean code &amp; code review <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Code is read far more often than it is written. Clean code makes intent obvious, and a good review checks more than style.</p>
+  <div class="grid">
+    <div class="box blue"><h4>🏷 Naming</h4><p>Names say intent and domain: <code>settlementDate</code>, not <code>d2</code>. Booleans read as questions: <code>isOverdrawn</code>.</p></div>
+    <div class="box blue"><h4>✂️ Small functions</h4><p>One level of abstraction per method. If you need "and" to describe it, split it.</p></div>
+    <div class="box blue"><h4>🚪 Guard clauses</h4><p>Return or throw early. Keep the happy path un-nested at the left margin.</p></div>
+    <div class="box green"><h4>🧊 Immutability</h4><p><code>record</code>, <code>init</code>, <code>required</code>. C# 14's <code>field</code> keyword lets a property validate without a manual backing field.</p></div>
+    <div class="box green"><h4>❔ Nullability</h4><p>Turn on nullable reference types. Treat warnings as errors in new projects.</p></div>
+    <div class="box purple"><h4>💬 Comments explain why</h4><p>The code says <i>what</i>. Comments say <i>why</i>: a regulation, a workaround, a trade-off.</p></div>
+  </div>
+  <h3>Errors: exceptions or Result?</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Situation</th><th>Use</th><th>Why</th></tr>
+    <tr><td><b>Expected business outcome</b> (insufficient funds, invalid BSB)</td><td>Result type</td><td>Part of the normal flow; caller must handle it; cheap</td></tr>
+    <tr><td><b>Bug or broken invariant</b></td><td>Exception</td><td>Should never happen; fail fast and loudly</td></tr>
+    <tr><td><b>Infrastructure failure</b> (DB down, timeout)</td><td>Exception (+ retry policy)</td><td>Let resilience and the global handler deal with it</td></tr>
+    <tr><td><b>At the HTTP edge</b></td><td>ProblemDetails (RFC 9457)</td><td>One consistent error shape for every client</td></tr>
+  </table></div>
+<figure class="viz" data-viz="steps"><script type="application/json">
+{"title":"A practical code-review checklist","stepMs":950,
+ "items":[
+  {"k":"Correctness","t":"Does it do what the story says? Edge cases: empty, null, zero, max, duplicates, time zones","c":"blue"},
+  {"k":"Security","t":"Input validated, authorisation on every endpoint, no secrets or PII in code or logs","c":"red"},
+  {"k":"Performance","t":"No N+1 queries, no sync-over-async, paging on lists, right collection for the job","c":"amber"},
+  {"k":"Readability","t":"Clear names, small methods, no dead code, matches team conventions","c":"purple"},
+  {"k":"Tests","t":"Behaviour tested, including failure paths; tests would fail if the code broke","c":"green"},
+  {"k":"Observability","t":"Structured logs with correlation IDs, metrics and traces for new flows","c":"teal"},
+  {"k":"Operability","t":"Config not hard-coded, safe to roll back, migrations backward-compatible","c":"slate"}
+ ]}
+</script></figure>
+  <div class="remember"><ul>
+    <li>Automate style (formatters, analyzers) so humans review <b>design, correctness and risk</b>.</li>
+    <li>Use a Result type for expected outcomes, exceptions for the unexpected. Don't use exceptions for control flow.</li>
+    <li>Small PRs (under ~400 lines) get better reviews than big ones.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Nullable + warnings as errors</b></td><td><span class="pill builtin">built-in</span> <code>&lt;Nullable&gt;</code>, <code>&lt;TreatWarningsAsErrors&gt;</code></td><td>Null safety enforced by the compiler</td></tr>
+    <tr><td><b>Formatting</b></td><td><span class="pill builtin">built-in</span> <code>dotnet format</code> + <code>.editorconfig</code></td><td>Style checked in CI, not in review comments</td></tr>
+    <tr><td><b>Typed results</b></td><td><span class="pill builtin">built-in</span> <code>TypedResults</code>, <code>Results&lt;T1, T2&gt;</code></td><td>Each endpoint outcome visible in the signature and OpenAPI</td></tr>
+    <tr><td><b>ProblemDetails</b></td><td><span class="pill builtin">built-in</span> <code>AddProblemDetails()</code>, <code>IExceptionHandler</code></td><td>One error format; global handler for exceptions</td></tr>
+    <tr><td><b>Result pattern</b></td><td><code>ErrorOr</code> or <code>FluentResults</code></td><td>Return success or typed errors without exceptions</td></tr>
+  </table>
+  <pre class="code"><code>public ErrorOr&lt;Transfer&gt; Create(Account from, decimal amount)
+{
+    if (amount &lt;= 0) return Error.Validation("amount", "Amount must be positive");
+    if (from.Balance &lt; amount) return Error.Conflict("funds", "Insufficient funds");
+    return new Transfer(Guid.NewGuid(), from.Id, amount);   // happy path last
+}
+
+app.MapPost("/transfers", (TransferRequest req, Accounts accounts, TransferService svc) =&gt;
+    svc.Create(accounts.Get(req.FromId), req.Amount).Match&lt;IResult&gt;(
+        t =&gt; TypedResults.Created($"/transfers/{t.Id}", t),
+        errors =&gt; TypedResults.Problem(errors[0].Description,
+            statusCode: errors[0].Type == ErrorType.Validation ? 400 : 409)));</code></pre>
+</div>
+  <div class="post">
+    <p>My 7-point code review checklist ✅</p>
+    <p>🎯 Correctness: edge cases like empty, zero, duplicates, time zones</p>
+    <p>🔐 Security: authorisation on every endpoint, no PII in logs</p>
+    <p>⚡ Performance: no N+1 queries, no sync-over-async</p>
+    <p>📖 Readability: names that explain intent, small methods</p>
+    <p>🧪 Tests and 🔭 observability: would we know if it broke in prod?</p>
+    <p>Let formatters and analyzers argue about style, so humans can review design and risk. What's on your list?</p>
+    <p>#CodeReview #CleanCode #DotNet #SoftwareEngineering</p>
+  </div>
+</section>
+
+<!-- BIG-O -->
+<section class="concept" id="bigo">
+  <h2><span class="num">23.8</span> Big-O &amp; core data structures <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Big-O describes how work <b>grows</b> as input grows. Picking the right collection is usually the cheapest performance win there is.</p>
+<figure class="viz" data-viz="bars"><script type="application/json">
+{"title":"Steps needed when n = 16","max":256,
+ "rows":[
+  {"label":"O(1)","v":1,"show":"1","c":"green","note":"hash lookup"},
+  {"label":"O(log n)","v":4,"show":"4","c":"green","note":"binary search"},
+  {"label":"O(n)","v":16,"show":"16","c":"blue","note":"one loop"},
+  {"label":"O(n log n)","v":64,"show":"64","c":"amber","note":"good sort"},
+  {"label":"O(n²)","v":256,"show":"256","c":"red","note":"nested loops"},
+  {"label":"O(2ⁿ)","v":256,"show":"65,536","c":"red","note":"off the chart: all subsets"}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>Big-O</th><th>Name</th><th>Example</th><th>n = 1,000,000</th></tr>
+    <tr><td><b>O(1)</b></td><td>Constant</td><td>Dictionary lookup, array index</td><td>1 step</td></tr>
+    <tr><td><b>O(log n)</b></td><td>Logarithmic</td><td>Binary search, B-tree index seek</td><td>~20 steps</td></tr>
+    <tr><td><b>O(n)</b></td><td>Linear</td><td>Scan a list, <code>List.Contains</code></td><td>1 million</td></tr>
+    <tr><td><b>O(n log n)</b></td><td>Linearithmic</td><td><code>Array.Sort</code>, merge sort</td><td>~20 million</td></tr>
+    <tr><td><b>O(n²)</b></td><td>Quadratic</td><td>Nested loops, <code>Contains</code> inside a loop</td><td>10¹², far too slow</td></tr>
+    <tr><td><b>O(2ⁿ)</b></td><td>Exponential</td><td>All subsets, naive recursion</td><td>Impossible</td></tr>
+  </table></div>
+  <h3>.NET collections</h3>
+  <div class="tablewrap"><table style="font-size:13px">
+    <tr><th>Collection</th><th>Find</th><th>Add / remove</th><th>Use when</th></tr>
+    <tr><td><b><code>List&lt;T&gt;</code></b></td><td>O(1) by index, O(n) by value</td><td>Add O(1)*, insert/remove middle O(n)</td><td>Default ordered list</td></tr>
+    <tr><td><b><code>Dictionary&lt;TKey,TValue&gt;</code></b></td><td>O(1) avg</td><td>O(1) avg</td><td>Lookup by key</td></tr>
+    <tr><td><b><code>HashSet&lt;T&gt;</code></b></td><td>O(1) avg</td><td>O(1) avg</td><td>Uniqueness, "seen before?"</td></tr>
+    <tr><td><b><code>SortedDictionary</code></b> / <b><code>SortedSet</code></b></td><td>O(log n)</td><td>O(log n)</td><td>Kept in key order; ranges, min/max</td></tr>
+    <tr><td><b><code>Queue&lt;T&gt;</code></b> / <b><code>Stack&lt;T&gt;</code></b></td><td>Peek O(1)</td><td>O(1)*</td><td>FIFO (BFS, work) / LIFO (DFS, undo)</td></tr>
+    <tr><td><b><code>LinkedList&lt;T&gt;</code></b></td><td>O(n)</td><td>O(1) at a known node</td><td>LRU cache (with a dictionary)</td></tr>
+    <tr><td><b><code>PriorityQueue&lt;TElement,TPriority&gt;</code></b></td><td>Peek min O(1)</td><td>O(log n)</td><td>Top-k, scheduling, Dijkstra</td></tr>
+    <tr><td><b><code>FrozenDictionary</code></b> / <b><code>FrozenSet</code></b></td><td>O(1), fastest reads</td><td>Read-only; slow to build</td><td>Static lookups built once at startup (.NET 8+)</td></tr>
+    <tr><td><b><code>ImmutableArray&lt;T&gt;</code></b></td><td>O(1) by index</td><td>"Add" copies: O(n)</td><td>Thread-safe snapshots, rarely changed</td></tr>
+  </table></div>
+  <p class="tip">* Amortised: usually O(1), with an occasional O(n) resize. Set the capacity up front when you know the size.</p>
+  <div class="remember"><ul>
+    <li><code>List.Contains</code> inside a loop is O(n²). Switch to a <code>HashSet</code> and it becomes O(n).</li>
+    <li>Dictionary O(1) is <b>average</b>. A bad <code>GetHashCode</code> (or keys you mutate) makes it slow or wrong.</li>
+    <li>Big-O hides constants. For tiny n, a simple array scan can beat a dictionary. Measure with BenchmarkDotNet.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Frozen collections</b></td><td><span class="pill builtin">built-in</span> <code>System.Collections.Frozen</code></td><td>Read-heavy lookups (currency codes, config maps)</td></tr>
+    <tr><td><b>Immutable collections</b></td><td><span class="pill builtin">built-in</span> <code>System.Collections.Immutable</code></td><td>Safe sharing across threads</td></tr>
+    <tr><td><b>Concurrent collections</b></td><td><span class="pill builtin">built-in</span> <code>System.Collections.Concurrent</code></td><td><code>ConcurrentDictionary</code> for shared mutable state</td></tr>
+    <tr><td><b>Benchmarking</b></td><td><code>BenchmarkDotNet</code></td><td>Prove a collection change actually helps</td></tr>
+  </table>
+  <pre class="code"><code>using System.Collections.Frozen;
+
+// Built once at startup, read millions of times
+FrozenSet&lt;string&gt; supported = new[] { "AUD", "NZD", "USD", "EUR" }
+    .ToFrozenSet(StringComparer.OrdinalIgnoreCase);
+
+// ❌ O(n²): List.Contains inside a loop
+// ✅ O(n): HashSet lookups
+var seen = new HashSet&lt;string&gt;(capacity: payments.Count);
+foreach (var p in payments)
+    if (!seen.Add(p.IdempotencyKey)) Reject(p, "duplicate");</code></pre>
+</div>
+  <div class="post">
+    <p>One line of code turned a 40-minute batch into 4 seconds ⏱</p>
+    <p>🐢 Before: list.Contains(key) inside a loop = O(n²)</p>
+    <p>🚀 After: hashSet.Add(key) = O(n)</p>
+    <p>🧊 Static lookups? FrozenDictionary / FrozenSet (.NET 8+) are built for reads</p>
+    <p>🏔 Top-k or scheduling? PriorityQueue&lt;TElement,TPriority&gt;</p>
+    <p>Big-O hides constants, so measure with BenchmarkDotNet. What's your favourite "wrong collection" story?</p>
+    <p>#BigO #DotNet #Performance #DataStructures</p>
+  </div>
+</section>
+
+<!-- CODING INTERVIEW PATTERNS -->
+<section class="concept" id="patterns">
+  <h2><span class="num">23.9</span> Coding interview patterns <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Most live-coding problems are a variation of about ten patterns. Spot the cue, name the pattern, state the complexity, then code.</p>
+  <div class="tablewrap"><table>
+    <tr><th>Pattern</th><th>Cue in the question</th><th>Typical complexity</th></tr>
+    <tr><td><b>Two pointers</b></td><td>Sorted array, pairs, palindromes, in-place</td><td>O(n) time, O(1) space</td></tr>
+    <tr><td><b>Sliding window</b></td><td>"Longest / shortest subarray or substring that…"</td><td>O(n)</td></tr>
+    <tr><td><b>Hash map counting</b></td><td>Duplicates, anagrams, "two sum", frequency</td><td>O(n) time, O(n) space</td></tr>
+    <tr><td><b>BFS</b></td><td>Shortest path in an unweighted graph or grid, levels</td><td>O(V + E)</td></tr>
+    <tr><td><b>DFS</b></td><td>All paths, connected components, tree traversal</td><td>O(V + E)</td></tr>
+    <tr><td><b>Binary search</b></td><td>Sorted input, or "smallest value that works"</td><td>O(log n)</td></tr>
+    <tr><td><b>Heap / top-k</b></td><td>"k largest", "k closest", merge k lists</td><td>O(n log k)</td></tr>
+    <tr><td><b>Dynamic programming</b></td><td>"Number of ways", min/max cost, overlapping subproblems</td><td>Often O(n) or O(n·m)</td></tr>
+    <tr><td><b>Backtracking</b></td><td>All combinations, permutations, subsets</td><td>Exponential; prune early</td></tr>
+    <tr><td><b>Intervals</b></td><td>Meetings, overlaps, merge ranges</td><td>O(n log n) (sort first)</td></tr>
+    <tr><td><b>Union-find</b></td><td>"Are these connected?" with merges; near O(1) per op</td><td>O(α(n)) per op</td></tr>
+  </table></div>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Sliding window: max sum of 3 consecutive values, O(n)","interval":2200,
+ "frames":[
+  {"label":"Start","caption":"Sum the first window once: 2 + 1 + 5 = 8.","rows":[
+   [{"t":"2","c":"blue"},{"t":"1","c":"blue"},{"t":"5","c":"blue"},{"t":"1","c":"off"},{"t":"3","c":"off"},{"t":"2","c":"off"}],
+   [{"k":"text","t":"sum = 8 · best = 8"}]]},
+  {"label":"Slide","caption":"Slide right: subtract the value leaving (2), add the value entering (1). No re-summing.","rows":[
+   [{"t":"2","c":"off"},{"t":"1","c":"blue"},{"t":"5","c":"blue"},{"t":"1","c":"blue"},{"t":"3","c":"off"},{"t":"2","c":"off"}],
+   [{"k":"text","t":"sum = 8 − 2 + 1 = 7 · best = 8"}]]},
+  {"label":"New best","caption":"Subtract 1, add 3: the window sum is 9, a new best.","rows":[
+   [{"t":"2","c":"off"},{"t":"1","c":"off"},{"t":"5","c":"green"},{"t":"1","c":"green"},{"t":"3","c":"green"},{"t":"2","c":"off"}],
+   [{"k":"text","t":"sum = 7 − 1 + 3 = 9 · best = 9","c":"green"}]]},
+  {"label":"Done","caption":"Last window: 9 − 5 + 2 = 6. Each value was added once and removed once, so the work is O(n), not O(n·k).","ms":3000,"rows":[
+   [{"t":"2","c":"off"},{"t":"1","c":"off"},{"t":"5","c":"off"},{"t":"1","c":"blue"},{"t":"3","c":"blue"},{"t":"2","c":"blue"}],
+   [{"k":"text","t":"sum = 6 · answer = 9"}]]}
+ ]}
+</script></figure>
+  <h3>A 5-step approach for live coding</h3>
+<figure class="viz" data-viz="journey"><script type="application/json">
+{"title":"Talk through every step out loud","stepMs":1300,
+ "steps":[
+  {"icon":"❓","t":"1. Clarify","d":"Input size and types, sorted?, duplicates?, negatives?, what to return for empty input","c":"blue"},
+  {"icon":"✍️","t":"2. Examples","d":"Work one normal and one edge example by hand. Confirm the expected output with the interviewer","c":"purple"},
+  {"icon":"🐢","t":"3. Brute force","d":"State the simple solution and its Big-O first. It proves you understand the problem","c":"amber"},
+  {"icon":"🚀","t":"4. Optimise","d":"Name the pattern (hash map, window, heap…), state the new Big-O, then code it cleanly","c":"green"},
+  {"icon":"🧪","t":"5. Test edge cases","d":"Empty, one item, all equal, max size, negative values. Walk the code line by line","c":"teal","tag":"don't skip"}
+ ]}
+</script></figure>
+  <div class="remember"><ul>
+    <li>Say the <b>brute force and its Big-O first</b>, then improve. Silence is the most common reason people fail.</li>
+    <li>"Longest substring", "k largest", "shortest path" are cues: sliding window, heap, BFS.</li>
+    <li>Use the built-in collections confidently: <code>PriorityQueue</code>, <code>HashSet</code>, <code>Queue</code>.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Pattern</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Heap / top-k</b></td><td><span class="pill builtin">built-in</span> <code>PriorityQueue&lt;TElement,TPriority&gt;</code></td><td>Min-heap. For a max-heap, pass a reversed comparer</td></tr>
+    <tr><td><b>Binary search</b></td><td><span class="pill builtin">built-in</span> <code>Array.BinarySearch</code>, <code>List&lt;T&gt;.BinarySearch</code></td><td>Returns the bitwise complement of the insert point when not found</td></tr>
+    <tr><td><b>Counting</b></td><td><span class="pill builtin">built-in</span> <code>Enumerable.CountBy</code> (.NET 9+), <code>Dictionary</code></td><td>Frequency maps in one line</td></tr>
+    <tr><td><b>BFS / DFS</b></td><td><span class="pill builtin">built-in</span> <code>Queue&lt;T&gt;</code>, <code>Stack&lt;T&gt;</code>, <code>HashSet&lt;T&gt;</code></td><td>Queue for BFS, stack or recursion for DFS, set for visited</td></tr>
+  </table>
+  <pre class="code"><code>// Sliding window: longest substring with no repeated chars. O(n)
+static int LongestDistinct(string s)
+{
+    var last = new Dictionary&lt;char, int&gt;();
+    int best = 0, start = 0;
+    for (int i = 0; i &lt; s.Length; i++)
+    {
+        if (last.TryGetValue(s[i], out int seen) &amp;&amp; seen &gt;= start) start = seen + 1;
+        last[s[i]] = i;
+        best = Math.Max(best, i - start + 1);
+    }
+    return best;
+}
+
+// Top-k largest: keep a min-heap of size k. O(n log k)
+static int[] TopK(int[] nums, int k)
+{
+    var heap = new PriorityQueue&lt;int, int&gt;();
+    foreach (int n in nums)
+    {
+        heap.Enqueue(n, n);
+        if (heap.Count &gt; k) heap.Dequeue();   // drop the smallest
+    }
+    return [.. heap.UnorderedItems.Select(x =&gt; x.Element)];
+}</code></pre>
+</div>
+  <div class="post">
+    <p>Live coding is pattern matching, not genius 🧠</p>
+    <p>🪟 "Longest substring that…" → sliding window, O(n)</p>
+    <p>🗂 "Duplicates / two sum / anagram" → hash map, O(n)</p>
+    <p>🏔 "k largest / k closest" → heap, O(n log k)</p>
+    <p>🌊 "Shortest path in a grid" → BFS, O(V + E)</p>
+    <p>🗣 And always: clarify → examples → brute force → optimise → test edge cases</p>
+    <p>Say the brute force first. Which pattern catches you out most?</p>
+    <p>#CodingInterview #Algorithms #DotNet #CSharp</p>
+  </div>
+</section>
+
+<div class="qa-wrap">
+  <h2>⚡ Quick-fire Q&amp;A</h2>
+  <details class="qa"><summary>When is duplicated code acceptable?</summary><p>When the two copies have different reasons to change. DRY is about knowledge, not text. Merging two "similar" fee calculations owned by different products couples them forever. A common rule: wait for the third copy before abstracting.</p></details>
+  <details class="qa"><summary>What's the difference between dependency inversion and dependency injection?</summary><p>Dependency inversion is the principle: high-level code depends on abstractions, not on details. Dependency injection is a technique: dependencies are passed in (usually via the constructor) instead of created inside. The ASP.NET Core container automates DI, which makes DIP easy to apply.</p></details>
+  <details class="qa"><summary>Why is a DI singleton better than a static singleton?</summary><p>It's visible in the constructor, easy to replace with a fake in tests, and its lifetime is one line of config. The container also handles thread-safe creation and disposal. A static singleton is a hidden global that leaks state between tests.</p></details>
+  <details class="qa"><summary>Decorator, proxy or adapter?</summary><p>Adapter changes the interface to the one you need. Decorator keeps the interface and adds behaviour (caching, logging). Proxy keeps the interface and controls access to the real object (lazy loading, remote calls, permission checks).</p></details>
+  <details class="qa"><summary>Should a new .NET project use MediatR?</summary><p>Check the licence first: MediatR v13+ needs a paid commercial licence unless you qualify for the free Community tier (under US$5M revenue, plus other criteria). Free options are the source-generated Mediator (MIT), Wolverine, or simply injecting handler classes directly, which is often the clearest choice.</p></details>
+  <details class="qa"><summary>Is an anaemic domain model always bad?</summary><p>No. For CRUD, reporting or thin data APIs with few rules, plain data classes plus services are simpler. It becomes a problem when real business rules and invariants (overdraft limits, state changes) are scattered across services and anyone can set fields directly.</p></details>
+  <details class="qa"><summary>Exceptions or the Result pattern?</summary><p>Use a Result type (e.g. ErrorOr, FluentResults) for expected business outcomes like insufficient funds. Use exceptions for bugs, broken invariants and infrastructure failures, and turn them into ProblemDetails in a global handler. Don't use exceptions for normal control flow.</p></details>
+  <details class="qa"><summary>Why can a Dictionary lookup be slower than O(1)?</summary><p>O(1) is the average case. Many keys with the same hash code (a poor <code>GetHashCode</code>) fall into the same bucket and lookups degrade towards O(n). Mutating a key after inserting it can make the entry impossible to find. Use immutable keys such as records or strings.</p></details>
+</div>
+
+<div class="pager"><a href="22-dotnet-engineering-deep-dive.html">← 22 · .NET Engineering Deep Dive</a><a class="next" href="24-architecture-practice.html">24 · Architecture Practice →</a></div>
+</main>
+<footer>Tech Concepts Prep · Section 23</footer>
+<script src="assets/menu-data.js"></script>
+<script src="assets/menu.js"></script>
+<script src="assets/app.js"></script>
+<script src="assets/viz.js"></script>
+</body>
+</html>

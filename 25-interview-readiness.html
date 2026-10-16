@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>25 · Interview Readiness | Tech Concepts Prep</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<nav class="top"><a href="24-architecture-practice.html">← Architecture Practice</a><span class="here">25 · Interview Readiness</span><a href="index.html">🏠 Roadmap</a></nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">Section 25</div>
+  <h1>Interview readiness for senior engineers and architects</h1>
+  <p>Knowing the concepts is half the job. The other half is showing it under time pressure: telling clear stories, answering rapid technical questions, designing live and presenting a decision. This page turns the rest of the site into an interview plan. It covers the interview loop, the STAR method, a behavioural and a technical question bank, ten timed architecture katas, how to present a case study, and what to ask them.</p>
+  <p>All examples are generic and illustrative. Replace every <b>[your example]</b> with a real story from your own work, told without confidential details.</p>
+  <div class="toc">
+    <a href="#format" class="added">How the loop works</a>
+    <a href="#star" class="added">STAR(R) method</a>
+    <a href="#behavioural" class="added">Behavioural bank</a>
+    <a href="#technical" class="added">Technical deep dive</a>
+    <a href="#katas" class="added">Architecture katas</a>
+    <a href="#presenting" class="added">Presenting a case</a>
+    <a href="#checklist" class="added">Questions &amp; checklist</a>
+  </div>
+</header>
+
+<!-- FORMAT -->
+<section class="concept" id="format">
+  <h2><span class="num">25.1</span> How architect interviews work <span class="tag-added">Added</span></h2>
+  <p class="oneliner">A senior or architect hiring loop is a series of 4–7 conversations, and each one tests something different: fit, depth, design thinking, communication and judgement.</p>
+<figure class="viz" data-viz="journey"><script type="application/json">
+{"title":"A typical architect interview loop (order and number of rounds vary)","stepMs":1300,
+ "steps":[
+  {"icon":"📞","t":"Recruiter / HR screen","d":"20–30 min. Motivation, salary range, notice period, right to work, a quick career walk-through","c":"slate"},
+  {"icon":"🧭","t":"Hiring manager","d":"45–60 min. Scope of the role, your biggest achievements, how you work with delivery and business teams","c":"blue"},
+  {"icon":"🔬","t":"Technical deep dive","d":"60 min. Rapid questions, then deep probing on one or two things you've built. Tests real depth","c":"purple"},
+  {"icon":"🧱","t":"System design / whiteboard","d":"45–60 min. Design a system live: clarify, estimate, components, trade-offs","c":"teal","tag":"see 18"},
+  {"icon":"📊","t":"Architecture case presentation","d":"20–30 min talk + Q&amp;A. A past project or a take-home brief","c":"amber"},
+  {"icon":"🤝","t":"Behavioural / values","d":"STAR stories: influence, conflict, failure, ethics, risk","c":"green"},
+  {"icon":"👥","t":"Stakeholder panel","d":"Business, risk, security or engineering leaders. Can you talk to all of them?","c":"pink","tag":"offer 🎉"}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>Round</th><th>What they assess</th><th>How to prepare</th></tr>
+    <tr><td><b>Recruiter / HR screen</b></td><td>Motivation, logistics, red flags</td><td>A 60-second "why this role" and a 2-minute career story</td></tr>
+    <tr><td><b>Hiring manager</b></td><td>Scope match, impact, ways of working</td><td>3 headline achievements with numbers; research their products and strategy</td></tr>
+    <tr><td><b>Technical deep dive</b></td><td>Real depth, not buzzwords; honesty about limits</td><td>One-line answers for 25.4; be ready to go 3 levels deep on your own projects</td></tr>
+    <tr><td><b>System design</b></td><td>Structure, trade-offs, NFRs, estimation</td><td>The <a href="18-system-design-playbook.html#framework">interview framework</a> plus 3–4 timed katas (25.5)</td></tr>
+    <tr><td><b>Case presentation</b></td><td>Clarity, decision-making, handling challenge</td><td>A 20-minute deck or whiteboard story (25.6); rehearse out loud twice</td></tr>
+    <tr><td><b>Behavioural / values</b></td><td>Judgement, influence, ownership, learning</td><td>8–10 STAR stories that cover the themes in 25.3</td></tr>
+    <tr><td><b>Stakeholder panel</b></td><td>Communication across audiences, risk awareness</td><td>Explain one design for a business, a risk and an engineering listener</td></tr>
+  </table></div>
+  <div class="grid">
+    <div class="box blue"><h4>🧑‍💻 Senior engineer</h4><p>More weight on coding, debugging, design within a service, and code quality. See <a href="22-dotnet-engineering-deep-dive.html">22</a> and <a href="23-software-design-coding.html">23</a>.</p></div>
+    <div class="box purple"><h4>🏛️ Solution architect</h4><p>End-to-end design, NFRs, build vs buy, documents (HLD, ADR) and governance. See <a href="17-architecture-documents.html#hld">17</a> and <a href="24-architecture-practice.html">24</a>.</p></div>
+    <div class="box teal"><h4>🔗 Integration architect</h4><p>APIs, APIM, messaging, delivery guarantees, legacy and batch, event streaming. See <a href="09-apim.html#what">09</a> and <a href="10-integration-messaging.html#styles">10</a>.</p></div>
+  </div>
+  <h3>Study plan using this site</h3>
+  <div class="tablewrap"><table style="font-size:13.5px">
+    <tr><th>Plan · week</th><th>Pages to cover</th><th>Practice</th></tr>
+    <tr><td><b>2 weeks</b> · week 1</td><td><a href="18-system-design-playbook.html">18</a>, <a href="03-scalability-reliability.html">03</a>, <a href="10-integration-messaging.html">10</a>, <a href="08-api-design.html">08</a>, <a href="12-security-iam.html">12</a></td><td>8 STAR stories; 2 katas</td></tr>
+    <tr><td><b>2 weeks</b> · week 2</td><td><a href="17-architecture-documents.html">17</a>, <a href="16-banking-payments.html">16</a>, <a href="14-rag-genai.html">14</a>, this page</td><td>1 mock interview; 1 case presentation</td></tr>
+    <tr><td><b>4 weeks</b> · week 1</td><td>01–05: foundations, protocols, scale, distributed systems, caching</td><td>Technical bank 25.4, out loud</td></tr>
+    <tr><td><b>4 weeks</b> · week 2</td><td>06–11: data, governance, APIs, APIM, integration, patterns</td><td>STAR stories; 2 katas</td></tr>
+    <tr><td><b>4 weeks</b> · week 3</td><td>12–16: security, DevOps, GenAI, agents, banking</td><td>2 katas; record yourself</td></tr>
+    <tr><td><b>4 weeks</b> · week 4</td><td>17–19, 24, this page</td><td>2 mocks; final presentation</td></tr>
+    <tr><td><b>8 weeks</b> · weeks 1–6</td><td>About 4 pages a week, in order, plus 20–23 for .NET, cloud and coding depth</td><td>1 kata and 2 STAR stories a week</td></tr>
+    <tr><td><b>8 weeks</b> · weeks 7–8</td><td>Revise the remember boxes; re-read 17, 18, 24</td><td>3 mocks with feedback; polish the presentation</td></tr>
+  </table></div>
+  <p class="tip">Ask the recruiter for the exact format: number of rounds, who is on each panel, whether there's a take-home or presentation, and which skills matter most. Most will tell you.</p>
+  <div class="remember"><ul>
+    <li>Each round tests something different. Prepare per round, not "for the interview".</li>
+    <li>Architects are judged on <b>trade-offs and communication</b> as much as on technology.</li>
+    <li>Practise out loud and timed. Reading is not rehearsing.</li>
+  </ul></div>
+  <div class="post">
+    <p>An architect interview is not one test. It's seven different ones 🎯</p>
+    <p>📞 Screen: why this role, in 60 seconds</p>
+    <p>🔬 Deep dive: can you go three levels down on what you built?</p>
+    <p>🧱 System design: structure and trade-offs beat a perfect diagram</p>
+    <p>📊 Case presentation: problem, options, decision, risks</p>
+    <p>🤝 Behavioural: influence, conflict, failure, learning</p>
+    <p>Prepare for each round on purpose. Which round do you find hardest?</p>
+    <p>#SolutionArchitecture #InterviewPrep #SystemDesign #CareerGrowth</p>
+  </div>
+</section>
+
+<!-- STAR -->
+<section class="concept" id="star">
+  <h2><span class="num">25.2</span> The STAR(R) method <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Answer every "tell me about a time…" question as a short story: <b>S</b>ituation, <b>T</b>ask, <b>A</b>ction, <b>R</b>esult, plus a final <b>R</b>eflection on what you learned.</p>
+<figure class="viz" data-viz="steps"><script type="application/json">
+{"title":"A 2-minute STAR(R) answer, with rough timing","stepMs":1100,
+ "items":[
+  {"k":"S · 15 s","t":"<b>Situation:</b> the context in one or two sentences. Company type, system, why it mattered","c":"slate"},
+  {"k":"T · 15 s","t":"<b>Task:</b> <i>your</i> responsibility or goal. What were you accountable for?","c":"blue"},
+  {"k":"A · 60 s","t":"<b>Action:</b> what <b>I</b> did, step by step. Decisions, options considered, people influenced","c":"purple"},
+  {"k":"why","t":"Name the trade-off you made and why","c":"purple","indent":1},
+  {"k":"how","t":"Show how you brought others along","c":"purple","indent":1},
+  {"k":"R · 20 s","t":"<b>Result:</b> the outcome, with numbers (time, cost, incidents, latency, adoption)","c":"green"},
+  {"k":"R · 10 s","t":"<b>Reflection:</b> what you learned or would do differently next time","c":"amber"}
+ ]}
+</script></figure>
+  <div class="cols2">
+    <div class="box green"><h4>✅ Do</h4><ul>
+      <li>Aim for <b>about 2 minutes</b>, then stop and let them probe.</li>
+      <li>Say <b>"I"</b> for your actions. Use "we" only for the team result.</li>
+      <li><b>Quantify</b>: "cut batch window from 6 h to 40 min", "zero P1s in 6 months".</li>
+      <li>Spend most of the time on <b>Action</b>: that's where your judgement shows.</li>
+      <li>Pick recent stories (last 3–5 years) at the level of the role.</li>
+    </ul></div>
+    <div class="box red"><h4>❌ Common mistakes</h4><ul>
+      <li>Three minutes of Situation, ten seconds of Action.</li>
+      <li>"We decided…" with no clue what <i>you</i> did.</li>
+      <li>No result, or a vague one ("it went well").</li>
+      <li>A "failure" story where nothing actually failed.</li>
+      <li>Blaming others or sharing confidential details.</li>
+    </ul></div>
+  </div>
+  <h3>Fill-in template</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Part</th><th>Prompt</th><th>Your notes</th></tr>
+    <tr><td><b>Situation</b></td><td>Where, when, what system, why it mattered</td><td>[your example]</td></tr>
+    <tr><td><b>Task</b></td><td>What was I accountable for? What was the constraint?</td><td>[your example]</td></tr>
+    <tr><td><b>Action</b></td><td>3 things I did; the options; the trade-off; who I influenced</td><td>[your example]</td></tr>
+    <tr><td><b>Result</b></td><td>Numbers; business outcome; what changed for users</td><td>[your example]</td></tr>
+    <tr><td><b>Reflection</b></td><td>What I learned; what I'd do differently</td><td>[your example]</td></tr>
+    <tr><td><b>Themes it covers</b></td><td>Tag it so one story can answer several questions</td><td>e.g. influence, migration, trade-off</td></tr>
+  </table></div>
+  <h3>Worked example <span class="pill a">illustrative, generic</span></h3>
+  <div class="box blue">
+    <h4>"Tell me about a significant integration change you led." Migrating a nightly batch integration to events</h4>
+    <ul>
+      <li><b>Situation:</b> A mid-sized lender sent customer and account changes from its core system to five downstream systems in one nightly file. Downstream data was up to 24 hours stale, and a failed file meant a manual re-run the next morning.</li>
+      <li><b>Task:</b> As the integration architect, I owned the target design and had to move to near-real-time without a big-bang cutover or extra load on the core system.</li>
+      <li><b>Action:</b> I compared three options: more frequent files, API polling, and change data capture into an event broker. I chose CDC with an outbox-style publisher, because it put no new query load on the core and gave ordered changes per account. I wrote the ADR, ran a workshop with the five consuming teams to agree an event contract, and planned a strangler-style rollout: one consumer at a time, with the batch file kept as a fallback and a daily reconciliation report. When the risk team worried about duplicates, I added idempotent consumers and showed them the reconciliation results.</li>
+      <li><b>Result:</b> Over four months all five consumers moved. Data freshness went from up to 24 hours to under a minute, and manual re-runs stopped. The batch job was switched off after two clean months of parallel running.</li>
+      <li><b>Reflection:</b> I'd involve the operations team earlier: we added replay tooling late, after their first support call.</li>
+    </ul>
+    <p style="font-size:13px;margin:6px 0 0">Related pages: <a href="10-integration-messaging.html#batch">batch &amp; file integration</a>, <a href="06-databases-data.html#cdc">CDC</a>, <a href="11-architecture-patterns.html#strangler">strangler fig</a>, <a href="08-api-design.html#idempotency">idempotency</a>, <a href="17-architecture-documents.html#adr">ADR</a>.</p>
+  </div>
+  <p class="warn">The example above is invented to show the shape of an answer. Never present someone else's story as your own: interviewers probe, and a second question exposes it fast.</p>
+  <div class="remember"><ul>
+    <li>About 2 minutes. Most of it on <b>Action</b>, in the first person.</li>
+    <li>Every Result has a number or a clear before/after.</li>
+    <li>Add the Reflection: it shows self-awareness, which senior roles look for.</li>
+    <li>Keep 8–10 stories, each tagged with the themes it can answer.</li>
+  </ul></div>
+  <div class="post">
+    <p>Most interview stories fail in the Action part, not the Result ⏱️</p>
+    <p>🧩 Situation + Task: 30 seconds, no more</p>
+    <p>🛠️ Action: 60 seconds of what <b>I</b> did, including the trade-off</p>
+    <p>📈 Result: a number or a clear before/after</p>
+    <p>🔁 Reflection: what you'd do differently next time</p>
+    <p>STAR becomes STARR when you add the learning. That last R is what makes it sound senior.</p>
+    <p>#InterviewTips #STARMethod #Leadership #SoftwareArchitecture</p>
+  </div>
+</section>
+
+<!-- BEHAVIOURAL -->
+<section class="concept" id="behavioural">
+  <h2><span class="num">25.3</span> Behavioural question bank for architects <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Behavioural questions test judgement under real conditions: influence, conflict, failure, risk and leadership. Each question has a hidden question behind it.</p>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"\"Tell me about a time you disagreed with a stakeholder\": three answers","interval":3000,
+ "frames":[
+  {"label":"Weak","caption":"Vague, \"we\", no outcome. The interviewer learns nothing about <b>you</b>.","rows":[
+   [{"t":"\"We had a disagreement\"","c":"red"},{"k":"arrow","g":"→"},{"t":"\"We sorted it out\"","c":"red"},{"k":"arrow","g":"→"},{"t":"\"It went fine\"","c":"red"}]]},
+  {"label":"Better","caption":"Clear situation and actions, but no trade-off or number. Sounds like a mid-level answer.","rows":[
+   [{"t":"Situation","sub":"vendor vs build","c":"amber"},{"k":"arrow","g":"→"},{"t":"I met them","sub":"listened","c":"amber"},{"k":"arrow","g":"→"},{"t":"We agreed","sub":"no data","c":"amber"}]]},
+  {"label":"Strong","caption":"Shows <b>empathy, evidence, a trade-off, a measurable result and a learning</b>.","ms":3800,"rows":[
+   [{"t":"Situation","sub":"1 sentence","c":"slate"},{"k":"arrow","g":"→"},{"t":"Their goal","sub":"understood first","c":"blue"},{"k":"arrow","g":"→"},{"t":"Options + data","sub":"cost, risk, time","c":"purple"},{"k":"arrow","g":"→"},{"t":"Agreed decision","sub":"ADR, numbers","c":"green"},{"k":"arrow","g":"→"},{"t":"Learning","c":"amber"}]]}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table style="font-size:13.5px">
+    <tr><th>Question</th><th>They're really testing</th><th>A strong answer includes</th></tr>
+    <tr><td><span class="pill b">Influence</span> Tell me about a time you changed a team's technical direction without authority.</td><td>Influence through evidence, not rank</td><td>Understood their goals; prototype or data; built allies; outcome</td></tr>
+    <tr><td><span class="pill b">Influence</span> How did you get a reluctant team to adopt a standard or pattern?</td><td>Empathy and patience</td><td>Why they resisted; made it easy (templates, paved road); adoption numbers</td></tr>
+    <tr><td><span class="pill r">Conflict</span> Describe a conflict with a senior stakeholder.</td><td>Calm, respectful pushback</td><td>Their concern restated; options with cost and risk; agreed next step</td></tr>
+    <tr><td><span class="pill r">Conflict</span> Two teams wanted opposite designs. What did you do?</td><td>Facilitation and fairness</td><td>Shared decision criteria first; trade-off matrix; ADR; both teams heard</td></tr>
+    <tr><td><span class="pill a">Failure</span> Tell me about an architecture decision that turned out wrong.</td><td>Ownership and learning</td><td>A real mistake; how you noticed; how you fixed it; what changed after</td></tr>
+    <tr><td><span class="pill a">Failure</span> When did a project you designed miss its goals?</td><td>Honesty, no blame</td><td>Root cause, including your part; recovery plan; lesson applied later</td></tr>
+    <tr><td><span class="pill p">Trade-off</span> Tell me about a trade-off you had to defend.</td><td>Reasoning under constraints</td><td>Options; criteria (NFRs, cost, time); what you gave up and why; review date</td></tr>
+    <tr><td><span class="pill p">Trade-off</span> When did you choose the "less elegant" option?</td><td>Pragmatism over purity</td><td>Business deadline or risk; contained the debt; plan to revisit</td></tr>
+    <tr><td><span class="pill r">Saying no</span> Tell me about a time you said no to a business request.</td><td>Protecting the business, kindly</td><td>Understood the real need; offered an alternative; risk in business terms</td></tr>
+    <tr><td><span class="pill r">Saying no</span> How have you pushed back on an unrealistic deadline?</td><td>Honest estimation</td><td>Data on effort; options (scope, phases, people); agreed plan</td></tr>
+    <tr><td><span class="pill g">Leading</span> Describe a large migration you led.</td><td>Planning and risk control</td><td>Phased or strangler approach; fallback; reconciliation; measurable result</td></tr>
+    <tr><td><span class="pill g">Leading</span> Tell me about a major incident you were involved in.</td><td>Calm under pressure; learning culture</td><td>Your role; mitigation first; blameless review; fix that stopped a repeat</td></tr>
+    <tr><td><span class="pill g">Mentoring</span> How have you grown other engineers or architects?</td><td>Multiplier impact</td><td>Specific person or forum; method (pairing, reviews); their growth</td></tr>
+    <tr><td><span class="pill g">Mentoring</span> How do you give feedback on a poor design?</td><td>Psychological safety</td><td>Questions before verdicts; principles, not taste; follow-up</td></tr>
+    <tr><td><span class="pill p">Ambiguity</span> Tell me about a project with unclear requirements.</td><td>Creating clarity</td><td>Assumptions written down; spikes; small first release; feedback loop</td></tr>
+    <tr><td><span class="pill p">Ambiguity</span> How did you design for something likely to change?</td><td>Reversible decisions</td><td>Seams and contracts; option value; what you deliberately deferred</td></tr>
+    <tr><td><span class="pill a">Tech debt</span> How did you get tech debt prioritised?</td><td>Speaking business language</td><td>Debt tied to cost, risk or speed; small slices; tracked outcome</td></tr>
+    <tr><td><span class="pill a">Tech debt</span> When did you decide to live with tech debt?</td><td>Judgement on timing</td><td>Cost of fixing vs carrying; a trigger to revisit; it was recorded</td></tr>
+    <tr><td><span class="pill r">Security</span> Tell me about delivery pressure versus a security or compliance control.</td><td>Integrity and risk balance</td><td>Didn't bypass; found a compliant path; involved risk early; outcome</td></tr>
+    <tr><td><span class="pill r">Security</span> How did you handle a late audit or regulatory finding?</td><td>Accountability</td><td>Triage by risk; owners and dates; evidence; prevention</td></tr>
+    <tr><td><span class="pill b">Vendors</span> Tell me about a difficult vendor or partner.</td><td>Commercial and technical maturity</td><td>Facts and contract, not emotion; escalation path; exit or fallback</td></tr>
+    <tr><td><span class="pill b">Vendors</span> How did you evaluate build vs buy?</td><td>Structured decision-making</td><td>Criteria (fit, TCO, lock-in, risk); proof of concept; documented decision</td></tr>
+  </table></div>
+  <p class="tip">Map your 8–10 stories against these themes. One good migration story can answer "leading", "trade-off", "ambiguity" and "influence" with a different emphasis each time. See also <a href="17-architecture-documents.html#softskills">soft skills: trade-offs &amp; stakeholders</a>.</p>
+  <div class="remember"><ul>
+    <li>Find the hidden question: influence, ownership, judgement or integrity.</li>
+    <li>Failure stories need a <b>real</b> failure, your part in it, and what changed afterwards.</li>
+    <li>For security and compliance questions, the right answer never bypasses the control.</li>
+  </ul></div>
+  <div class="post">
+    <p>Every behavioural interview question has a hidden question behind it 🕵️</p>
+    <p>🗣️ "Changed direction without authority?" → can you influence with evidence?</p>
+    <p>💥 "A decision that went wrong?" → do you own mistakes and learn?</p>
+    <p>🚫 "Said no to the business?" → can you protect them and still help?</p>
+    <p>🔐 "Pressure to skip a control?" → do you have integrity under deadline?</p>
+    <p>Answer the hidden question, not just the spoken one. Which question catches you out?</p>
+    <p>#BehavioralInterview #SolutionArchitect #Leadership #InterviewPrep</p>
+  </div>
+</section>
+
+<!-- TECHNICAL -->
+<section class="concept" id="technical">
+  <h2><span class="num">25.4</span> Technical deep-dive questions <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Rapid technical questions check breadth; the follow-ups check depth. Give a crisp one-line answer, then a trade-off, then an example.</p>
+<figure class="viz" data-viz="steps"><script type="application/json">
+{"title":"The answer ladder: climb only as far as they ask","stepMs":1000,
+ "items":[
+  {"k":"1 · Define","t":"One sentence. \"Idempotency means doing it twice has the same effect as once.\"","c":"blue"},
+  {"k":"2 · How","t":"The mechanism. \"Client sends a key; server stores the result per key.\"","c":"purple"},
+  {"k":"3 · Trade-off","t":"Cost or limit. \"Needs storage and a TTL; must be atomic with the write.\"","c":"amber"},
+  {"k":"4 · When","t":"Where you'd use it. \"Every payment POST and every message consumer.\"","c":"teal"},
+  {"k":"5 · Example","t":"Your experience. \"On [your example], it removed duplicate payments on retry.\"","c":"green"}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table style="font-size:13.5px">
+    <tr><th>Question</th><th>One-line model answer</th><th>Read</th></tr>
+    <tr><td>CAP in one sentence?</td><td>During a network partition you choose consistency or availability; PACELC adds latency vs consistency when there's no partition</td><td><a href="03-scalability-reliability.html#pacelc">03 · PACELC</a></td></tr>
+    <tr><td>How does a quorum give consistency?</td><td>If W + R &gt; N, every read overlaps at least one node with the latest write</td><td><a href="04-distributed-systems.html#quorum">04 · Quorum</a></td></tr>
+    <tr><td>2PC or saga across services?</td><td>Saga: local transactions plus compensations; 2PC blocks and couples services</td><td><a href="04-distributed-systems.html#two-pc">04 · 2PC vs Saga</a></td></tr>
+    <tr><td>Why can't you trust timestamps for ordering?</td><td>Clocks drift; use sequence numbers, logical clocks or a single partition per key</td><td><a href="04-distributed-systems.html#clocks">04 · Time</a></td></tr>
+    <tr><td>Cache-aside vs write-through?</td><td>Cache-aside loads on a miss (simple, may be stale); write-through updates cache with the DB (fresher, slower writes)</td><td><a href="05-caching.html#strategies">05 · Strategies</a></td></tr>
+    <tr><td>What's a cache stampede and the fix?</td><td>Many misses hit the DB at once when a hot key expires; use request coalescing, locks or jittered TTLs</td><td><a href="05-caching.html#problems">05 · Problems</a></td></tr>
+    <tr><td>When would you pick NoSQL over SQL?</td><td>Known access patterns at large scale and flexible schema; SQL for joins, ad hoc queries and strong transactions</td><td><a href="06-databases-data.html#sql-nosql">06 · SQL vs NoSQL</a></td></tr>
+    <tr><td>Why use CDC instead of dual writes?</td><td>CDC reads the DB log, so the event and the data can't disagree; dual writes can half-fail</td><td><a href="06-databases-data.html#cdc">06 · CDC</a></td></tr>
+    <tr><td>How do you make a payment API safe to retry?</td><td>An idempotency key stored atomically with the result; replay returns the same response</td><td><a href="08-api-design.html#idempotency">08 · Idempotency</a></td></tr>
+    <tr><td>Token bucket vs sliding window?</td><td>Token bucket allows bursts up to a limit; sliding window gives a smoother, more exact rate</td><td><a href="08-api-design.html#ratelimit">08 · Rate limits</a></td></tr>
+    <tr><td>OAuth vs OIDC?</td><td>OAuth 2.0 delegates access (access token); OIDC adds identity on top (ID token)</td><td><a href="08-api-design.html#oauth">08 · OAuth/OIDC</a></td></tr>
+    <tr><td>What does an API gateway do that a load balancer doesn't?</td><td>Auth, rate limits, transformation, versioning, analytics per API and consumer</td><td><a href="09-apim.html#compare">09 · Gateway vs LB</a></td></tr>
+    <tr><td>APIM versions vs revisions?</td><td>Versions are breaking changes consumers choose; revisions are safe, non-breaking changes you roll out</td><td><a href="09-apim.html#versions">09 · Versions</a></td></tr>
+    <tr><td>Exactly-once delivery: real?</td><td>Not end to end; use at-least-once delivery plus idempotent consumers (effectively once)</td><td><a href="10-integration-messaging.html#guarantees">10 · Guarantees</a></td></tr>
+    <tr><td>Queue vs event stream?</td><td>A queue hands each message to one consumer; a stream keeps an ordered log many consumers replay</td><td><a href="10-integration-messaging.html#queue-event">10 · Queue vs Event</a></td></tr>
+    <tr><td>Orchestration vs choreography?</td><td>A central coordinator owns the flow vs services reacting to events; orchestration is easier to see and change</td><td><a href="10-integration-messaging.html#orch">10 · Orch vs Chor</a></td></tr>
+    <tr><td>How do you replace a legacy system safely?</td><td>Strangler fig: route slices of traffic to the new system behind a facade, one capability at a time</td><td><a href="11-architecture-patterns.html#strangler">11 · Strangler</a></td></tr>
+    <tr><td>mTLS: what does it add over TLS?</td><td>Both sides present certificates, so the server also authenticates the client</td><td><a href="12-security-iam.html#tls">12 · TLS/mTLS</a></td></tr>
+    <tr><td>Zero Trust in one line?</td><td>Never trust the network; verify identity, device and context on every request, with least privilege</td><td><a href="12-security-iam.html#zerotrust">12 · Zero Trust</a></td></tr>
+    <tr><td>Blue-green vs canary?</td><td>Blue-green switches all traffic at once with instant rollback; canary shifts a small percentage first and watches metrics</td><td><a href="13-devops-deployment-observability.html#deploy">13 · Deployment</a></td></tr>
+    <tr><td>Logs, metrics and traces: why all three?</td><td>Metrics tell you something is wrong, traces show where, logs explain why</td><td><a href="13-devops-deployment-observability.html#observability">13 · Observability</a></td></tr>
+    <tr><td>RPO vs RTO?</td><td>RPO is how much data you can lose; RTO is how long you can be down</td><td><a href="03-scalability-reliability.html#dr">03 · DR</a></td></tr>
+    <tr><td>RAG or fine-tuning?</td><td>RAG for fresh or private facts with citations; fine-tuning for style, format or narrow skills</td><td><a href="14-rag-genai.html#approach">14 · Approach</a></td></tr>
+    <tr><td>How do you evaluate a RAG system?</td><td>Measure retrieval (recall, precision) and generation (faithfulness, relevance) on a golden set, in CI</td><td><a href="14-rag-genai.html#eval">14 · RAG eval</a></td></tr>
+    <tr><td>How do you keep an AI agent safe?</td><td>Least-privilege tools, input and output guardrails, human approval for risky actions, full tracing</td><td><a href="15-agentic-ai.html#guardrails">15 · Guardrails</a></td></tr>
+    <tr><td>async/await: does it make code faster?</td><td>No; it frees threads while waiting on I/O, so a server handles more requests at once</td><td><a href="01-foundations.html#sync-async">01 · Sync vs Async</a>, <a href="22-dotnet-engineering-deep-dive.html">22</a></td></tr>
+  </table></div>
+  <p class="tip">"I don't know, but here's how I'd find out" beats a confident guess. Interviewers probe until you hit your limit; they're testing honesty as much as knowledge.</p>
+  <div class="remember"><ul>
+    <li>Lead with one sentence. Stop. Let them pull you deeper.</li>
+    <li>Every answer is stronger with a trade-off and a "when I'd use it".</li>
+    <li>Know your own CV at depth: anything on it is fair game.</li>
+  </ul></div>
+</section>
+
+<!-- KATAS -->
+<section class="concept" id="katas">
+  <h2><span class="num">25.5</span> Architecture kata prompts <span class="tag-added">Added</span></h2>
+  <p class="oneliner">An architecture kata is a short, timed design exercise from a brief. You practise turning vague requirements into characteristics, components, trade-offs and a written decision.</p>
+  <p>Katas started as a workshop format by Ted Neward ("great architects only get to architect a handful of times in their career, so practise"). Do them alone with a timer, or with a friend playing the customer who answers your clarifying questions.</p>
+<figure class="viz" data-viz="lanes"><script type="application/json">
+{"title":"A 60-minute kata, step by step","max":60,"labelW":150,"axis":"minutes","stepMs":900,"dur":6000,
+ "rows":[
+  {"label":"Requirements","blocks":[{"s":0,"e":8,"t":"clarify","c":"blue"}]},
+  {"label":"Characteristics","blocks":[{"s":8,"e":15,"t":"NFRs","c":"purple"}]},
+  {"label":"Components","blocks":[{"s":15,"e":35,"t":"C4 context + containers","c":"teal"}]},
+  {"label":"Trade-offs","blocks":[{"s":35,"e":50,"t":"3-4 hard decisions","c":"amber"}]},
+  {"label":"ADR","blocks":[{"s":50,"e":60,"t":"write it","c":"green"}]}
+ ],
+ "ticks":[{"at":0,"t":"0"},{"at":15,"t":"15"},{"at":30,"t":"30"},{"at":45,"t":"45"},{"at":60,"t":"60"}]}
+</script></figure>
+  <div class="flow">
+    <div class="n">Requirements<small>users, volumes, rules</small></div><div class="ar">→</div>
+    <div class="n p">Characteristics<small>pick the top 3</small></div><div class="ar">→</div>
+    <div class="n t">Components<small>C4 L1–L2</small></div><div class="ar">→</div>
+    <div class="n a">Trade-offs<small>options + why</small></div><div class="ar">→</div>
+    <div class="n g">ADR<small>decision + consequences</small></div>
+  </div>
+  <p>Each brief below is generic and simplified. Make and state your own assumptions about volumes and rules.</p>
+  <div class="grid wide">
+    <div class="box blue"><h4>1. Real-time payments notification hub</h4>
+      <p><b>Context:</b> customers want a push, SMS or email within seconds of any incoming or outgoing payment, across real-time, card and batch channels.</p>
+      <p><b>Requirements:</b> &lt; 5 s for real-time payments; preferences and quiet hours; no duplicates; peaks of 10× on payday.</p>
+      <p><b>Hard decisions:</b> one event model across channels; at-least-once plus dedupe; per-channel providers and fallback; what is safe to put in an SMS.</p>
+      <p><b>Read:</b> <a href="19-design-case-studies.html#notification">19 · Notification</a>, <a href="16-banking-payments.html#npp">16 · NPP</a>, <a href="10-integration-messaging.html#guarantees">10 · Guarantees</a></p></div>
+    <div class="box purple"><h4>2. Customer 360 with consent</h4>
+      <p><b>Context:</b> staff need one view of a customer across products, but data sits in many systems and use is limited by consent and purpose.</p>
+      <p><b>Requirements:</b> near-real-time; consent and purpose enforced on read; audit of every view; mastered customer identity.</p>
+      <p><b>Hard decisions:</b> virtual (API composition) vs materialised view; MDM matching; where consent is checked; retention and deletion.</p>
+      <p><b>Read:</b> <a href="07-data-governance-privacy.html#mdm">07 · MDM</a>, <a href="07-data-governance-privacy.html#privacy">07 · Privacy</a>, <a href="06-databases-data.html#cdc">06 · CDC</a></p></div>
+    <div class="box teal"><h4>3. Loan origination with document AI</h4>
+      <p><b>Context:</b> applicants upload payslips and statements; the lender wants faster decisions without losing control.</p>
+      <p><b>Requirements:</b> extract fields with confidence scores; human review below a threshold; full audit trail; decision in hours, not days.</p>
+      <p><b>Hard decisions:</b> workflow engine vs choreography; human-in-the-loop thresholds; storing documents securely; model risk and explainability.</p>
+      <p><b>Read:</b> <a href="20-dotnet-system-design-use-cases.html#onboarding">20 · Onboarding</a>, <a href="15-agentic-ai.html#guardrails">15 · HITL</a>, <a href="06-databases-data.html#storage">06 · Storage</a></p></div>
+    <div class="box red"><h4>4. Fraud alerting</h4>
+      <p><b>Context:</b> score transactions in real time and alert customers and analysts on suspicious activity.</p>
+      <p><b>Requirements:</b> score in the payment path within tight latency; rules plus ML; case management; feedback loop.</p>
+      <p><b>Hard decisions:</b> inline (block) vs async (alert); fail-open vs fail-closed; feature store freshness; false-positive cost.</p>
+      <p><b>Read:</b> <a href="20-dotnet-system-design-use-cases.html#fraud">20 · Fraud</a>, <a href="03-scalability-reliability.html#resilience">03 · Resilience</a>, <a href="10-integration-messaging.html#types">10 · Real-time</a></p></div>
+    <div class="box green"><h4>5. Open banking API platform</h4>
+      <p><b>Context:</b> expose standard data-sharing APIs to accredited third parties, with consent the customer can withdraw.</p>
+      <p><b>Requirements:</b> strong security profile; consent dashboard; published availability and performance targets; versioned standards.</p>
+      <p><b>Hard decisions:</b> gateway and auth server placement; consent store design; versioning as standards change; protecting core systems from load.</p>
+      <p><b>Read:</b> <a href="16-banking-payments.html#cdr">16 · CDR</a>, <a href="09-apim.html#security">09 · APIM security</a>, <a href="08-api-design.html#oauth">08 · OAuth</a></p></div>
+    <div class="box amber"><h4>6. Branch and ATM locator</h4>
+      <p><b>Context:</b> show nearby branches and ATMs with opening hours and live status in the app and website.</p>
+      <p><b>Requirements:</b> fast "near me" search; status changes within minutes; high read volume; works when the core is down.</p>
+      <p><b>Hard decisions:</b> geospatial index choice; CDN and cache strategy; source of truth for status; public vs authenticated API.</p>
+      <p><b>Read:</b> <a href="06-databases-data.html#geo">06 · Geospatial</a>, <a href="05-caching.html#cdn">05 · CDN</a>, <a href="20-dotnet-system-design-use-cases.html#proximity">20 · Proximity</a></p></div>
+    <div class="box blue"><h4>7. Regulatory reporting pipeline</h4>
+      <p><b>Context:</b> produce periodic regulatory returns from many source systems, with reconciliation and sign-off.</p>
+      <p><b>Requirements:</b> lineage from report cell to source; repeatable runs; late data handling; segregation of duties.</p>
+      <p><b>Hard decisions:</b> ETL vs ELT; lakehouse layering; data quality gates; how to restate a past period.</p>
+      <p><b>Read:</b> <a href="06-databases-data.html#lake">06 · Lakehouse</a>, <a href="07-data-governance-privacy.html#quality">07 · Lineage</a>, <a href="10-integration-messaging.html#batch">10 · Batch</a></p></div>
+    <div class="box purple"><h4>8. GenAI assistant for contact-centre agents</h4>
+      <p><b>Context:</b> agents need fast, correct answers from policy and product documents while on a call.</p>
+      <p><b>Requirements:</b> cited answers; no customer data leaking into prompts or logs; answers in seconds; measurable quality.</p>
+      <p><b>Hard decisions:</b> RAG design and chunking; permission-aware retrieval; evaluation and guardrails; build on a platform vs buy.</p>
+      <p><b>Read:</b> <a href="14-rag-genai.html#rag">14 · RAG</a>, <a href="14-rag-genai.html#responsible">14 · Responsible AI</a>, <a href="20-dotnet-system-design-use-cases.html#rag-assistant">20 · RAG assistant</a></p></div>
+    <div class="box teal"><h4>9. Core banking event streaming</h4>
+      <p><b>Context:</b> publish account and transaction events from a legacy core so new digital services stop polling it.</p>
+      <p><b>Requirements:</b> ordered per account; replay; schema evolution; no extra load on the core.</p>
+      <p><b>Hard decisions:</b> CDC vs outbox vs core adapters; partition keys; event schema governance; canonical vs domain events.</p>
+      <p><b>Read:</b> <a href="16-banking-payments.html#ledger">16 · Core &amp; ledger</a>, <a href="06-databases-data.html#cdc">06 · CDC</a>, <a href="10-integration-messaging.html#queue-event">10 · Events</a></p></div>
+    <div class="box red"><h4>10. Multi-region disaster recovery</h4>
+      <p><b>Context:</b> a critical customer-facing service must survive a region loss within agreed tolerance levels (as APRA CPS 230 expects for critical operations).</p>
+      <p><b>Requirements:</b> RTO and RPO from tolerance levels; tested failover; data residency in Australia; cost-aware.</p>
+      <p><b>Hard decisions:</b> active-active vs active-passive; data replication mode; DNS or global load balancer failover; how often to test.</p>
+      <p><b>Read:</b> <a href="03-scalability-reliability.html#dr">03 · DR</a>, <a href="03-scalability-reliability.html#cells">03 · Multi-region</a>, <a href="16-banking-payments.html#regulation">16 · Regulation</a></p></div>
+  </div>
+  <p class="tip">Finish every kata with a one-page ADR (<a href="17-architecture-documents.html#adr">17 · ADR</a>) and a list of risks. Then compare with the <a href="18-system-design-playbook.html#checklist">design review checklist</a> and note what you missed.</p>
+  <div class="remember"><ul>
+    <li>Time-box each stage. Running out of time before trade-offs is the most common kata failure.</li>
+    <li>Pick the <b>top 3</b> characteristics. "Everything is important" means nothing is.</li>
+    <li>End with a written decision: an ADR shows you can commit, not just list options.</li>
+  </ul></div>
+  <div class="post">
+    <p>Architects only design a few big systems in a career. So how do you practise? Katas 🥋</p>
+    <p>⏱️ 60 minutes, one brief, a timer</p>
+    <p>🎯 Clarify requirements, then pick the top 3 quality attributes</p>
+    <p>🧱 Sketch the context and containers</p>
+    <p>⚖️ Spend real time on 3–4 hard decisions</p>
+    <p>📝 Finish with an ADR</p>
+    <p>Try one this week: "real-time payment notifications in under 5 seconds". What's your first hard decision?</p>
+    <p>#ArchitecturalKata #SoftwareArchitecture #SystemDesign #Banking</p>
+  </div>
+</section>
+
+<!-- PRESENTING -->
+<section class="concept" id="presenting">
+  <h2><span class="num">25.6</span> Presenting an architecture or case study <span class="tag-added">Added</span></h2>
+  <p class="oneliner">A case presentation tests whether you can tell a decision story: the problem, the constraints, the options, what you chose and why, and what could go wrong.</p>
+<figure class="viz" data-viz="bars"><script type="application/json">
+{"title":"A 25-minute presentation: where the minutes go","max":6,
+ "rows":[
+  {"label":"Problem &amp; goals","v":3,"show":"3 min","c":"blue","note":"why it mattered"},
+  {"label":"Constraints &amp; NFRs","v":3,"show":"3 min","c":"purple","note":"top 3 qualities"},
+  {"label":"Options","v":4,"show":"4 min","c":"teal","note":"2–3, honestly compared"},
+  {"label":"Decision &amp; design","v":6,"show":"6 min","c":"green","note":"C4 context + containers"},
+  {"label":"Risks &amp; mitigations","v":4,"show":"4 min","c":"red","note":"top 3-5"},
+  {"label":"Roadmap &amp; outcome","v":3,"show":"3 min","c":"amber","note":"phases, results"},
+  {"label":"Summary","v":2,"show":"2 min","c":"slate","note":"then Q&amp;A"}
+ ]}
+</script></figure>
+  <h3>Drawing on a whiteboard: zoom in with C4</h3>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Start wide, then zoom in only when asked","interval":2800,
+ "frames":[
+  {"label":"L1 Context","caption":"Who uses the system and what it talks to. Draw this first, in under 2 minutes.","rows":[
+   [{"t":"Customer","c":"slate"},{"k":"arrow","g":"→"},{"t":"Payments platform","sub":"the system","c":"blue","big":true},{"k":"arrow","g":"→"},{"t":"Core banking","c":"slate"}]]},
+  {"label":"L2 Containers","caption":"The deployable parts and how they talk: sync or async, and which store each one owns.","rows":[
+   [{"t":"Mobile app","c":"slate"},{"k":"arrow","g":"→"},{"t":"API gateway","c":"purple"},{"k":"arrow","g":"→"},{"t":"Payment API","c":"blue"},{"k":"arrow","g":"→","t":"events"},{"t":"Event broker","c":"amber"}],
+   [{"t":"Payments DB","sub":"owned by Payment API","c":"teal"},{"t":"Notification service","c":"green"}]]},
+  {"label":"L3 Components","caption":"Only for the part they want to probe, e.g. how the Payment API stays idempotent.","ms":3400,"rows":[
+   [{"t":"Controller","c":"blue"},{"k":"arrow","g":"→"},{"t":"Idempotency check","c":"red"},{"k":"arrow","g":"→"},{"t":"Payment service","c":"blue"},{"k":"arrow","g":"→"},{"t":"Outbox","c":"amber"}]]}
+ ]}
+</script></figure>
+  <p>See the <a href="17-architecture-documents.html#c4">C4 model</a> for notation. Label every arrow with what flows and whether it is sync or async.</p>
+  <h3>Handling challenge questions</h3>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(min(190px,100%),1fr))">
+    <div class="box blue"><h4>🎧 Listen fully</h4><p>Let them finish. Restate the question: "So the concern is failover time?"</p></div>
+    <div class="box green"><h4>✅ Agree with what's true</h4><p>"Yes, that's a real risk." Defensiveness costs more than the weakness.</p></div>
+    <div class="box purple"><h4>⚖️ Explain the trade-off</h4><p>"We accepted X because Y mattered more, and we mitigate with Z."</p></div>
+    <div class="box amber"><h4>🔁 Show you'd adapt</h4><p>"If volumes grew 10×, I'd revisit by doing…" Shows the decision isn't dogma.</p></div>
+  </div>
+  <h3>One-page decision memo template</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Heading</th><th>What to write (1–3 lines each)</th></tr>
+    <tr><td><b>Decision</b></td><td>One sentence: "We will…"</td></tr>
+    <tr><td><b>Context &amp; problem</b></td><td>Why now; business impact; who is affected</td></tr>
+    <tr><td><b>Constraints</b></td><td>Regulation, budget, deadline, skills, existing platforms</td></tr>
+    <tr><td><b>Options considered</b></td><td>2–3 options with one pro and one con each</td></tr>
+    <tr><td><b>Recommendation &amp; rationale</b></td><td>The option, the criteria it wins on, what we give up</td></tr>
+    <tr><td><b>Risks &amp; mitigations</b></td><td>Top risks, owner, mitigation</td></tr>
+    <tr><td><b>Cost &amp; roadmap</b></td><td>Rough cost; phases; first milestone</td></tr>
+    <tr><td><b>Ask</b></td><td>What you need: approval, funding, people, a decision by a date</td></tr>
+  </table></div>
+  <div class="remember"><ul>
+    <li>Problem first, technology last. Panels remember the "why".</li>
+    <li>Show at least two real options. One option is a sales pitch, not a decision.</li>
+    <li>Name your risks before they do: it builds trust.</li>
+    <li>Rehearse to time, out loud, at least twice.</li>
+  </ul></div>
+  <div class="post">
+    <p>The best architecture presentations spend more time on "why" than "what" 🧭</p>
+    <p>❓ Problem: what hurts, and for whom</p>
+    <p>🚧 Constraints: regulation, budget, deadline</p>
+    <p>⚖️ Options: at least two, honestly compared</p>
+    <p>✅ Decision: what you chose and what you gave up</p>
+    <p>⚠️ Risks: name them before the panel does</p>
+    <p>Defending a design is easier when the trade-off is already on the slide. How do you structure yours?</p>
+    <p>#SolutionArchitecture #Presentation #C4Model #ArchitectureDecisions</p>
+  </div>
+</section>
+
+<!-- CHECKLIST -->
+<section class="concept" id="checklist">
+  <h2><span class="num">25.7</span> Questions to ask them &amp; final checklist <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Your questions show how you think about the role. A 30-60-90 day plan shows you can land well. A checklist stops avoidable mistakes on the day.</p>
+  <h3>Smart questions to ask</h3>
+  <div class="grid">
+    <div class="box blue"><h4>🏛️ Architecture governance</h4><ul>
+      <li>How are architecture decisions made and recorded here?</li>
+      <li>What does a design review look like, and who attends?</li>
+    </ul></div>
+    <div class="box amber"><h4>🧱 Tech debt</h4><ul>
+      <li>What's the biggest piece of tech debt slowing delivery today?</li>
+      <li>How is fixing it funded against new features?</li>
+    </ul></div>
+    <div class="box teal"><h4>👥 Team topology</h4><ul>
+      <li>Are architects embedded in teams or in a central function?</li>
+      <li>Who owns platforms like the API gateway and event broker?</li>
+    </ul></div>
+    <div class="box purple"><h4>🚚 Delivery model</h4><ul>
+      <li>How does work flow from idea to production?</li>
+      <li>How often do you release, and what slows it down?</li>
+    </ul></div>
+    <div class="box green"><h4>🎯 Success</h4><ul>
+      <li>What would success look like in this role after 90 days? After a year?</li>
+      <li>What did the last person in this role do well, or struggle with?</li>
+    </ul></div>
+    <div class="box red"><h4>⚠️ Risk &amp; change</h4><ul>
+      <li>Which regulatory or resilience programmes affect this team most?</li>
+      <li>Is there anything in my background that worries you for this role?</li>
+    </ul></div>
+  </div>
+  <h3>30-60-90 day plan outline</h3>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"First 90 days in a new architect role","interval":3000,
+ "frames":[
+  {"label":"Days 1–30","caption":"<b>Learn.</b> Listen far more than you talk. Map systems, people and pain points.","rows":[
+   [{"t":"Meet stakeholders","sub":"1:1s","c":"blue"},{"t":"Read the docs","sub":"HLDs, ADRs, standards","c":"blue"},{"t":"Map the landscape","sub":"C4 context","c":"blue"},{"t":"Find pain points","sub":"incidents, debt","c":"blue"}]]},
+  {"label":"Days 31–60","caption":"<b>Contribute.</b> Deliver one visible quick win and join the decision forums.","rows":[
+   [{"t":"Quick win","sub":"small, visible","c":"green"},{"t":"Join design reviews","c":"green"},{"t":"First ADR","c":"green"},{"t":"Draft the roadmap","sub":"with the team","c":"off"}]]},
+  {"label":"Days 61–90","caption":"<b>Lead.</b> Agree a target state and roadmap; start one improvement that outlasts you.","ms":3600,"rows":[
+   [{"t":"Target architecture","c":"purple"},{"t":"Agreed roadmap","c":"purple"},{"t":"Standard or pattern","sub":"paved road","c":"purple"},{"t":"Measure outcomes","c":"purple"}]]}
+ ]}
+</script></figure>
+  <h3>The day before</h3>
+<figure class="viz" data-viz="steps"><script type="application/json">
+{"title":"Day-before checklist","stepMs":800,
+ "items":[
+  {"k":"Logistics","t":"Time, time zone, location or video link, panel names and roles","c":"blue"},
+  {"k":"Tech","t":"Camera, mic, lighting; a whiteboard tool or pen and paper; phone on silent","c":"blue","indent":1},
+  {"k":"Research","t":"Company strategy, products, recent news, the panel's LinkedIn profiles","c":"purple"},
+  {"k":"Stories","t":"Re-read your 8–10 STAR stories and their theme tags","c":"green"},
+  {"k":"Numbers","t":"Your key results: volumes, latency, cost, uptime, team sizes","c":"green","indent":1},
+  {"k":"Design","t":"Warm up with one 20-minute kata; review the framework in 18","c":"teal"},
+  {"k":"Pitch","t":"60-second \"tell me about yourself\" and \"why this role\"","c":"amber"},
+  {"k":"Questions","t":"3–5 questions for them, tailored to each panel","c":"amber","indent":1},
+  {"k":"Rest","t":"Stop studying in the evening. Sleep beats one more page","c":"slate"}
+ ]}
+</script></figure>
+  <p class="tip">Keep one page of notes next to you in a video interview: your story list, key numbers and your questions. Glance, don't read.</p>
+  <div class="remember"><ul>
+    <li>Ask about how decisions are made, what success looks like, and the biggest problem they need solved.</li>
+    <li>A 30-60-90 plan is learn, contribute, lead. Don't promise to redesign everything in month one.</li>
+    <li>Prepare logistics the day before, so your energy goes into the conversation.</li>
+  </ul></div>
+  <div class="post">
+    <p>"Do you have any questions for us?" is still part of the interview 🎤</p>
+    <p>🏛️ How are architecture decisions made and recorded here?</p>
+    <p>🧱 What tech debt slows you down most today?</p>
+    <p>👥 Are architects embedded in teams or central?</p>
+    <p>🎯 What does success look like in 90 days?</p>
+    <p>Good questions show how you'll work, not just whether you want the job. What's your go-to question?</p>
+    <p>#InterviewTips #SolutionArchitect #CareerGrowth #Leadership</p>
+  </div>
+</section>
+
+<div class="qa-wrap">
+  <h2>⚡ Quick-fire Q&amp;A</h2>
+  <details class="qa"><summary>How long should a STAR answer be?</summary><p>About two minutes. Spend most of it on the Action, in the first person, end with a measurable Result and a short Reflection, then stop and let the interviewer ask follow-ups.</p></details>
+  <details class="qa"><summary>How many stories should I prepare?</summary><p>Eight to ten strong stories, each tagged with the themes it covers (influence, conflict, failure, trade-off, migration, incident, mentoring, ambiguity). One story can answer several questions with a different focus.</p></details>
+  <details class="qa"><summary>What if I don't know the answer to a technical question?</summary><p>Say so, then reason out loud: what you do know, how you'd find out, and what you'd check. Honesty plus a structured approach scores better than a confident wrong answer.</p></details>
+  <details class="qa"><summary>What is an architecture kata?</summary><p>A short, timed design exercise from a brief: clarify requirements, choose the top quality attributes, sketch components, discuss trade-offs, and record a decision. The format started as a workshop by Ted Neward.</p></details>
+  <details class="qa"><summary>How should I structure a 25-minute architecture presentation?</summary><p>Problem and goals, constraints and NFRs, two or three options, the decision and design (C4 context and containers), risks and mitigations, roadmap and outcome, then a short summary. Leave time for challenge questions.</p></details>
+  <details class="qa"><summary>What should a 30-60-90 day plan for an architect show?</summary><p>Learn (stakeholders, systems, pain points) in the first 30 days, contribute (a quick win, design reviews, a first ADR) by 60, and lead (an agreed target state and roadmap) by 90.</p></details>
+</div>
+
+<div class="pager"><a href="24-architecture-practice.html">← 24 · Architecture Practice</a><a class="next" href="index.html">🏠 Back to Roadmap</a></div>
+</main>
+<footer>Tech Concepts Prep · Section 25</footer>
+<script src="assets/menu-data.js"></script>
+<script src="assets/menu.js"></script>
+<script src="assets/app.js"></script>
+<script src="assets/viz.js"></script>
+</body>
+</html>

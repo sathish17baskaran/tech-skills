@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>24 · Architecture Practice | Tech Concepts Prep</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<nav class="top"><a href="23-software-design-coding.html">← Design &amp; Coding</a><span class="here">24 · Architecture Practice</span><a href="25-interview-readiness.html">Next: Interview Readiness →</a></nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">Section 24</div>
+  <h1>Architecture practice: from capability maps to katas</h1>
+  <p>The day-to-day craft of a solution or enterprise architect in a large, regulated organisation: mapping what the business does, making quality attributes measurable, planning cloud migrations and mainframe modernisation, shaping teams, evolving APIs and events safely, choosing front-end and edge patterns, and practising it all with katas. Documents, ADRs, NFRs and frameworks live in <a href="17-architecture-documents.html" style="color:#fff;text-decoration:underline">Section 17</a>; patterns such as strangler fig and DDD live in <a href="11-architecture-patterns.html" style="color:#fff;text-decoration:underline">Section 11</a>.</p>
+  <div class="toc">
+    <a href="#ea" class="added">EA toolkit</a>
+    <a href="#quality" class="added">Quality attributes &amp; trade-offs</a>
+    <a href="#migration" class="added">Cloud migration (7 Rs)</a>
+    <a href="#modernisation" class="added">Legacy &amp; mainframe modernisation</a>
+    <a href="#teams" class="added">Team &amp; org architecture</a>
+    <a href="#evolution" class="added">API &amp; event evolution</a>
+    <a href="#frontend" class="added">Front-end &amp; edge</a>
+    <a href="#katas" class="added">Reference architectures &amp; katas</a>
+  </div>
+</header>
+
+<!-- EA TOOLKIT -->
+<section class="concept" id="ea">
+  <h2><span class="num">24.1</span> Enterprise architecture toolkit <span class="tag-added">Added</span></h2>
+  <p class="oneliner">A small set of tools that turn "what does the business do, and what runs it?" into pictures and decisions: capability maps, value streams, portfolio rationalisation, roadmaps, a technology radar and principles.</p>
+  <div class="grid">
+    <div class="box blue"><h4>🧩 Business capability map</h4><p><b>What</b> the business does, not how or who. Stable for years, even when processes and systems change.</p><ul><li><b>L1</b>: Payments, Lending, Customer</li><li><b>L2</b>: Payment initiation, Clearing &amp; settlement</li><li><b>L3</b>: finer detail, only where needed</li></ul></div>
+    <div class="box purple"><h4>➡️ Value streams</h4><p>The end-to-end stages that deliver value to a customer. "Open an account": discover → apply → verify → fund → use. Map each stage to the capabilities it needs.</p></div>
+    <div class="box amber"><h4>🗂️ Application portfolio</h4><p>Link every application to the capabilities it supports. Spot duplicates (three apps for one capability), end-of-life tech and high run costs.</p></div>
+    <div class="box green"><h4>🧭 Architecture principles</h4><p>Name, statement, rationale and <b>implications</b>. E.g. "API first", "Reuse, then buy, then build", "Data is owned and classified".</p></div>
+  </div>
+  <h3>Heat-mapping a capability map</h3>
+  <p>Colour each capability by one measure at a time: business value, technical health, risk, cost or number of applications. Always show the legend and the data source.</p>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"One capability map, three lenses, one roadmap","interval":2800,
+ "frames":[
+  {"label":"Map","caption":"<b>L1 → L2 capability map.</b> No systems, no org chart: just what the bank does.","rows":[
+   {"label":"Payments","items":[{"t":"Payment initiation","c":"slate"},{"t":"Clearing &amp; settlement","c":"slate"},{"t":"Fraud screening","c":"slate"}]},
+   {"label":"Customer","items":[{"t":"Onboarding","c":"slate"},{"t":"KYC / AML checks","c":"slate"},{"t":"Customer profile","c":"slate"}]},
+   {"label":"Lending","items":[{"t":"Origination","c":"slate"},{"t":"Servicing","c":"slate"},{"t":"Collections","c":"slate"}]}]},
+  {"label":"Business value","caption":"<b>Lens 1: strategic value.</b> Green = differentiating, amber = important, grey = commodity.","rows":[
+   {"label":"Payments","items":[{"t":"Payment initiation","c":"green"},{"t":"Clearing &amp; settlement","c":"amber"},{"t":"Fraud screening","c":"green"}]},
+   {"label":"Customer","items":[{"t":"Onboarding","c":"green"},{"t":"KYC / AML checks","c":"amber"},{"t":"Customer profile","c":"off"}]},
+   {"label":"Lending","items":[{"t":"Origination","c":"green"},{"t":"Servicing","c":"off"},{"t":"Collections","c":"off"}]}]},
+  {"label":"Tech health","caption":"<b>Lens 2: technical health.</b> Red = end-of-life or fragile, amber = duplicated, green = healthy.","rows":[
+   {"label":"Payments","items":[{"t":"Payment initiation","c":"green"},{"t":"Clearing &amp; settlement","sub":"mainframe batch","c":"red"},{"t":"Fraud screening","c":"amber","sub":"2 engines"}]},
+   {"label":"Customer","items":[{"t":"Onboarding","c":"amber","sub":"3 apps"},{"t":"KYC / AML checks","c":"green"},{"t":"Customer profile","c":"green"}]},
+   {"label":"Lending","items":[{"t":"Origination","c":"red","sub":"unsupported COTS"},{"t":"Servicing","c":"green"},{"t":"Collections","c":"amber"}]}]},
+  {"label":"Roadmap","caption":"<b>Combine the lenses.</b> High value + poor health = invest or migrate first. Low value + duplicated = consolidate.","ms":3600,"rows":[
+   {"label":"Payments","items":[{"t":"Payment initiation","sub":"Invest","c":"blue"},{"t":"Clearing &amp; settlement","sub":"Migrate · wave 2","c":"purple","big":true},{"t":"Fraud screening","sub":"Consolidate to 1","c":"amber"}]},
+   {"label":"Customer","items":[{"t":"Onboarding","sub":"Consolidate · wave 1","c":"amber","big":true},{"t":"KYC / AML checks","sub":"Tolerate","c":"off"},{"t":"Customer profile","sub":"Tolerate","c":"off"}]},
+   {"label":"Lending","items":[{"t":"Origination","sub":"Replace (SaaS)","c":"purple","big":true},{"t":"Servicing","sub":"Tolerate","c":"off"},{"t":"Collections","sub":"Review","c":"off"}]}]}
+ ]}
+</script></figure>
+  <h3>Portfolio rationalisation: the TIME model (Gartner)</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Quadrant</th><th>Business value</th><th>Technical fit</th><th>Action</th></tr>
+    <tr><td><b>Tolerate</b></td><td>Low</td><td>High</td><td>Keep running. Minimum spend</td></tr>
+    <tr><td><b>Invest</b></td><td>High</td><td>High</td><td>Enhance and extend</td></tr>
+    <tr><td><b>Migrate</b></td><td>High</td><td>Low</td><td>Modernise or move to a new platform</td></tr>
+    <tr><td><b>Eliminate</b></td><td>Low</td><td>Low</td><td>Retire or consolidate</td></tr>
+  </table></div>
+  <h3>Current → transition → target</h3>
+  <div class="flow">
+    <div class="n s">Current (baseline)<small>what runs today</small></div><div class="ar">→</div>
+    <div class="n">Transition 1<small>runs in production, delivers value</small></div><div class="ar">→</div>
+    <div class="n">Transition 2<small>a stable plateau</small></div><div class="ar">→</div>
+    <div class="n fill">Target<small>2–3 years out, revisited yearly</small></div>
+  </div>
+  <div class="cols2">
+    <div class="box"><h4>🗺️ Roadmap</h4><p>Work packages placed on a timeline, grouped into transition architectures, with dependencies, funding and risks. TOGAF phases E and F cover this (see <a href="17-architecture-documents.html#frameworks">17.13</a>).</p></div>
+    <div class="box"><h4>📡 Technology radar</h4><p>Rings from Thoughtworks: <b>Adopt</b>, <b>Trial</b>, <b>Assess</b>, <b>Hold</b>. Quadrants: techniques, tools, platforms, languages &amp; frameworks. Run an internal radar so teams know what is approved, being trialled or on the way out.</p></div>
+  </div>
+  <div class="remember"><ul>
+    <li>Capabilities describe <b>what</b>, not how. Keep the map stable and owned by business and architecture together.</li>
+    <li>A heat map is only as good as its measure. State the measure, the source and the date.</li>
+    <li>Every transition architecture must run on its own in production and deliver value. No "big bang" target.</li>
+    <li>Principles without implications are slogans. Say what each one forces you to do or stop doing.</li>
+  </ul></div>
+  <div class="post">
+    <p>The most useful slide an enterprise architect can bring is a heat map 🗺️</p>
+    <p>🧩 Start with a capability map: what the business does, not who does it or which system does it</p>
+    <p>🎨 Colour it by one lens at a time: business value, technical health, risk, cost</p>
+    <p>🔀 Overlay the lenses: high value + poor health is where the money should go</p>
+    <p>🗂️ Then sort the apps with TIME: Tolerate, Invest, Migrate, Eliminate</p>
+    <p>🪜 Roadmap in transition steps that each deliver value on their own</p>
+    <p>Executives don't fund architecture diagrams. They fund red boxes turning green. What's your favourite EA artefact?</p>
+    <p>#EnterpriseArchitecture #CapabilityMapping #ITStrategy #SolutionArchitecture</p>
+  </div>
+</section>
+
+<!-- QUALITY ATTRIBUTES -->
+<section class="concept" id="quality">
+  <h2><span class="num">24.2</span> Quality attributes &amp; trade-off analysis <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Quality attributes (the "-ilities") shape an architecture more than features do. Make them measurable with scenarios, rank them in a utility tree, test the design against them in a workshop, and guard them with automated fitness functions.</p>
+  <h3>ISO/IEC 25010:2023 product quality model</h3>
+  <p>The 2023 edition has nine characteristics. <b>Usability</b> became <b>interaction capability</b>, <b>portability</b> became <b>flexibility</b> (now including scalability), and <b>safety</b> is new.</p>
+  <div class="tablewrap"><table>
+    <tr><th>Characteristic</th><th>The question it asks</th></tr>
+    <tr><td><b>Functional suitability</b></td><td>Does it do the right things, correctly?</td></tr>
+    <tr><td><b>Performance efficiency</b></td><td>Is it fast enough, with sensible resource use?</td></tr>
+    <tr><td><b>Compatibility</b></td><td>Does it co-exist and interoperate with other systems?</td></tr>
+    <tr><td><b>Interaction capability</b></td><td>Can the intended users use it, including with accessibility needs?</td></tr>
+    <tr><td><b>Reliability</b></td><td>Is it available, fault tolerant and recoverable?</td></tr>
+    <tr><td><b>Security</b></td><td>Confidentiality, integrity, accountability, resistance to attack</td></tr>
+    <tr><td><b>Maintainability</b></td><td>Is it modular, testable and easy to change?</td></tr>
+    <tr><td><b>Flexibility</b></td><td>Can it adapt, scale, install and be replaced?</td></tr>
+    <tr><td><b>Safety</b></td><td>Does it avoid endangering people, property or the environment?</td></tr>
+  </table></div>
+  <h3>Quality-attribute scenarios</h3>
+  <p>"Must be fast" can't be tested. A six-part scenario can. Write NFRs this way (see <a href="17-architecture-documents.html#nfr">NFRs in 17.9</a>).</p>
+<figure class="viz" data-viz="steps"><script type="application/json">
+{"title":"A performance scenario for a payments API","stepMs":1100,
+ "items":[
+  {"k":"Source","t":"Customers using the mobile banking app","c":"blue"},
+  {"k":"Stimulus","t":"3,000 payment requests per second","c":"purple"},
+  {"k":"Artifact","t":"Payments API and its database","c":"teal"},
+  {"k":"Environment","t":"Normal operation at payday peak","c":"amber"},
+  {"k":"Response","t":"Every payment is accepted or rejected once, with no errors","c":"green"},
+  {"k":"Measure","t":"p99 under 800 ms; zero lost or duplicate payments","c":"red"}
+ ]}
+</script></figure>
+  <h3>Utility tree</h3>
+  <p>A tree from "utility" to attributes, refinements and concrete scenarios. Rate each scenario <b>(importance, difficulty)</b> as H/M/L, then analyse the (H,H) ones first.</p>
+  <div class="tablewrap"><table>
+    <tr><th>Attribute</th><th>Refinement</th><th>Scenario</th><th>Rating</th></tr>
+    <tr><td><b>Availability</b></td><td>Zone failure</td><td>One zone fails at peak; payments continue, RTO under 5 min</td><td>(H,H)</td></tr>
+    <tr><td><b>Security</b></td><td>Data protection</td><td>An engineer queries prod; card numbers are tokenised</td><td>(H,M)</td></tr>
+    <tr><td><b>Maintainability</b></td><td>New payment type</td><td>Add a scheme in under 4 weeks, without touching the ledger</td><td>(M,M)</td></tr>
+  </table></div>
+  <h3>ATAM-lite in a workshop</h3>
+  <p>ATAM (Architecture Tradeoff Analysis Method) comes from the SEI. The full method takes days. A "lite" version fits in half a day with architects, product owner, ops and security.</p>
+  <div class="grid">
+    <div class="box blue"><h4>1. Drivers &amp; design</h4><p>Business goals in 10 minutes. Then the architecture, ideally as C4 diagrams (<a href="17-architecture-documents.html#c4">17.10</a>).</p></div>
+    <div class="box purple"><h4>2. Utility tree</h4><p>Agree the top 5–8 scenarios together. This alone surfaces hidden disagreements.</p></div>
+    <div class="box amber"><h4>3. Walk each scenario</h4><p>Which decisions support it? Where does it break? Record what you find.</p></div>
+    <div class="box green"><h4>4. Outputs</h4><p>Risks grouped into themes, new or updated ADRs (<a href="17-architecture-documents.html#adr">17.7</a>), follow-up spikes.</p></div>
+  </div>
+  <div class="tablewrap"><table>
+    <tr><th>Finding</th><th>Meaning</th><th>Example</th></tr>
+    <tr><td><b>Sensitivity point</b></td><td>One decision strongly affects one attribute</td><td>Kafka partition count drives max consumer throughput</td></tr>
+    <tr><td><b>Trade-off point</b></td><td>One decision affects two attributes in opposite ways</td><td>Sync cross-region replication: better RPO, worse latency</td></tr>
+    <tr><td><b>Risk</b></td><td>A decision that may make a scenario fail</td><td>Single shared database for all payment types</td></tr>
+    <tr><td><b>Non-risk</b></td><td>A decision that is fine, and why</td><td>Stateless API tier scales out behind the load balancer</td></tr>
+  </table></div>
+  <h3>Fitness functions</h3>
+  <p>Automated checks that keep a quality attribute from silently getting worse. They run in CI/CD or on a schedule (also see <a href="17-architecture-documents.html#buildbuy">17.15</a>).</p>
+  <div class="tablewrap"><table>
+    <tr><th>Attribute</th><th>Fitness function</th><th>Runs</th></tr>
+    <tr><td><b>Maintainability</b></td><td>Domain must not reference infrastructure</td><td>Every build</td></tr>
+    <tr><td><b>Performance</b></td><td>Load test: p95 within budget, or the pipeline fails</td><td>Nightly / pre-release</td></tr>
+    <tr><td><b>Security</b></td><td>No critical CVEs; no secrets in code</td><td>Every build</td></tr>
+    <tr><td><b>Compatibility</b></td><td>Consumer contract tests pass (see 24.6)</td><td>Before deploy</td></tr>
+    <tr><td><b>Reliability</b></td><td>Zone failover drill meets RTO</td><td>Quarterly</td></tr>
+  </table></div>
+  <div class="remember"><ul>
+    <li>If you can't write a response measure, it isn't a requirement yet.</li>
+    <li>Trade-off points are where architects earn their pay. Name both sides and who decided.</li>
+    <li>Turn the top scenarios into fitness functions, so the review doesn't end when the meeting does.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Fitness function</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Dependency rules</b></td><td><code>TngTech.ArchUnitNET.xUnit</code></td><td>Layering and naming rules as unit tests (example in 17.15)</td></tr>
+    <tr><td><b>Micro-benchmarks</b></td><td><code>BenchmarkDotNet</code></td><td>Catch regressions in hot paths (serialisers, mappers, parsers)</td></tr>
+    <tr><td><b>Load tests in C#</b></td><td><code>NBomber</code> <span class="pill lic">commercial licence</span></td><td>p95/p99 gates in CI. Free for personal use only. k6 or Azure Load Testing are alternatives</td></tr>
+    <tr><td><b>Vulnerable packages</b></td><td><span class="pill builtin">built-in</span> <code>dotnet list package --vulnerable</code></td><td>Security fitness check in every build</td></tr>
+  </table>
+</div>
+  <div class="post">
+    <p>"The system must be fast and secure" is not a requirement 🙅</p>
+    <p>🎯 Write quality-attribute scenarios: source, stimulus, artifact, environment, response, measure</p>
+    <p>🌳 Rank them in a utility tree by importance and difficulty</p>
+    <p>⚖️ Walk the top ones through the design: find sensitivity points, trade-off points and risks</p>
+    <p>🤖 Automate the important ones as fitness functions in CI</p>
+    <p>ISO/IEC 25010:2023 renamed usability to interaction capability and portability to flexibility, and added safety. Do your NFR templates still use the 2011 names?</p>
+    <p>#SoftwareArchitecture #NFR #ATAM #QualityAttributes</p>
+  </div>
+</section>
+
+<!-- CLOUD MIGRATION -->
+<section class="concept" id="migration">
+  <h2><span class="num">24.3</span> Cloud migration strategies: the 7 Rs <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Pick one strategy per workload, move workloads in waves onto a landing zone that is already in place, and treat every cutover as a rehearsed, reversible event followed by hypercare.</p>
+  <div class="tablewrap"><table>
+    <tr><th>AWS 7 Rs</th><th>Azure CAF name</th><th>Use when</th></tr>
+    <tr><td><b>Retire</b></td><td>Retire</td><td>Little or no business value; barely used</td></tr>
+    <tr><td><b>Retain</b> (revisit)</td><td>Retain</td><td>Compliance, latency or dependencies block a move for now</td></tr>
+    <tr><td><b>Rehost</b> (lift &amp; shift)</td><td>Rehost</td><td>Data-centre exit deadline; no change for 2+ years</td></tr>
+    <tr><td><b>Relocate</b> (hypervisor level)</td><td>Counted as rehost</td><td>Move a VMware estate as-is, e.g. to a cloud VMware service</td></tr>
+    <tr><td><b>Replatform</b> (lift &amp; reshape)</td><td>Replatform</td><td>Swap to managed DB or containers with small code changes</td></tr>
+    <tr><td><b>Repurchase</b> (drop &amp; shop)</td><td>Replace</td><td>A SaaS product covers the need</td></tr>
+    <tr><td><b>Refactor / re-architect</b></td><td>Refactor, Rearchitect, Rebuild</td><td>Strong case to go cloud-native; CAF splits by depth of change</td></tr>
+  </table></div>
+  <p class="tip">AWS advises against refactoring during a <b>large</b> migration: rehost, relocate or replatform first, then modernise once the workload is stable in the cloud.</p>
+<figure class="viz" data-viz="journey"><script type="application/json">
+{"title":"From inventory to switched-off data centre","stepMs":1200,
+ "steps":[
+  {"icon":"🔍","t":"Discover","d":"Inventory servers, databases and apps. Map dependencies from network flows, agents and the CMDB","c":"blue"},
+  {"icon":"📋","t":"Assess","d":"Pick an R per app. TCO, risk, licensing, data classification and residency","c":"blue"},
+  {"icon":"🌊","t":"Plan waves","d":"Group apps that talk a lot into the same wave. Start with a low-risk pilot wave","c":"purple"},
+  {"icon":"🏗️","t":"Landing zone ready","d":"Identity, network, policy, logging and cost guardrails in place before wave 1","c":"teal","tag":"see 21.13","href":"21-cloud-cheat-sheet.html#choose"},
+  {"icon":"🔁","t":"Replicate &amp; test","d":"Replicate servers and data, run functional, performance and DR tests in the cloud","c":"purple"},
+  {"icon":"🔀","t":"Cutover","d":"Freeze, final data sync, switch traffic, go / no-go, rollback if needed","c":"amber"},
+  {"icon":"🩺","t":"Hypercare","d":"2–4 weeks of extra monitoring and fast fixes, then hand over to BAU","c":"green"},
+  {"icon":"🔌","t":"Decommission","d":"Switch off the source and stop paying for it. Otherwise you pay twice","c":"red"}
+ ]}
+</script></figure>
+  <h3>Cutover planning</h3>
+<figure class="viz" data-viz="lanes"><script type="application/json">
+{"title":"A weekend cutover, Friday 18:00 to Monday 09:00 (hours)","max":63,"labelW":120,"dur":5000,
+ "rows":[
+  {"label":"Change freeze","blocks":[{"s":0,"e":63,"t":"no other changes","c":"slate"}]},
+  {"label":"Data sync","blocks":[{"s":0,"e":6,"t":"CDC","c":"blue"},{"s":6,"e":10,"t":"delta","c":"purple","size":11}]},
+  {"label":"Cutover","blocks":[{"s":10,"e":16,"t":"switch","c":"amber"}]},
+  {"label":"Validation","blocks":[{"s":16,"e":24,"t":"smoke","c":"green"},{"s":24,"e":40,"t":"reconcile + business tests","c":"green"}]},
+  {"label":"Rollback option","blocks":[{"s":10,"e":40,"t":"reverse sync running","c":"red","h":0.6}]},
+  {"label":"Hypercare","blocks":[{"s":40,"e":63,"t":"war room","c":"teal"}]}
+ ],
+ "markers":[{"at":24,"t":"Go / no-go","c":"amber"},{"at":40,"t":"Point of no return","c":"red"}],
+ "ticks":[{"at":0,"t":"Fri 18:00"},{"at":18,"t":"Sat 12:00"},{"at":42,"t":"Sun 12:00"},{"at":61,"t":"Mon"}]}
+</script></figure>
+  <div class="grid">
+    <div class="box blue"><h4>🎭 Rehearsals</h4><p>At least two full dress rehearsals on production-like data. Time every step. The real run follows the rehearsed runbook.</p></div>
+    <div class="box red"><h4>↩️ Rollback</h4><p>Written criteria, one named decision-maker, a time box and a clear point of no return. Keep reverse sync running until then.</p></div>
+    <div class="box purple"><h4>🔄 Data sync</h4><p>Bulk load, then CDC until the final delta. Reconcile counts, sums and hash totals (see <a href="06-databases-data.html#migration">06 data migration</a>).</p></div>
+    <div class="box amber"><h4>🧊 Freeze windows</h4><p>Avoid month-end, payday, end of financial year and peak trading. Agree the change freeze with every team that touches the system.</p></div>
+    <div class="box teal"><h4>📣 Comms</h4><p>Stakeholder plan, customer notices, support scripts and a status channel. Announce "done" only after validation.</p></div>
+    <div class="box green"><h4>🩺 Hypercare</h4><p>War room, extra alerts and dashboards, a fast fix path and agreed exit criteria (e.g. 10 days without a P1 or P2).</p></div>
+  </div>
+  <div class="remember"><ul>
+    <li>Migrate first, modernise second, unless the app would need rework within two years anyway.</li>
+    <li>Waves follow dependencies, not org charts. Chatty apps move together.</li>
+    <li>No landing zone, no wave 1. Retrofitting networking and policy costs far more.</li>
+    <li>The source isn't migrated until it's switched off and its costs stop.</li>
+  </ul></div>
+  <div class="post">
+    <p>Cloud migration is not one decision. It's one decision per application ☁️</p>
+    <p>🗑️ Retire and 🅿️ Retain: the cheapest migrations are the ones you don't do</p>
+    <p>🚚 Rehost / Relocate: fast data-centre exit, modernise later</p>
+    <p>🔧 Replatform: managed DB or containers with small code changes</p>
+    <p>🛒 Repurchase: swap for SaaS. 🏗️ Refactor: when cloud-native really pays off</p>
+    <p>Then rehearse the cutover twice, keep a rollback path until the point of no return, and run hypercare. What's the hardest app in your portfolio to classify?</p>
+    <p>#CloudMigration #AWS #Azure #CloudAdoption #Architecture</p>
+  </div>
+</section>
+
+<!-- LEGACY MODERNISATION -->
+<section class="concept" id="modernisation">
+  <h2><span class="num">24.4</span> Legacy &amp; mainframe modernisation <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Modernise legacy and mainframe systems in small, reversible steps: wrap them with APIs, stream their changes out as events, move capabilities one at a time, and prove each step with reconciliation before switching anything off.</p>
+  <h3>Gartner's seven options, from least to most change</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Option</th><th>What changes</th><th>Effort &amp; risk</th></tr>
+    <tr><td><b>Encapsulate</b></td><td>Wrap existing functions and data with APIs</td><td>Low</td></tr>
+    <tr><td><b>Rehost</b></td><td>Move to new infrastructure, no code change</td><td>Low</td></tr>
+    <tr><td><b>Replatform</b></td><td>New runtime platform, minimal code change</td><td>Low–medium</td></tr>
+    <tr><td><b>Refactor</b></td><td>Restructure code, same external behaviour</td><td>Medium</td></tr>
+    <tr><td><b>Rearchitect</b></td><td>New architecture, e.g. split into services</td><td>High</td></tr>
+    <tr><td><b>Rebuild</b></td><td>Rewrite from scratch, same scope</td><td>High</td></tr>
+    <tr><td><b>Replace</b></td><td>Buy a package or SaaS product</td><td>Medium–high (data and process change)</td></tr>
+  </table></div>
+  <h3>Patterns that work together</h3>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Strangling a mainframe capability step by step","interval":2700,
+ "frames":[
+  {"label":"Today","caption":"Channels call the mainframe directly. Nightly batch files feed everything else.","rows":[
+   [{"t":"Channels","sub":"web, mobile, branch","c":"blue"},{"k":"arrow","g":"→"},{"t":"Mainframe","sub":"COBOL + Db2","c":"amber","big":true},{"k":"arrow","g":"→","t":"nightly"},{"t":"Batch files","c":"slate"}]]},
+  {"label":"Encapsulate","caption":"An <b>API facade</b> sits in front. Channels now call stable APIs, not mainframe transactions.","rows":[
+   [{"t":"Channels","c":"blue"},{"k":"arrow","g":"→"},{"t":"API facade","sub":"stable contract","c":"purple","big":true},{"k":"arrow","g":"→"},{"t":"Mainframe","c":"amber"}]]},
+  {"label":"Stream out","caption":"<b>CDC</b> streams every change into an event platform. New read models serve queries, which cuts mainframe load.","rows":[
+   [{"t":"Channels","c":"blue"},{"k":"arrow","g":"→"},{"t":"API facade","c":"purple"},{"k":"arrow","g":"→"},{"t":"Mainframe","c":"amber"}],
+   [{"k":"gap"},{"k":"gap"},{"t":"Read model","sub":"balances, history","c":"green"},{"k":"arrow","g":"←","t":"events"},{"t":"CDC → Kafka","c":"teal"}]]},
+  {"label":"Move a capability","caption":"One capability moves to a new service behind the same facade. <b>Parallel run</b> compares results with the mainframe.","rows":[
+   [{"t":"Channels","c":"blue"},{"k":"arrow","g":"→"},{"t":"API facade","sub":"routes by capability","c":"purple"},{"k":"arrow","g":"→"},{"t":"Mainframe","sub":"still master","c":"amber"}],
+   [{"k":"gap"},{"k":"gap"},{"t":"New service","sub":"shadow mode","c":"green","big":true},{"k":"arrow","g":"⇄","t":"reconcile"},{"t":"Break report","c":"red"}]]},
+  {"label":"Switch &amp; retire","caption":"After clean reconciliation the new service becomes master. Repeat per capability; retire mainframe code last.","ms":3400,"rows":[
+   [{"t":"Channels","c":"blue"},{"k":"arrow","g":"→"},{"t":"API facade","c":"purple"},{"k":"arrow","g":"→"},{"t":"New service","sub":"master","c":"green","big":true}],
+   [{"k":"gap"},{"k":"gap"},{"k":"gap"},{"k":"gap"},{"t":"Mainframe","sub":"fewer functions","c":"off"}]]}
+ ]}
+</script></figure>
+  <div class="grid">
+    <div class="box purple"><h4>🧱 API facade</h4><p>Expose mainframe transactions through an API layer. Channels stop depending on the legacy interface, so the back end can change later.</p></div>
+    <div class="box green"><h4>🌿 Strangler fig</h4><p>Route capability by capability to new services behind the facade. Details in <a href="11-architecture-patterns.html#strangler">11.7</a>.</p></div>
+    <div class="box teal"><h4>📤 CDC into events</h4><p>Log-based CDC from mainframe databases into Kafka. Publish business events, not raw table changes. See <a href="06-databases-data.html#cdc">06 CDC</a>.</p></div>
+    <div class="box blue"><h4>🪞 Data replication</h4><p>Copy data to cloud read stores for queries and analytics. Fewer reads on the mainframe often means lower running costs.</p></div>
+    <div class="box amber"><h4>📦 Batch → events</h4><p>Publish events alongside the nightly file. Move consumers one by one. Keep the batch as a reconciliation control until the end.</p></div>
+    <div class="box"><h4>🛡️ Anti-corruption layer</h4><p>Translate legacy codes and record layouts into a clean domain model, so they don't leak into new services (<a href="11-architecture-patterns.html#ddd">11.9</a>).</p></div>
+  </div>
+  <h3>Managing the risk</h3>
+  <div class="cols2">
+    <div class="box"><h4>⚖️ Prove it</h4><ul><li><b>Parallel run</b>: both systems process the same inputs, the old one stays master, outputs are compared.</li><li><b>Reconciliation</b>: counts, amount totals, hash totals and field-level diffs, with a daily break report.</li><li><b>Slice traffic</b> by product, branch or customer segment, with a fast route back.</li></ul></div>
+    <div class="box"><h4>🧓 Skills risk</h4><ul><li>COBOL and mainframe experts are retiring. Capture business rules <b>now</b>, as tests and docs.</li><li>Pair experts with newer engineers. Use code-analysis tools to map programs and data.</li><li>AI tools can help explain old code, but check every rule against real outputs.</li></ul></div>
+  </div>
+  <div class="remember"><ul>
+    <li>Encapsulate first: a stable API in front buys you freedom to change what's behind it.</li>
+    <li>Never switch master until reconciliation has been clean for an agreed period, including a month-end.</li>
+    <li>Big-bang rewrites of core systems have a poor track record. Move one capability at a time.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Facade / strangler routing</b></td><td><code>Yarp.ReverseProxy</code></td><td>Route each path to the legacy back end or the new service; change routes by config</td></tr>
+    <tr><td><b>Consume CDC events</b></td><td><code>Confluent.Kafka</code></td><td>Build read models from change events streamed off the mainframe</td></tr>
+    <tr><td><b>Traffic slicing</b></td><td><code>Microsoft.FeatureManagement.AspNetCore</code></td><td>Send a percentage or a segment to the new path, with instant rollback</td></tr>
+    <tr><td><b>Reconciliation jobs</b></td><td><span class="pill builtin">built-in</span> <code>BackgroundService</code></td><td>Compare old and new outputs on a schedule and publish a break report</td></tr>
+  </table>
+</div>
+  <div class="post">
+    <p>You don't replace a mainframe. You make it smaller, one capability at a time 🏦</p>
+    <p>🧱 Put an API facade in front, so channels stop caring what's behind it</p>
+    <p>📤 Stream changes out with CDC and build read models off the mainframe</p>
+    <p>🌿 Move one capability to a new service and run it in shadow mode</p>
+    <p>⚖️ Reconcile every day: counts, totals, field-level diffs</p>
+    <p>🧓 Capture the business rules while the people who know them are still here</p>
+    <p>Encapsulate, stream, strangle, reconcile, retire. Which step is hardest where you work?</p>
+    <p>#Mainframe #LegacyModernisation #StranglerFig #CDC #Banking</p>
+  </div>
+</section>
+
+<!-- TEAMS -->
+<section class="concept" id="teams">
+  <h2><span class="num">24.5</span> Team &amp; org architecture <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Systems end up shaped like the teams that build them, so design team boundaries, team interactions and cognitive load together with the software architecture.</p>
+  <div class="cols2">
+    <div class="box blue"><h4>🏢 Conway's law (1968)</h4><p>Organisations design systems that mirror their own communication structure. Three teams building a compiler get a three-pass compiler.</p></div>
+    <div class="box green"><h4>🔄 Inverse Conway manoeuvre</h4><p>Shape the teams first to get the architecture you want. Want independent payments and lending services? Give them independent, long-lived teams.</p></div>
+  </div>
+  <h3>Team Topologies (Skelton &amp; Pais, 2019)</h3>
+  <div class="grid">
+    <div class="box blue"><h4>🌊 Stream-aligned</h4><p>Owns a flow of change for a product or customer journey, end to end. Most teams should be this type.</p></div>
+    <div class="box teal"><h4>🛠️ Platform</h4><p>Provides self-service internal products (pipelines, Kafka, observability) so stream teams go faster.</p></div>
+    <div class="box amber"><h4>🧑‍🏫 Enabling</h4><p>Specialists who coach other teams in a new skill for a limited time, then move on.</p></div>
+    <div class="box purple"><h4>🧮 Complicated-subsystem</h4><p>Owns a part that needs deep expertise, e.g. a fraud-scoring model or a pricing engine.</p></div>
+  </div>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Interaction modes change over time","interval":2800,
+ "frames":[
+  {"label":"Collaboration","caption":"<b>Collaboration</b>: payments and platform work closely for a few weeks to discover how event streaming should work.","rows":[
+   [{"t":"Payments team","sub":"stream-aligned","c":"blue","big":true},{"k":"arrow","g":"⇄","t":"collaboration"},{"t":"Platform team","sub":"event streaming","c":"teal","big":true}]]},
+  {"label":"X-as-a-Service","caption":"<b>X-as-a-Service</b>: the platform now offers self-service topics with a golden path. Little talking needed.","rows":[
+   [{"t":"Payments team","c":"blue"},{"k":"arrow","g":"←","t":"self-service"},{"t":"Platform","sub":"topics, pipelines, dashboards","c":"teal","big":true},{"k":"arrow","g":"→","t":"self-service"},{"t":"Lending team","c":"blue"}]]},
+  {"label":"Facilitating","caption":"<b>Facilitating</b>: an enabling team coaches lending on SLOs and tracing, then steps away.","rows":[
+   [{"t":"Enabling team","sub":"observability","c":"amber","big":true},{"k":"arrow","g":"→","t":"facilitating"},{"t":"Lending team","c":"blue"}]]},
+  {"label":"Subsystem","caption":"The fraud-scoring <b>complicated-subsystem</b> team publishes a scoring API that stream teams consume as a service.","ms":3400,"rows":[
+   [{"t":"Fraud scoring","sub":"complicated-subsystem","c":"purple","big":true},{"k":"arrow","g":"→","t":"X-as-a-Service"},{"t":"Payments team","c":"blue"},{"t":"Cards team","c":"blue"}]]}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>Interaction mode</th><th>When</th><th>Watch out</th></tr>
+    <tr><td><b>Collaboration</b></td><td>Discovering something new together</td><td>Expensive. Time-box it</td></tr>
+    <tr><td><b>X-as-a-Service</b></td><td>The boundary is clear and stable</td><td>Needs good docs and a product mindset</td></tr>
+    <tr><td><b>Facilitating</b></td><td>A team needs a new capability</td><td>Coach, don't do the work for them</td></tr>
+  </table></div>
+  <h3>Cognitive load</h3>
+  <p>A team can only own as much as it can understand. Three kinds: <b>intrinsic</b> (the problem itself), <b>extraneous</b> (tooling and process friction) and <b>germane</b> (learning the domain). Platforms should remove extraneous load. Signs of overload: slow onboarding, constant hand-offs, nobody understands a service fully.</p>
+  <h3>Platform engineering &amp; internal developer platforms</h3>
+  <div class="grid">
+    <div class="box green"><h4>🛤️ Golden paths</h4><p>Templates and pipelines for the common case (a new API, a new consumer) with security, logging and policy built in. Optional, but the easiest route.</p></div>
+    <div class="box blue"><h4>🎭 Backstage</h4><p>Open-source developer portal created at Spotify, now a CNCF incubating project: software catalog, templates and TechDocs.</p></div>
+    <div class="box purple"><h4>📦 Platform as a product</h4><p>Real users, a roadmap, adoption metrics and support. Measure delivery with DORA metrics (<a href="13-devops-deployment-observability.html#cicd">13.1</a>) plus developer surveys.</p></div>
+  </div>
+  <div class="remember"><ul>
+    <li>Draw the team map next to the architecture diagram. If they don't match, one of them will change.</li>
+    <li>Default to stream-aligned teams. Add platform, enabling and subsystem teams only to reduce their load.</li>
+    <li>Collaboration is a phase, not a permanent state. Aim for X-as-a-Service.</li>
+  </ul></div>
+  <div class="post">
+    <p>Your architecture diagram and your org chart are the same picture. Conway said so in 1968 🏢</p>
+    <p>🌊 Stream-aligned teams own a flow of change end to end</p>
+    <p>🛠️ Platform teams sell self-service internally, like a product</p>
+    <p>🧑‍🏫 Enabling teams coach, then leave</p>
+    <p>🧮 Complicated-subsystem teams own the deep-expertise parts</p>
+    <p>Want microservices? Start with the teams: the inverse Conway manoeuvre. Which came first in your organisation, the teams or the services?</p>
+    <p>#TeamTopologies #ConwaysLaw #PlatformEngineering #DevEx</p>
+  </div>
+</section>
+
+<!-- API & EVENT EVOLUTION -->
+<section class="concept" id="evolution">
+  <h2><span class="num">24.6</span> API &amp; event evolution <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Change APIs and event schemas without breaking consumers: prefer additive changes, know your compatibility mode, version only when you must, and retire old versions with clear Deprecation and Sunset signals.</p>
+  <h3>Versioning strategies</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Strategy</th><th>Example</th><th>Pros</th><th>Cons</th></tr>
+    <tr><td><b>URL path</b></td><td><code>/v2/payments</code></td><td>Visible, easy to route and cache</td><td>New URL for each major version</td></tr>
+    <tr><td><b>Query string</b></td><td><code>?api-version=2.0</code></td><td>Simple; Azure APIs use it</td><td>Easy to forget; caching keys</td></tr>
+    <tr><td><b>Header</b></td><td><code>api-version: 2.0</code></td><td>Clean URLs</td><td>Invisible in links and logs</td></tr>
+    <tr><td><b>Media type</b></td><td><code>application/vnd.bank.v2+json</code></td><td>Versions the representation</td><td>Harder for clients and tools</td></tr>
+  </table></div>
+  <p>REST basics are in <a href="08-api-design.html#rest">08.2</a>; gateway versions vs revisions are in <a href="09-apim.html#versions">09.5</a>.</p>
+  <h3>Compatibility, in plain words</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Type</th><th>Meaning</th><th>Upgrade first</th></tr>
+    <tr><td><b>Backward</b></td><td>The new version still works with old clients or old data</td><td>Provider / consumers of events</td></tr>
+    <tr><td><b>Forward</b></td><td>Old clients or consumers can handle the new version's data</td><td>Producers of events</td></tr>
+    <tr><td><b>Full</b></td><td>Both at once</td><td>Either, in any order</td></tr>
+  </table></div>
+  <div class="cols2">
+    <div class="box green"><h4>✅ Usually non-breaking</h4><ul><li>Add a new endpoint or operation</li><li>Add an optional request field</li><li>Add a response field (clients must ignore unknowns)</li><li>Relax validation</li></ul></div>
+    <div class="box red"><h4>❌ Breaking</h4><ul><li>Remove or rename a field</li><li>Change a type, format or unit</li><li>Make an optional field required</li><li>Tighten validation or change error shape</li><li>Change status codes, paging or auth scopes</li><li>Add an enum value clients switch on</li></ul></div>
+  </div>
+  <div class="grid">
+    <div class="box blue"><h4>📖 Tolerant reader</h4><p>Consumers read only the fields they need and ignore unknown ones. This makes adding fields safe.</p></div>
+    <div class="box purple"><h4>↔️ Expand / contract</h4><p>Add the new field next to the old one, move consumers over, then remove the old field. Also called parallel change.</p></div>
+    <div class="box amber"><h4>📜 Consumer-driven contracts</h4><p>Each consumer publishes what it relies on (Pact). The provider's CI checks every contract before deploy.</p></div>
+  </div>
+  <h3>Deprecation and Sunset</h3>
+<figure class="viz" data-viz="lanes"><script type="application/json">
+{"title":"Retiring Payments API v1 (months)","max":18,"labelW":110,"dur":5000,
+ "rows":[
+  {"label":"v1","blocks":[{"s":0,"e":6,"t":"current","c":"blue"},{"s":6,"e":15,"t":"deprecated, still works","c":"amber"}]},
+  {"label":"v2","blocks":[{"s":4,"e":18,"t":"released → current","c":"green"}]},
+  {"label":"Consumers","blocks":[{"s":6,"e":9,"t":"early movers","c":"purple","h":0.7},{"s":9,"e":14,"t":"chase stragglers","c":"red","h":0.7}]}
+ ],
+ "markers":[{"at":6,"t":"Deprecation header","c":"amber"},{"at":15,"t":"Sunset → 410 Gone","c":"red"}],
+ "ticks":[{"at":0,"t":"M0"},{"at":6,"t":"M6"},{"at":12,"t":"M12"},{"at":18,"t":"M18"}]}
+</script></figure>
+  <ul>
+    <li><b>Deprecation</b> header, <b>RFC 9745</b> (March 2025, Standards Track): the date it was or will be deprecated, as <code>@</code> + Unix seconds. Link to docs with <code>rel="deprecation"</code>. Behaviour doesn't change.</li>
+    <li><b>Sunset</b> header, <b>RFC 8594</b> (2019, Informational): the HTTP date after which it may stop responding. Must not be earlier than the deprecation date.</li>
+    <li>Watch usage per consumer, contact the stragglers, then return <code>410 Gone</code> after sunset.</li>
+  </ul>
+<pre class="code"><code>HTTP/1.1 200 OK
+Deprecation: @1798761600
+Sunset: Wed, 30 Jun 2027 23:59:59 GMT
+Link: &lt;https://developer.example.com/payments/v1-retirement&gt;; rel="deprecation"</code></pre>
+  <h3>Event schema evolution with a schema registry</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Mode</th><th>Checks that</th><th>Allowed changes (Avro)</th><th>Upgrade first</th></tr>
+    <tr><td><b>BACKWARD</b> (Confluent default)</td><td>New schema can read data written with the last one</td><td>Delete fields; add fields with defaults</td><td>Consumers</td></tr>
+    <tr><td><b>FORWARD</b></td><td>Last schema can read data written with the new one</td><td>Add fields; delete fields with defaults</td><td>Producers</td></tr>
+    <tr><td><b>FULL</b></td><td>Both directions</td><td>Add or delete fields with defaults only</td><td>Any order</td></tr>
+    <tr><td><b>*_TRANSITIVE</b></td><td>Same, against <b>all</b> earlier versions</td><td>As above</td><td>As above</td></tr>
+    <tr><td><b>NONE</b></td><td>Nothing</td><td>Anything. Avoid for shared topics</td><td>Coordinate by hand</td></tr>
+  </table></div>
+  <div class="grid">
+    <div class="box"><h4>Avro</h4><p>Give every new field a default. Rename with aliases. Never change a type in an incompatible way.</p></div>
+    <div class="box"><h4>Protobuf</h4><p>Never reuse or change a field number. Mark removed numbers and names as <code>reserved</code>.</p></div>
+    <div class="box"><h4>JSON Schema</h4><p>Compatibility depends on whether the schema is open or closed to extra properties. Decide this up front.</p></div>
+  </div>
+  <p>Schema registries and data contracts are also covered in <a href="10-integration-messaging.html#queue-event">10.3</a> and <a href="07-data-governance-privacy.html#mesh">07.8</a>.</p>
+  <div class="remember"><ul>
+    <li>Additive change plus tolerant readers removes most of the need for new versions.</li>
+    <li>A new major version is a migration project for every consumer. Budget for it, and for running two versions.</li>
+    <li>BACKWARD: upgrade consumers first. FORWARD: upgrade producers first. Use TRANSITIVE for long-retention topics.</li>
+    <li>Deprecation says "stop building on this". Sunset says "this will stop working on this date".</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>API versioning</b></td><td><code>Asp.Versioning.Http</code> (minimal APIs) / <code>Asp.Versioning.Mvc</code></td><td>URL, query, header or media-type versions; sunset and (10.x) RFC 9745 deprecation policies</td></tr>
+    <tr><td><b>One OpenAPI doc per version</b></td><td><code>Microsoft.AspNetCore.OpenApi</code> + <code>Asp.Versioning.OpenApi</code></td><td>Per-version documents that carry deprecation and sunset info</td></tr>
+    <tr><td><b>Schema registry serdes</b></td><td><code>Confluent.SchemaRegistry.Serdes.Avro</code> / <code>.Protobuf</code> / <code>.Json</code></td><td>Register and check schemas when producing; resolve them when consuming</td></tr>
+    <tr><td><b>Consumer-driven contracts</b></td><td><code>PactNet</code></td><td>Consumers write pacts; provider CI verifies them before deploy</td></tr>
+  </table>
+<pre class="code"><code>builder.Services.AddApiVersioning(o =&gt;
+{
+    o.ReportApiVersions = true;   // api-supported-versions / api-deprecated-versions
+    o.ApiVersionReader = new UrlSegmentApiVersionReader();
+    o.Policies.Sunset(1.0)        // adds Sunset + Link headers to v1 responses
+        .Effective(new DateTimeOffset(2027, 6, 30, 23, 59, 59, TimeSpan.Zero))
+        .Link("https://developer.example.com/payments/v1-retirement")
+            .Title("Payments v1 retirement")
+            .Type("text/html");
+});
+
+var app = builder.Build();
+var payments = app.NewVersionedApi("Payments");
+
+var v1 = payments.MapGroup("/v{version:apiVersion}/payments")
+                 .HasDeprecatedApiVersion(1.0);
+v1.MapGet("/{id}", (string id) =&gt; Results.Ok(new { id, amount = 10.50m }));
+
+var v2 = payments.MapGroup("/v{version:apiVersion}/payments")
+                 .HasApiVersion(2.0);
+v2.MapGet("/{id}", (string id) =&gt;
+    Results.Ok(new { id, amount = new { value = 10.50m, currency = "AUD" } }));</code></pre>
+</div>
+  <div class="post">
+    <p>Most API versions are self-inflicted 🩹</p>
+    <p>➕ Additive changes plus tolerant readers avoid most breaking changes</p>
+    <p>↔️ Expand / contract: add the new field, move consumers, then remove the old one</p>
+    <p>📜 Consumer-driven contracts catch breaks before deploy, not after</p>
+    <p>🧬 Events: know your schema registry mode. BACKWARD = upgrade consumers first, FORWARD = producers first</p>
+    <p>🌅 Retire with standard headers: Deprecation (RFC 9745) and Sunset (RFC 8594)</p>
+    <p>How long do you keep an old API version alive after the replacement ships?</p>
+    <p>#APIDesign #SchemaRegistry #Kafka #APIVersioning #dotnet</p>
+  </div>
+</section>
+
+<!-- FRONT-END & EDGE -->
+<section class="concept" id="frontend">
+  <h2><span class="num">24.7</span> Front-end &amp; edge architecture <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Choose where the HTML is built (browser, server, build time or a mix), put a BFF and a gateway between clients and services, push cacheable work to the edge, and design mobile apps to keep working offline.</p>
+  <h3>Rendering options</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Option</th><th>HTML built</th><th>Good for</th><th>Watch out</th></tr>
+    <tr><td><b>SPA</b> (client-side)</td><td>In the browser, from JS</td><td>App-like, logged-in screens</td><td>Big bundles, slow first load, SEO</td></tr>
+    <tr><td><b>SSR</b></td><td>On the server, per request</td><td>Fast first paint, personalised pages</td><td>Server cost, hydration cost</td></tr>
+    <tr><td><b>SSG</b></td><td>At build time</td><td>Marketing pages, docs, rates tables</td><td>Rebuild on every content change</td></tr>
+    <tr><td><b>Islands</b></td><td>Static page + small interactive parts</td><td>Content pages with a few widgets</td><td>Needs a framework that supports it</td></tr>
+  </table></div>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Where does the page come from?","interval":2600,
+ "frames":[
+  {"label":"SPA","caption":"<b>SPA</b>: the CDN serves an empty shell and a JS bundle. The browser builds the page and calls APIs.","rows":[
+   [{"t":"Browser","sub":"builds HTML","c":"blue","big":true},{"k":"arrow","g":"←","t":"JS bundle"},{"t":"CDN","c":"teal"}],
+   [{"t":"Browser","c":"blue"},{"k":"arrow","g":"⇄","t":"JSON"},{"t":"BFF / APIs","c":"purple"}]]},
+  {"label":"SSR","caption":"<b>SSR</b>: the server builds HTML per request, then the browser hydrates it to make it interactive.","rows":[
+   [{"t":"Browser","c":"blue"},{"k":"arrow","g":"←","t":"full HTML"},{"t":"Web server","sub":"builds HTML","c":"purple","big":true},{"k":"arrow","g":"⇄"},{"t":"APIs","c":"slate"}]]},
+  {"label":"SSG","caption":"<b>SSG</b>: pages are built once at build time and served from the CDN. Fastest and cheapest.","rows":[
+   [{"t":"Build pipeline","sub":"builds HTML","c":"green","big":true},{"k":"arrow","g":"→","t":"deploy"},{"t":"CDN","c":"teal"},{"k":"arrow","g":"→","t":"static HTML"},{"t":"Browser","c":"blue"}]]},
+  {"label":"Islands","caption":"<b>Islands</b>: mostly static HTML, with only a few components hydrated, such as a loan calculator.","ms":3200,"rows":[
+   [{"t":"Static header","c":"off"},{"t":"Loan calculator","sub":"interactive island","c":"amber","big":true},{"t":"Static content","c":"off"},{"t":"Rates widget","sub":"island","c":"amber"}]]}
+ ]}
+</script></figure>
+  <div class="grid">
+    <div class="box purple"><h4>🎯 BFF</h4><p>One backend per client experience (web, mobile). It aggregates calls and keeps tokens on the server, with only a secure cookie in the browser. See <a href="11-architecture-patterns.html#ms-patterns">11.4</a>.</p></div>
+    <div class="box blue"><h4>🧩 Micro-frontends</h4><p>Teams own and release slices of one UI. Composed at build time, at run time (module federation, web components) or at the edge. Worth it with many teams and real release friction; not with one or two teams.</p></div>
+    <div class="box teal"><h4>🚪 Gateway at the edge</h4><p>WAF, DDoS protection, rate limits and token checks before traffic reaches your network. See <a href="09-apim.html#patterns">09.8</a>.</p></div>
+    <div class="box green"><h4>🌍 CDN &amp; edge compute</h4><p>Cache static files and cacheable GETs. Small edge functions handle redirects, geo rules, A/B tests and header checks. See <a href="05-caching.html#cdn">05.6</a>.</p></div>
+  </div>
+  <h3>Mobile offline-first sync</h3>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Offline edits sync later, with conflict handling","stepMs":1000,
+ "actors":["App UI","Local DB","Sync queue","Sync API"],
+ "steps":[
+  {"from":0,"to":1,"t":"save edit locally","c":"blue"},
+  {"from":1,"to":2,"t":"enqueue change + idempotency key","c":"purple"},
+  {"note":"offline: UI shows the change as \"pending\"","over":[0,2],"c":"amber"},
+  {"from":2,"to":3,"t":"push queued changes when online","c":"green"},
+  {"from":3,"to":2,"t":"409 conflict on 1 record","c":"red","dash":true},
+  {"from":2,"to":0,"t":"resolve: merge or ask the user","c":"red"},
+  {"from":3,"to":1,"t":"pull delta since last sync token","c":"teal","dash":true}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>Conflict strategy</th><th>How</th><th>Fits</th></tr>
+    <tr><td><b>Last writer wins</b></td><td>Newest timestamp or version wins</td><td>Settings, low-value data. Can lose edits</td></tr>
+    <tr><td><b>Field-level merge</b></td><td>Merge fields changed on different sides</td><td>Profiles, forms</td></tr>
+    <tr><td><b>Server decides / ask user</b></td><td>Reject with 409; show both versions</td><td>Anything with money or legal meaning</td></tr>
+    <tr><td><b>CRDTs</b></td><td>Data types that always merge cleanly</td><td>Collaborative notes and lists</td></tr>
+  </table></div>
+  <p class="tip">Banking: never execute a payment offline. Queue the <b>intent</b>, show it as pending, and confirm it online with an idempotency key (<a href="08-api-design.html#idempotency">08.7</a>).</p>
+  <div class="remember"><ul>
+    <li>Pick rendering per page type, not per app: SSG for content, SSR or SPA for logged-in screens.</li>
+    <li>BFF keeps tokens out of the browser and lets each channel change at its own pace.</li>
+    <li>Micro-frontends solve a team-scaling problem, not a technical one. They cost performance and consistency.</li>
+    <li>Offline-first = local DB + sync queue + idempotency + a conflict rule per entity.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Blazor render modes</b></td><td><span class="pill builtin">built-in</span> Blazor Web App (.NET 8+)</td><td>Static SSR, Interactive Server (SignalR circuit), Interactive WebAssembly, Interactive Auto (server first, then WebAssembly). Per page or component</td></tr>
+    <tr><td><b>BFF proxy</b></td><td><code>Yarp.ReverseProxy</code>; <code>Duende.BFF</code> <span class="pill lic">commercial licence</span></td><td>Cookie session in the browser, tokens on the server, proxy to APIs</td></tr>
+    <tr><td><b>Real-time updates</b></td><td><span class="pill builtin">built-in</span> SignalR; <code>Microsoft.Azure.SignalR</code> to scale out</td><td>Push status changes (payment settled) to web and mobile clients</td></tr>
+    <tr><td><b>Offline sync (MAUI)</b></td><td><code>CommunityToolkit.Datasync.Client</code> + <code>.Server</code></td><td>Local SQLite store, queued changes, delta pull, conflict detection</td></tr>
+  </table>
+<pre class="code"><code>builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents()
+    .AddInteractiveWebAssemblyComponents();
+
+var app = builder.Build();
+app.MapRazorComponents&lt;App&gt;()
+    .AddInteractiveServerRenderMode()
+    .AddInteractiveWebAssemblyRenderMode()
+    .AddAdditionalAssemblies(typeof(Client._Imports).Assembly);
+
+// In a component: static SSR by default, opt in per page
+// @rendermode InteractiveAuto</code></pre>
+  <p class="warn">"Blazor United" was only the early code name. The product is the Blazor Web App template with render modes.</p>
+</div>
+  <div class="post">
+    <p>SPA, SSR, SSG or islands? Wrong question: pick per page 🖥️</p>
+    <p>📄 Content and rates pages → SSG on a CDN</p>
+    <p>🔐 Logged-in banking screens → SSR or SPA behind a BFF that keeps tokens server-side</p>
+    <p>🧩 Micro-frontends → only when many teams fight over one release train</p>
+    <p>🌍 Edge → WAF, rate limits, caching and small functions before traffic reaches you</p>
+    <p>📱 Mobile → local DB, sync queue, idempotency keys, a conflict rule per entity</p>
+    <p>Where does your app build its HTML today, and would you choose that again?</p>
+    <p>#FrontendArchitecture #BFF #MicroFrontends #Blazor #OfflineFirst</p>
+  </div>
+</section>
+
+<!-- REFERENCE ARCHITECTURES & KATAS -->
+<section class="concept" id="katas">
+  <h2><span class="num">24.8</span> Reference architectures &amp; architecture katas <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Reference architectures give you a proven starting point; architecture katas give you practice. Start from a published design, then rehearse requirements, characteristics and trade-offs against the clock.</p>
+  <h3>Where to find reference architectures</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Source</th><th>What you get</th></tr>
+    <tr><td><b>Azure Architecture Center</b></td><td>Reference architectures, design patterns, Well-Architected guidance</td></tr>
+    <tr><td><b>AWS Architecture Center + Prescriptive Guidance</b></td><td>Reference designs, migration and modernisation guides, step-by-step patterns</td></tr>
+    <tr><td><b>Google Cloud Architecture Center</b></td><td>Reference architectures, design guides, framework best practices</td></tr>
+  </table></div>
+  <div class="cols2">
+    <div class="box green"><h4>✅ Use them well</h4><ul><li>Check the date and the services it assumes.</li><li>Map it against your NFRs and regulatory needs (residency, resilience).</li><li>Swap in your identity, network and logging standards.</li><li>Record every deviation in an ADR.</li></ul></div>
+    <div class="box red"><h4>❌ Common mistakes</h4><ul><li>Copying the diagram without the reasoning.</li><li>Ignoring cost: samples often show the premium tier.</li><li>Assuming "reference" means "approved" in your organisation.</li></ul></div>
+  </div>
+  <h3>Architecture katas</h3>
+  <p>Created by <b>Ted Neward</b>: a short brief from a fictional client, a small team, a fixed time box, then a presentation and critique. Like a coding kata, the point is repetition: you get better at trade-offs by making many of them.</p>
+<figure class="viz" data-viz="lanes"><script type="application/json">
+{"title":"A 60-minute kata (minutes)","max":60,"labelW":150,"dur":6000,
+ "rows":[
+  {"label":"Read & clarify","blocks":[{"s":0,"e":5,"t":"brief","c":"slate"}]},
+  {"label":"Requirements","blocks":[{"s":5,"e":15,"t":"scope, scale","c":"blue"}]},
+  {"label":"Characteristics","blocks":[{"s":15,"e":22,"t":"top 3","c":"purple"}]},
+  {"label":"Components","blocks":[{"s":22,"e":40,"t":"diagram + data flow","c":"teal"}]},
+  {"label":"Trade-offs & risks","blocks":[{"s":40,"e":50,"t":"gave up?","c":"amber"}]},
+  {"label":"ADR & pitch","blocks":[{"s":50,"e":60,"t":"3-min pitch","c":"green"}]}
+ ],
+ "markers":[{"at":22,"t":"Freeze the top 3","c":"purple"},{"at":50,"t":"Pens down","c":"red"}],
+ "ticks":[{"at":0,"t":"0"},{"at":15,"t":"15"},{"at":30,"t":"30"},{"at":45,"t":"45"},{"at":60,"t":"60"}]}
+</script></figure>
+  <div class="cols2">
+    <div class="box blue"><h4>🧑 Solo</h4><ul><li>Set a 45-minute timer. Speak your reasoning out loud, as in an interview.</li><li>Write the top three characteristics before drawing anything.</li><li>Finish with one ADR and a list of risks.</li><li>Next day, redo it with a different top three and compare.</li></ul></div>
+    <div class="box purple"><h4>👥 Team</h4><ul><li>Groups of 3–5, same brief, 45–60 minutes.</li><li>Each team pitches for 3 minutes; others play the client and challenge.</li><li>Score on reasoning and trade-offs, not on boxes and arrows.</li><li>Rotate the "client" role each session.</li></ul></div>
+  </div>
+  <p>Kata prompts for banking and payments are in <a href="25-interview-readiness.html">Section 25</a>; the interview framework is in <a href="18-system-design-playbook.html#framework">18.2</a>.</p>
+  <div class="remember"><ul>
+    <li>A reference architecture is where your design starts, not where it ends.</li>
+    <li>In a kata the diagram matters least. The characteristics you picked and what you gave up matter most.</li>
+    <li>Always end with an ADR: decision, options, consequences.</li>
+  </ul></div>
+  <div class="post">
+    <p>Architects rarely get to practise. Katas fix that 🥋</p>
+    <p>📄 Take a short brief from a fictional client</p>
+    <p>🎯 Pick the top 3 characteristics before drawing a single box</p>
+    <p>🧱 Sketch components and data flow in 20 minutes</p>
+    <p>⚖️ Name what you gave up, then write one ADR</p>
+    <p>🏛️ Start from a reference architecture, but record every deviation</p>
+    <p>One kata a week does more for interview performance than another certificate. When did you last design something against the clock?</p>
+    <p>#ArchitectureKatas #SolutionArchitecture #SystemDesign #InterviewPrep</p>
+  </div>
+</section>
+
+<div class="qa-wrap">
+  <h2>⚡ Quick-fire Q&amp;A</h2>
+  <details class="qa"><summary>What is a business capability, and how is it different from a process?</summary><p>A capability is <b>what</b> the business does (e.g. "Payment initiation"), described independently of people, process and systems. A process is <b>how</b> it's done, step by step, and changes far more often. Capability maps stay stable for years, so they're a good anchor for heat maps, portfolios and roadmaps.</p></details>
+  <details class="qa"><summary>Explain the TIME model.</summary><p>Gartner's portfolio rationalisation model plots each application on business value and technical fit. Tolerate (low value, good fit): keep it running cheaply. Invest (high, high): enhance it. Migrate (high value, poor fit): modernise or move it. Eliminate (low, low): retire or consolidate.</p></details>
+  <details class="qa"><summary>Sensitivity point vs trade-off point?</summary><p>A sensitivity point is a decision that strongly affects <b>one</b> quality attribute, e.g. partition count and throughput. A trade-off point affects <b>two or more</b> attributes in opposite directions, e.g. synchronous cross-region replication improves RPO but worsens latency. Both come out of ATAM-style reviews and belong in ADRs.</p></details>
+  <details class="qa"><summary>Which migration strategy would you choose for a large data-centre exit?</summary><p>Mostly rehost, relocate and replatform, plus retire for anything unused. AWS advises against refactoring during a large migration because it mixes two risky projects. Move first, stabilise, then modernise the workloads that justify it. Retain anything blocked by compliance or dependencies, with a review date.</p></details>
+  <details class="qa"><summary>How would you move a capability off a mainframe safely?</summary><p>Put an API facade in front, stream changes out with CDC, build the new service behind the facade and run it in shadow mode while the mainframe stays master. Reconcile daily (counts, totals, field diffs) through at least one month-end, switch by segment with a fast route back, and only then retire the mainframe code.</p></details>
+  <details class="qa"><summary>What is the inverse Conway manoeuvre?</summary><p>Conway's law says systems mirror the communication structure of the organisation. The inverse manoeuvre uses that on purpose: design the team structure (e.g. long-lived stream-aligned teams per domain) so the architecture you want, such as independent services, emerges naturally.</p></details>
+  <details class="qa"><summary>Schema registry: BACKWARD vs FORWARD, which side do you upgrade first?</summary><p>BACKWARD (Confluent's default) means the new schema can read old data, so upgrade <b>consumers</b> first. FORWARD means old schemas can read new data, so upgrade <b>producers</b> first. FULL allows either order. The TRANSITIVE variants check against every earlier version, which matters for topics with long retention or replay.</p></details>
+  <details class="qa"><summary>When are micro-frontends worth it?</summary><p>When several teams work on one large web app and the shared release train really slows them down. They add cost: duplicated dependencies, slower pages, harder UI consistency, and they need a shared design system. With one or two teams, a well-structured modular front-end is simpler.</p></details>
+</div>
+
+<div class="pager"><a href="23-software-design-coding.html">← 23 · Software Design &amp; Coding</a><a class="next" href="25-interview-readiness.html">25 · Interview Readiness →</a></div>
+</main>
+<footer>Tech Concepts Prep · Section 24</footer>
+<script src="assets/menu-data.js"></script>
+<script src="assets/menu.js"></script>
+<script src="assets/app.js"></script>
+<script src="assets/viz.js"></script>
+</body>
+</html>

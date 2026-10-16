@@ -347,3 +347,9 @@ body.side-open .side-toggle { display: none; }
 }
 /* long package names and code in tables wrap instead of widening the table (any screen size) */
 td code, th code { overflow-wrap: anywhere; }
+
+/* diagrams keep readable labels at every width: scroll inside their own box only when they don't fit */
+figure.viz, .svgwrap { overflow-x: auto; }
+.viz-svg, .svgwrap svg { min-width: var(--minw, 0); }
+figure.viz.scrollx::after, .svgwrap.scrollx::after { content: "\2190  swipe or scroll to see the whole diagram  \2192"; display: block;
+  position: sticky; left: 0; text-align: center; font-size: 11.5px; color: var(--muted); margin-top: 6px; }

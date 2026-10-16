@@ -16,7 +16,7 @@
   <p>Your list, put in a logical order (each section builds on the previous one) and extended with the concepts that usually come up alongside it. Every concept has a <b>one-line definition</b>, <b>how it works</b>, a <b>visual</b>, <b>points to remember</b>, and many have a ready-to-copy <b>LinkedIn post idea</b>. Every technical concept also has a <b>.NET 10 "How to implement it"</b> box listing the libraries to use, with a short C# snippet where it helps.</p>
   <div class="toc">
     <a href="#path">Learning path</a>
-    <a href="#sections">All 21 sections</a>
+    <a href="#sections">All 25 sections</a>
     <a href="#linkedin">LinkedIn content kit</a>
     <a href="#plan">Posting plan</a>
   </div>
@@ -36,6 +36,9 @@
   </div>
   <div class="flow">
     <div class="n t">16 Banking &amp; Payments</div><div class="ar">→</div><div class="n t">17 Architecture Docs</div><div class="ar">→</div><div class="n fill">18 E2E Playbook</div><div class="ar">→</div><div class="n fill">19 Case Studies</div><div class="ar">→</div><div class="n fill">20 .NET Use Cases</div><div class="ar">→</div><div class="n s">21 Cloud Cheat Sheet</div>
+  </div>
+  <div class="flow">
+    <div class="n a">22 .NET Deep Dive</div><div class="ar">→</div><div class="n a">23 Design &amp; Coding</div><div class="ar">→</div><div class="n p">24 Architecture Practice</div><div class="ar">→</div><div class="n fill">25 Interview Readiness</div>
   </div>
 <div class="tip">Green items in the cards below (marked ＋) are concepts added to your original list to fill gaps in system design, integration and end-to-end coverage.</div>
 </section>
@@ -79,7 +82,7 @@
       <li class="added">＋ AuthN vs AuthZ</li><li>IAM</li><li class="added">＋ SSO: SAML vs OAuth vs OIDC</li><li>Symmetric vs Asymmetric keys</li><li class="added">＋ Hashing vs Encryption vs Encoding vs Tokenisation</li><li class="added">＋ TLS, mTLS &amp; PKI</li><li class="added">＋ Secrets &amp; key management</li><li class="added">＋ Zero Trust</li><li class="added">＋ OWASP API Top 10</li><li class="added">＋ DevSecOps &amp; supply chain</li></ul></a>
 
     <a class="sec-card" href="13-devops-deployment-observability.html"><div class="sn">SECTION 13</div><h3>DevOps, Deployment &amp; Observability</h3><ul>
-      <li class="added">＋ CI/CD</li><li class="added">＋ Testing strategy</li><li>Deployment strategies</li><li class="added">＋ Feature flags</li><li class="added">＋ IaC &amp; GitOps</li><li class="added">＋ Containers &amp; Kubernetes</li><li class="added">＋ Observability</li><li class="added">＋ Logging</li><li class="added">＋ Metrics</li><li class="added">＋ Alerting</li><li class="added">＋ Incident management</li></ul></a>
+      <li class="added">＋ CI/CD</li><li class="added">＋ Branching &amp; code review</li><li class="added">＋ Testing strategy</li><li class="added">＋ Versioning &amp; releases</li><li>Deployment strategies</li><li class="added">＋ Feature flags</li><li class="added">＋ IaC &amp; GitOps</li><li class="added">＋ Containers &amp; Kubernetes</li><li class="added">＋ Observability</li><li class="added">＋ Logging</li><li class="added">＋ Metrics</li><li class="added">＋ Alerting</li><li class="added">＋ Incident management</li><li class="added">＋ SRE practices</li><li class="added">＋ DORA metrics</li></ul></a>
 
     <a class="sec-card" href="14-rag-genai.html"><div class="sn">SECTION 14</div><h3>RAG &amp; GenAI</h3><ul>
       <li class="added">＋ LLM basics</li><li class="added">＋ Prompt engineering</li><li class="added">＋ Prompting vs RAG vs fine-tuning</li><li>RAG overview</li><li>Chunking</li><li>Embedding</li><li>Vector search</li><li>Top-K retrieval</li><li>Metadata filtering</li><li>Hybrid search</li><li>Ranking &amp; re-ranking</li><li>Query transformation</li><li>RAG Fusion</li><li>RAG evaluation</li><li class="added">＋ Advanced RAG patterns</li><li class="added">＋ Failure points &amp; fixes</li><li class="added">＋ LLMOps &amp; GenAI platform</li><li class="added">＋ Responsible AI</li></ul></a>
@@ -105,6 +108,18 @@
     <a class="sec-card" href="21-cloud-cheat-sheet.html"><div class="sn">SECTION 21 · REFERENCE</div><h3>Cloud Cheat Sheet: Azure vs AWS vs GCP</h3><ul>
       <li class="added">＋ How to read this</li><li class="added">＋ Compute</li><li class="added">＋ Containers &amp; Kubernetes</li><li class="added">＋ Storage</li><li class="added">＋ Networking &amp; edge</li><li class="added">＋ Databases</li><li class="added">＋ Analytics &amp; data integration</li><li class="added">＋ Messaging &amp; events</li><li class="added">＋ AI &amp; ML</li><li class="added">＋ Identity &amp; security</li><li class="added">＋ Monitoring &amp; IaC</li><li class="added">＋ DevOps</li><li class="added">＋ Choosing a cloud</li></ul></a>
 
+    <a class="sec-card" href="22-dotnet-engineering-deep-dive.html"><div class="sn">SECTION 22</div><h3>.NET Engineering Deep Dive</h3><ul>
+      <li class="added">＋ CLR, JIT &amp; memory</li><li class="added">＋ Garbage collection</li><li class="added">＋ async/await internals</li><li class="added">＋ Thread pool</li><li class="added">＋ DI lifetimes</li><li class="added">＋ Request pipeline</li><li class="added">＋ HttpClient</li><li class="added">＋ EF Core performance</li><li class="added">＋ High-performance .NET</li><li class="added">＋ Orleans actors</li></ul></a>
+
+    <a class="sec-card" href="23-software-design-coding.html"><div class="sn">SECTION 23</div><h3>Software Design &amp; Coding Fundamentals</h3><ul>
+      <li class="added">＋ Design principles</li><li class="added">＋ SOLID</li><li class="added">＋ Creational patterns</li><li class="added">＋ Structural patterns</li><li class="added">＋ Behavioural patterns</li><li class="added">＋ Anti-patterns &amp; smells</li><li class="added">＋ Clean code &amp; review</li><li class="added">＋ Big-O &amp; collections</li><li class="added">＋ Coding interview patterns</li></ul></a>
+
+    <a class="sec-card" href="24-architecture-practice.html"><div class="sn">SECTION 24</div><h3>Architecture Practice</h3><ul>
+      <li class="added">＋ EA toolkit</li><li class="added">＋ Quality attributes &amp; trade-offs</li><li class="added">＋ Cloud migration (7 Rs)</li><li class="added">＋ Legacy &amp; mainframe modernisation</li><li class="added">＋ Team &amp; org architecture</li><li class="added">＋ API &amp; event evolution</li><li class="added">＋ Front-end &amp; edge</li><li class="added">＋ Reference architectures &amp; katas</li></ul></a>
+
+    <a class="sec-card" href="25-interview-readiness.html"><div class="sn">SECTION 25 · INTERVIEW</div><h3>Interview Readiness</h3><ul>
+      <li class="added">＋ How the loop works</li><li class="added">＋ STAR(R) method</li><li class="added">＋ Behavioural bank</li><li class="added">＋ Technical deep dive</li><li class="added">＋ Architecture katas</li><li class="added">＋ Presenting a case</li><li class="added">＋ Questions &amp; checklist</li></ul></a>
+
   </div>
 </section>
 
@@ -127,7 +142,7 @@
 </section>
 
 <section class="concept" id="plan">
-  <h2>🗓 Suggested posting plan (3 posts a week ≈ 15 weeks)</h2>
+  <h2>🗓 Suggested posting plan (3 posts a week ≈ 17 weeks)</h2>
   <p class="oneliner">One concept per post, in roughly the same order as the sections.</p>
   <div class="tablewrap"><table>
     <tr><th>Week</th><th>Mon</th><th>Wed</th><th>Fri</th></tr>
@@ -145,7 +160,9 @@
     <tr><td>12</td><td>Raft consensus in 5 bullets</td><td>Distributed locks need fencing tokens</td><td>UUID v7 vs Snowflake IDs</td></tr>
     <tr><td>13</td><td>Bloom filters: "definitely not"</td><td>Data classification drives every control</td><td>Multi-tenancy: silo vs pool vs bridge</td></tr>
     <tr><td>14</td><td>Back-pressure: say "slow down"</td><td>Test pyramid &amp; contract tests</td><td>SBOMs &amp; supply chain security</td></tr>
-    <tr><td>15</td><td>NPP vs PayTo vs BECS</td><td>Prompting vs RAG vs fine-tuning</td><td>Design a URL shortener in 45 minutes</td></tr>  </table></div>
+    <tr><td>15</td><td>NPP vs PayTo vs BECS</td><td>Prompting vs RAG vs fine-tuning</td><td>Design a URL shortener in 45 minutes</td></tr>
+    <tr><td>16</td><td>async/await: what really happens</td><td>DI lifetimes &amp; captive dependencies</td><td>SOLID in 5 bullets</td></tr>
+    <tr><td>17</td><td>Team Topologies &amp; Conway's law</td><td>The 7 Rs of cloud migration</td><td>STAR answers for architects</td></tr>  </table></div>
 </section>
 
 </main>

@@ -16,7 +16,9 @@
   <p>Getting code from a laptop to production safely and often, and knowing what it's doing once it's there through logging, metrics, tracing and alerting.</p>
   <div class="toc">
     <a href="#cicd" class="added">CI/CD</a>
+    <a href="#branching" class="added">Branching &amp; code review</a>
     <a href="#testing" class="added">Testing strategy</a>
+    <a href="#releases" class="added">Versioning &amp; releases</a>
     <a href="#deploy">Deployment strategies</a>
     <a href="#flags" class="added">Feature flags</a>
     <a href="#iac" class="added">IaC &amp; GitOps</a>
@@ -26,6 +28,8 @@
     <a href="#metrics" class="added">Metrics</a>
     <a href="#alerting" class="added">Alerting</a>
     <a href="#incident" class="added">Incident management</a>
+    <a href="#sre" class="added">SRE practices</a>
+    <a href="#dora" class="added">DORA metrics</a>
   </div>
 </header>
 
@@ -46,7 +50,7 @@
     <li><b>Continuous delivery</b> = a manual approval before prod. <b>Continuous deployment</b> = fully automatic.</li>
     <li>Build once, deploy the <b>same artifact</b> to every environment. Only the config changes.</li>
     <li><b>DevSecOps / shift-left</b>: security scans run in the pipeline, not after go-live.</li>
-    <li><b>DORA metrics</b>: deployment frequency, lead time for changes, change failure rate, time to restore service.</li>
+    <li><b>DORA metrics</b>: deployment frequency, change lead time, change fail rate, failed deployment recovery time, and (since 2024) deployment rework rate. See <a href="#dora">13.15</a>.</li>
     <li>Tools: Azure DevOps, GitHub Actions, GitLab CI, Jenkins.</li>
   </ul></div>
 <div class="dotnet">
@@ -69,9 +73,134 @@ dotnet publish src/Orders.Api -c Release /t:PublishContainer \
 </div>
   </section>
 
+<!-- BRANCHING -->
+<section class="concept" id="branching">
+  <h2><span class="num">13.2</span> Source control, branching &amp; code review <span class="tag-added">Added</span></h2>
+  <p class="oneliner">How a team shares one codebase: where changes live, how they get reviewed, and how they get back into <b>main</b> quickly and safely.</p>
+  <h3>Three branching models</h3>
+  <div class="grid">
+    <div class="box purple"><h4>🏷️ GitFlow</h4><p>Long-lived <b>main</b> and <b>develop</b>, plus feature, release and hotfix branches. Fits versioned products with several supported releases (SDKs, installed software). Heavy for web services: its author added a 2020 note recommending simpler flows for continuously delivered apps.</p></div>
+    <div class="box blue"><h4>🔀 GitHub flow</h4><p><b>main</b> is always deployable. Short branch → pull request → review and checks → merge → deploy. A simple, good default for most teams.</p></div>
+    <div class="box green"><h4>🌳 Trunk-based</h4><p>Everyone integrates into trunk at least daily, directly or through branches that live hours, at most a day or two. Unfinished work hides behind <a href="#flags">feature flags</a>. This is the model CI/CD assumes.</p></div>
+  </div>
+<figure class="viz" data-viz="lanes"><script type="application/json">
+{"title":"The same two weeks of work under each model","max":10,"labelW":175,"width":800,"rowH":32,"axis":"time (working days) →","dur":6000,
+ "rows":[
+  {"label":"GitFlow · feature","blocks":[{"s":0,"e":7,"t":"feature/payees: 7 days","c":"amber"}]},
+  {"label":"GitFlow · develop","blocks":[{"s":0,"e":10,"t":"develop (integration branch)","c":"purple"}]},
+  {"label":"GitFlow · release","blocks":[{"s":7,"e":9.2,"t":"release/2.3","c":"red"}]},
+  {"label":"GitFlow · main","blocks":[{"s":9.2,"e":10,"t":"v2.3","c":"green"}]},
+  {"label":"GitHub flow · PRs","blocks":[{"s":0,"e":1.6,"t":"PR","c":"blue"},{"s":2,"e":3.4,"t":"PR","c":"blue"},{"s":4.2,"e":5.8,"t":"PR","c":"blue"},{"s":6.3,"e":7.6,"t":"PR","c":"blue"},{"s":8.2,"e":9.6,"t":"PR","c":"blue"}]},
+  {"label":"GitHub flow · deploys","blocks":[{"s":1.6,"e":1.9,"c":"green"},{"s":3.4,"e":3.7,"c":"green"},{"s":5.8,"e":6.1,"c":"green"},{"s":7.6,"e":7.9,"c":"green"},{"s":9.6,"e":9.9,"c":"green"}]},
+  {"label":"Trunk · tiny PRs","blocks":[{"s":0,"e":0.3,"h":0.7,"c":"teal"},{"s":0.6,"e":0.9,"h":0.7,"c":"teal"},{"s":1.2,"e":1.5,"h":0.7,"c":"teal"},{"s":2,"e":2.3,"h":0.7,"c":"teal"},{"s":2.6,"e":2.9,"h":0.7,"c":"teal"},{"s":3.3,"e":3.6,"h":0.7,"c":"teal"},{"s":4,"e":4.3,"h":0.7,"c":"teal"},{"s":4.6,"e":4.9,"h":0.7,"c":"teal"},{"s":5.3,"e":5.6,"h":0.7,"c":"teal"},{"s":6,"e":6.3,"h":0.7,"c":"teal"},{"s":6.7,"e":7,"h":0.7,"c":"teal"},{"s":7.4,"e":7.7,"h":0.7,"c":"teal"},{"s":8,"e":8.3,"h":0.7,"c":"teal"},{"s":8.7,"e":9,"h":0.7,"c":"teal"},{"s":9.4,"e":9.7,"h":0.7,"c":"teal"}]},
+  {"label":"Trunk · main","blocks":[{"s":0,"e":10,"t":"always releasable · flags hide unfinished work · deploy any time","c":"green"}]}
+ ],
+ "spans":[{"s":0,"e":7,"t":"long-lived branch → one big, late merge","c":"red"}],
+ "ticks":[{"at":0,"t":"0"},{"at":2,"t":"2"},{"at":4,"t":"4"},{"at":6,"t":"6"},{"at":8,"t":"8"},{"at":10,"t":"10"}]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>Model</th><th>Long-lived branches</th><th>Branch life</th><th>Release from</th><th>Best for</th></tr>
+    <tr><td><b>GitFlow</b></td><td>main, develop (+ release, hotfix)</td><td>Days to weeks</td><td>Release branch, tagged on main</td><td>Products with several supported versions</td></tr>
+    <tr><td><b>GitHub flow</b></td><td>main only</td><td>Hours to a few days</td><td>main, after each merge</td><td>Web apps and APIs with one live version</td></tr>
+    <tr><td><b>Trunk-based</b></td><td>trunk only</td><td>Hours (1–2 days max)</td><td>Trunk, or a short release branch cut from it</td><td>CI/CD and frequent deploys</td></tr>
+  </table></div>
+  <p class="tip"><b>Why trunk-based + feature flags suits CI/CD:</b> "continuous integration" means merging with everyone else's code at least daily. A branch that lives two weeks isn't integrated, so conflicts and surprises pile up at the end. Flags split <b>deploy</b> from <b>release</b>, so unfinished code can merge safely. DORA lists trunk-based development as a capability linked to better delivery performance.</p>
+
+  <h3>Pull requests &amp; code review</h3>
+  <div class="cols2">
+    <div class="box green"><h4>🔍 What reviewers look for</h4><ul>
+      <li><b>Correctness</b>: edge cases, error paths, concurrency</li>
+      <li><b>Design</b>: does it fit? Is there a simpler way?</li>
+      <li><b>Tests</b> that prove the behaviour, not just coverage</li>
+      <li><b>Security</b>: input validation, authorisation, no secrets</li>
+      <li><b>Operability</b>: logs, metrics, flags, safe DB migrations</li>
+      <li><b>Readability</b>: names, comments that explain why</li>
+    </ul></div>
+    <div class="box amber"><h4>🤝 Etiquette</h4><ul>
+      <li>Review the code, not the person. Ask questions, don't command</li>
+      <li>Label optional comments as <code>nit:</code> so blockers stand out</li>
+      <li>Approve when it improves the codebase, not when it's perfect</li>
+      <li>Author: small PR, a clear description (why, how tested), self-review first</li>
+      <li>Respond within <b>one business day</b> at most (Google's guidance)</li>
+    </ul></div>
+  </div>
+  <div class="grid">
+    <div class="box blue"><h4>📏 PR size</h4><p>Small PRs get faster, better reviews. Google's guide: ~100 lines is usually reasonable, 1,000 is usually too large. Split refactoring from behaviour changes.</p></div>
+    <div class="box purple"><h4>⏱️ Review SLA</h4><p>Agree a first-response target (hours, not days). Waiting for review is often the biggest part of lead time (<a href="#dora">13.15</a>).</p></div>
+    <div class="box teal"><h4>👥 Pairing &amp; mob</h4><p>Review happens while the code is written. It can replace async PR review where policy allows. Regulated teams may still need a recorded second approver.</p></div>
+    <div class="box"><h4>🤖 Automate the boring bits</h4><p>Formatting, linting, tests and security scans run as required checks. Humans review logic and design.</p></div>
+  </div>
+
+  <h3>Commits, protected branches &amp; ownership</h3>
+  <p><b>Conventional Commits</b> (spec 1.0.0): a typed, machine-readable message. Tools use it to pick the next version and write the changelog (<a href="#releases">13.4</a>).</p>
+<pre class="code"><code>fix(transfers): reject negative amounts           → PATCH
+feat(payments): add PayTo mandate status endpoint → MINOR
+feat(api)!: remove v1 /accounts route             → MAJOR
+
+BREAKING CHANGE: clients must call /v2/accounts
+# other types: docs, test, refactor, perf, build, ci, chore</code></pre>
+  <div class="tablewrap"><table>
+    <tr><th>Control</th><th>What it does</th></tr>
+    <tr><td><b>Protected branch</b></td><td>No direct pushes, force-pushes or deletes on main. GitHub: rulesets / branch protection. Azure Repos: branch policies</td></tr>
+    <tr><td><b>Required checks</b></td><td>Build, tests, lint and security scans must pass before merge</td></tr>
+    <tr><td><b>Required reviews</b></td><td>1–2 approvals. Dismiss stale approvals when new commits arrive</td></tr>
+    <tr><td><b>CODEOWNERS</b></td><td>Auto-requests the owning team for matching paths, e.g. <code>/infra/</code> → platform team</td></tr>
+    <tr><td><b>Merge queue</b></td><td>Tests each PR on top of the latest main before merging, so main stays green</td></tr>
+    <tr><td><b>Signed commits</b></td><td>Proves who made a change. Part of supply chain security (<a href="12-security-iam.html#devsecops">12.10</a>)</td></tr>
+  </table></div>
+  <div class="cols2">
+    <div class="box"><h4>📦 Monorepo</h4><ul>
+      <li>✅ Atomic changes across services, one toolchain, easy refactoring</li>
+      <li>✅ Shared code without publishing packages</li>
+      <li>❌ Needs builds that only test what changed (path filters, Nx, Bazel)</li>
+      <li>❌ Big clones. CODEOWNERS becomes essential</li>
+    </ul></div>
+    <div class="box"><h4>🗂️ Polyrepo</h4><ul>
+      <li>✅ Clear ownership, permissions and pipelines per service</li>
+      <li>✅ Small, fast repos</li>
+      <li>❌ Cross-repo changes need versioned packages and coordination</li>
+      <li>❌ Duplicated pipeline config, dependency drift</li>
+    </ul></div>
+  </div>
+  <div class="remember"><ul>
+    <li>Integrate small changes at least daily. Long-lived branches are merge pain you've postponed.</li>
+    <li>Trunk-based + feature flags: deploy any time, release when ready.</li>
+    <li>Small PRs, quick reviews. Automate style so humans review logic.</li>
+    <li>Protect main with required checks, required reviews and CODEOWNERS.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Format check</b></td><td><span class="pill builtin">built-in</span> <code>dotnet format --verify-no-changes</code></td><td>A required PR check: fails if code doesn't match <code>.editorconfig</code></td></tr>
+    <tr><td><b>Analyzers as gates</b></td><td><span class="pill builtin">built-in</span> <code>TreatWarningsAsErrors</code>, <code>EnforceCodeStyleInBuild</code>, <code>AnalysisLevel</code></td><td>One rule set for every project via <code>Directory.Build.props</code>. Warnings block the merge</td></tr>
+    <tr><td><b>Central package versions</b></td><td><span class="pill builtin">built-in</span> <code>Directory.Packages.props</code></td><td>One place for NuGet versions in a monorepo, so dependency PRs are small and clear</td></tr>
+  </table>
+<pre class="code"><code>&lt;!-- Directory.Build.props at the repo root: applies to every project --&gt;
+&lt;Project&gt;
+  &lt;PropertyGroup&gt;
+    &lt;Nullable&gt;enable&lt;/Nullable&gt;
+    &lt;TreatWarningsAsErrors&gt;true&lt;/TreatWarningsAsErrors&gt;
+    &lt;EnforceCodeStyleInBuild&gt;true&lt;/EnforceCodeStyleInBuild&gt;
+    &lt;AnalysisLevel&gt;latest-recommended&lt;/AnalysisLevel&gt;
+  &lt;/PropertyGroup&gt;
+&lt;/Project&gt;</code></pre>
+</div>
+  <div class="post">
+    <p>Long-lived branches are merge conflicts you haven't met yet 🌿</p>
+    <p>🌳 Trunk-based: integrate at least daily, hide unfinished work behind flags</p>
+    <p>🔀 GitHub flow: short branch → PR → checks → merge → deploy</p>
+    <p>🏷️ GitFlow: still fine for products with several supported versions</p>
+    <p>🔍 Small PRs get better reviews. Reply within a business day</p>
+    <p>🛡️ Protect main: required checks, CODEOWNERS, a merge queue</p>
+    <p>How long does your average branch live?</p>
+    <p>#DevOps #Git #CodeReview #CICD #SoftwareEngineering</p>
+  </div>
+</section>
+
 <!-- TESTING -->
 <section class="concept" id="testing">
-  <h2><span class="num">13.2</span> Testing strategy <span class="tag-added">Added</span></h2>
+  <h2><span class="num">13.3</span> Testing strategy <span class="tag-added">Added</span></h2>
   <p class="oneliner">Many fast, cheap tests at the bottom, a few slow, realistic ones at the top, and some checks that only make sense in production.</p>
 <div class="svgwrap">
 <svg viewBox="0 0 880 330" width="880" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, sans-serif" role="img" aria-label="Test pyramid, built from the bottom up: many unit tests at the base, then integration tests, then contract tests, and a handful of end-to-end tests at the top. Higher layers are slower, costlier and more realistic.">
@@ -219,9 +348,122 @@ public sealed class PaymentsApiTests : IAsyncLifetime
   </div>
 </section>
 
+<!-- RELEASES -->
+<section class="concept" id="releases">
+  <h2><span class="num">13.4</span> Versioning &amp; release management <span class="tag-added">Added</span></h2>
+  <p class="oneliner">A version number is a <b>promise about compatibility</b>. Release management decides how a tested artifact gets that number, its release notes, and its path to production.</p>
+  <h3>Semantic Versioning (SemVer 2.0.0)</h3>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"interval":2400,"frames":[
+ {"label":"Start","caption":"Current release: <b>1.4.2</b>","rows":[[{"k":"text","t":"last release tag: <code>v1.4.2</code>"}],[{"k":"arrow","g":"↓"}],[{"t":"1","sub":"MAJOR","c":"slate","w":90},{"t":"4","sub":"MINOR","c":"slate","w":90},{"t":"2","sub":"PATCH","c":"slate","w":90}]]},
+ {"label":"fix","caption":"Bug fix, same API → <b>PATCH</b>: 1.4.3","rows":[[{"k":"text","t":"<code>fix: reject negative amounts</code>"}],[{"k":"arrow","g":"↓","t":"nothing breaks"}],[{"t":"1","sub":"MAJOR","c":"slate","w":90},{"t":"4","sub":"MINOR","c":"slate","w":90},{"t":"3","sub":"PATCH +1","c":"green","w":90}]]},
+ {"label":"feat","caption":"New backward-compatible feature → <b>MINOR</b>: 1.5.0 (patch resets to 0)","rows":[[{"k":"text","t":"<code>feat: add mandate status endpoint</code>"}],[{"k":"arrow","g":"↓","t":"old clients still work"}],[{"t":"1","sub":"MAJOR","c":"slate","w":90},{"t":"5","sub":"MINOR +1","c":"blue","w":90},{"t":"0","sub":"PATCH","c":"off","w":90}]]},
+ {"label":"feat!","caption":"Breaking change → <b>MAJOR</b>: 2.0.0. Consumers must choose to upgrade","ms":3000,"rows":[[{"k":"text","t":"<code>feat!: remove v1 /accounts</code>"}],[{"k":"arrow","g":"↓","t":"old clients break"}],[{"t":"2","sub":"MAJOR +1","c":"red","w":90},{"t":"0","sub":"MINOR","c":"off","w":90},{"t":"0","sub":"PATCH","c":"off","w":90}]]}
+]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>Part</th><th>Change it when</th><th>Example</th></tr>
+    <tr><td><b>MAJOR</b></td><td>Consumers could break (removed member, changed contract)</td><td>1.4.2 → 2.0.0</td></tr>
+    <tr><td><b>MINOR</b></td><td>New feature, backward compatible</td><td>1.4.2 → 1.5.0</td></tr>
+    <tr><td><b>PATCH</b></td><td>Bug fix, backward compatible</td><td>1.4.2 → 1.4.3</td></tr>
+    <tr><td><b>Pre-release</b></td><td>Not stable yet. Sorts before the final release</td><td>2.0.0-beta.1</td></tr>
+    <tr><td><b>Build metadata</b></td><td>Information only. Ignored when comparing versions</td><td>2.0.0+5114f85</td></tr>
+  </table></div>
+  <div class="cols2">
+    <div class="box blue"><h4>📦 Libraries &amp; NuGet packages</h4><ul>
+      <li>NuGet fully supports SemVer 2.0 (pre-release labels, build metadata).</li>
+      <li>NuGet picks the <b>lowest</b> version that satisfies a range, so bump honestly.</li>
+      <li><code>0.y.z</code> means "no stability promise yet".</li>
+      <li>Catch accidental breaking changes in the build with package validation (below).</li>
+    </ul></div>
+    <div class="box purple"><h4>🌐 HTTP APIs</h4><ul>
+      <li>Usually expose only the MAJOR: <code>/v1</code>, <code>/v2</code> (styles in <a href="08-api-design.html#rest">8.2</a>).</li>
+      <li>Within a major, changes must be additive: new optional fields, new endpoints.</li>
+      <li>Publish a deprecation date and use the <code>Sunset</code> header before removing a version.</li>
+      <li>Contract tests catch breaking changes before release (<a href="#testing">13.3</a>).</li>
+    </ul></div>
+  </div>
+
+  <h3>Release trains vs continuous delivery</h3>
+  <div class="cols2">
+    <div class="box amber"><h4>🚂 Release train</h4><p>A fixed cadence (fortnightly, monthly, quarterly). Whatever is ready catches the train. ✅ Predictable for the business, change boards, app stores and multi-team releases. ❌ Big batches, waiting, more risk per release.</p></div>
+    <div class="box green"><h4>🔁 Continuous delivery</h4><p>Every merged change can go to production on its own, often behind a flag. ✅ Small risk per change, fast feedback. ❌ Needs strong test automation, observability and rollback.</p></div>
+  </div>
+  <p class="tip">Many banks run both: continuous delivery for internal services and APIs, and a train for mobile app releases and core banking changes.</p>
+
+  <h3>Build once, promote the same artifact</h3>
+  <div class="flow">
+    <div class="n">Merge to main</div><div class="ar">→</div>
+    <div class="n p">CI builds 1.8.0<small>image digest + signature + SBOM</small></div><div class="ar">→</div>
+    <div class="n a">Registry / feed<small>immutable</small></div><div class="ar">→</div>
+    <div class="n">Dev → Test → Pre-prod<small>same digest, different config</small></div><div class="ar">→</div>
+    <div class="n g">Prod<small>after the approval gate</small></div>
+  </div>
+  <ul>
+    <li><b>Artifact immutability</b>: a published version never changes. Never rebuild or overwrite 1.8.0; ship 1.8.1. nuget.org won't accept the same version twice (you can only unlist).</li>
+    <li>Deploy containers by <b>digest</b> (<code>@sha256:…</code>), not a moving tag like <code>latest</code>.</li>
+    <li><b>Environment promotion</b> moves the artifact you tested, never a fresh build. Config and secrets come from each environment (<a href="#cicd">13.1</a>).</li>
+    <li>Keep provenance: who built it, from which commit, signed and with an SBOM (<a href="12-security-iam.html#devsecops">12.10</a>).</li>
+  </ul>
+
+  <h3>Changelogs &amp; release notes</h3>
+  <div class="cols2">
+    <div class="box"><h4>📜 Changelog (for developers)</h4><p>Every notable change per version, grouped as Added, Changed, Deprecated, Removed, Fixed, Security ("Keep a Changelog" style). Lives in the repo.</p></div>
+    <div class="box"><h4>📣 Release notes (for users)</h4><p>What changed for <i>them</i>: new features, migration steps for breaking changes, known issues. Written for the audience, not a list of commits.</p></div>
+  </div>
+  <p class="tip"><b>Automate it:</b> Conventional Commits (<a href="#branching">13.2</a>) let tools such as release-please or semantic-release work out the next version, write the changelog and create the release. In .NET, MinVer, Nerdbank.GitVersioning or GitVersion stamp the version into the build.</p>
+  <div class="remember"><ul>
+    <li>A breaking change means a new MAJOR. No exceptions, even for "tiny" ones.</li>
+    <li>Published artifacts are immutable. Promote the same one, by digest, through every environment.</li>
+    <li>Derive versions and changelogs from git (tags, commit messages), not by hand.</li>
+    <li>Release trains trade speed for predictability. Continuous delivery trades process for automation.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Version from git tags</b></td><td><code>MinVer</code></td><td>Tag <code>v1.5.0</code> → version 1.5.0. Commits after the tag get a pre-release version. Minimal config</td></tr>
+    <tr><td><b>Version from a file</b></td><td><code>Nerdbank.GitVersioning</code></td><td><code>version.json</code> holds major.minor; git height adds the patch. Hosted in the <code>dotnet</code> GitHub org</td></tr>
+    <tr><td><b>Version from branch rules</b></td><td><code>GitVersion.MsBuild</code> (or the <code>GitVersion.Tool</code> CLI)</td><td>Calculates SemVer from branches, tags and commit messages. Fits GitFlow-style repos</td></tr>
+    <tr><td><b>Pack &amp; publish</b></td><td><span class="pill builtin">built-in</span> <code>dotnet pack</code>, <code>dotnet nuget push</code></td><td>Build the <code>.nupkg</code> (plus <code>.snupkg</code> symbols) and push it to nuget.org, Azure Artifacts or GitHub Packages</td></tr>
+    <tr><td><b>Source Link &amp; deterministic builds</b></td><td><span class="pill builtin">built-in</span> Source Link (SDK 8+), <code>ContinuousIntegrationBuild</code></td><td>Debuggers can step into the exact commit's source. The same source gives the same binary</td></tr>
+    <tr><td><b>Package validation</b></td><td><span class="pill builtin">built-in</span> <code>EnablePackageValidation</code> + <code>PackageValidationBaselineVersion</code></td><td><code>dotnet pack</code> fails on a breaking API change against the last released version</td></tr>
+  </table>
+<pre class="code"><code>&lt;!-- library .csproj (or Directory.Build.props) --&gt;
+&lt;PropertyGroup&gt;
+  &lt;MinVerTagPrefix&gt;v&lt;/MinVerTagPrefix&gt;             &lt;!-- tag v1.5.0 =&gt; 1.5.0 --&gt;
+  &lt;EnablePackageValidation&gt;true&lt;/EnablePackageValidation&gt;
+  &lt;PackageValidationBaselineVersion&gt;1.4.0&lt;/PackageValidationBaselineVersion&gt;
+  &lt;IncludeSymbols&gt;true&lt;/IncludeSymbols&gt;
+  &lt;SymbolPackageFormat&gt;snupkg&lt;/SymbolPackageFormat&gt;
+&lt;/PropertyGroup&gt;
+&lt;PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'"&gt;
+  &lt;ContinuousIntegrationBuild&gt;true&lt;/ContinuousIntegrationBuild&gt;
+&lt;/PropertyGroup&gt;
+&lt;ItemGroup&gt;
+  &lt;PackageReference Include="MinVer" Version="8.0.0" PrivateAssets="all" /&gt;
+&lt;/ItemGroup&gt;
+
+# pipeline, after tagging the release commit with v1.5.0
+dotnet pack -c Release -o out
+dotnet nuget push "out/*.nupkg" -s https://api.nuget.org/v3/index.json -k $NUGET_KEY</code></pre>
+  <p class="warn">Git-based versioning needs tags and history. A shallow CI clone gives wrong versions: use <code>fetch-depth: 0</code> in <code>actions/checkout</code>. Only set <code>ContinuousIntegrationBuild</code> on CI, or local debugging can't find your source files.</p>
+</div>
+  <div class="post">
+    <p>1.4.2 → 2.0.0 is a promise, not a vibe 🏷️</p>
+    <p>🔢 MAJOR = breaking, MINOR = new feature, PATCH = fix</p>
+    <p>🧊 Never overwrite a published version. Ship 1.4.3 instead</p>
+    <p>📦 Build once, then promote the same artifact by digest</p>
+    <p>🤖 Let git tags and Conventional Commits pick the version and write the changelog</p>
+    <p>🚂 Release train or continuous delivery? Predictability vs small batches</p>
+    <p>When did a "minor" update last break your build?</p>
+    <p>#SemVer #ReleaseManagement #DevOps #dotnet #NuGet</p>
+  </div>
+</section>
+
 <!-- DEPLOYMENT -->
 <section class="concept" id="deploy">
-  <h2><span class="num">13.3</span> Deployment strategies</h2>
+  <h2><span class="num">13.5</span> Deployment strategies</h2>
   <p class="oneliner">Ways to release a new version that trade off <b>downtime, risk, cost and rollback speed</b>.</p>
   <div class="grid wide">
     <div class="box red"><h4>1. Recreate (big bang)</h4>
@@ -323,10 +565,10 @@ public sealed class PaymentsApiTests : IAsyncLifetime
 
 <!-- FLAGS -->
 <section class="concept" id="flags">
-  <h2><span class="num">13.4</span> Feature flags (toggles) <span class="tag-added">Added</span></h2>
+  <h2><span class="num">13.6</span> Feature flags (toggles) <span class="tag-added">Added</span></h2>
   <p class="oneliner">Ship code turned off, then turn it on for chosen users without redeploying. <b>Deploy ≠ release.</b></p>
   <div class="grid">
-    <div class="box"><h4>Release toggle</h4><p>Hide unfinished features. Enables trunk-based development.</p></div>
+    <div class="box"><h4>Release toggle</h4><p>Hide unfinished features. Enables trunk-based development (<a href="#branching">13.2</a>).</p></div>
     <div class="box"><h4>Experiment toggle</h4><p>A/B tests.</p></div>
     <div class="box"><h4>Ops toggle / kill switch</h4><p>Turn off a feature that's causing trouble.</p></div>
     <div class="box"><h4>Permission toggle</h4><p>Premium or beta users only.</p></div>
@@ -357,7 +599,7 @@ app.MapGet("/checkout", async (IFeatureManager features) =&gt;
 
 <!-- IAC -->
 <section class="concept" id="iac">
-  <h2><span class="num">13.5</span> Infrastructure as Code &amp; GitOps <span class="tag-added">Added</span></h2>
+  <h2><span class="num">13.7</span> Infrastructure as Code &amp; GitOps <span class="tag-added">Added</span></h2>
   <p class="oneliner">Define infrastructure in versioned code files. The tool makes reality match the code.</p>
   <div class="flow"><div class="n">Code (Bicep / Terraform)</div><div class="ar">→</div><div class="n p">PR + plan / what-if</div><div class="ar">→</div><div class="n a">Approve</div><div class="ar">→</div><div class="n g">Apply → cloud matches code</div></div>
   <ul>
@@ -390,7 +632,7 @@ builder.Build().Run();
 
 <!-- K8S -->
 <section class="concept" id="k8s">
-  <h2><span class="num">13.6</span> Containers &amp; Kubernetes <span class="tag-added">Added</span></h2>
+  <h2><span class="num">13.8</span> Containers &amp; Kubernetes <span class="tag-added">Added</span></h2>
   <p class="oneliner">A container packages an app with its dependencies. Kubernetes runs many containers across many machines: it schedules, heals, scales and connects them.</p>
   <h3>VM vs container</h3>
 <div class="svgwrap">
@@ -624,7 +866,7 @@ app.MapHealthChecks("/health/ready", new() { Predicate = r =&gt; r.Tags.Contains
 
 <!-- OBSERVABILITY -->
 <section class="concept" id="observability">
-  <h2><span class="num">13.7</span> Observability <span class="tag-added">Added</span></h2>
+  <h2><span class="num">13.9</span> Observability <span class="tag-added">Added</span></h2>
   <p class="oneliner"><b>Monitoring</b> tells you <i>that</i> something is wrong. <b>Observability</b> lets you ask <i>why</i>, from the telemetry the system emits.</p>
   <div class="grid">
     <div class="box blue"><h4>📜 Logs</h4><p>Timestamped events. Make them <b>structured</b> (JSON) and include a correlation ID. Never log secrets or PII.</p></div>
@@ -683,7 +925,7 @@ activity?.SetTag("order.channel", "web");</code></pre>
 
 <!-- LOGGING -->
 <section class="concept" id="logging">
-  <h2><span class="num">13.8</span> Logging <span class="tag-added">Added</span></h2>
+  <h2><span class="num">13.10</span> Logging <span class="tag-added">Added</span></h2>
   <p class="oneliner">A log is a timestamped record of something that happened. Logs explain <b>why</b> something went wrong, and they're only useful if you can search and correlate them.</p>
   <div class="flow">
     <div class="n">App / API / Function<small>emits structured logs</small></div><div class="ar">→</div>
@@ -761,7 +1003,7 @@ using (logger.BeginScope(new Dictionary&lt;string, object&gt; { ["CorrelationId"
 
 <!-- METRICS -->
 <section class="concept" id="metrics">
-  <h2><span class="num">13.9</span> Metrics <span class="tag-added">Added</span></h2>
+  <h2><span class="num">13.11</span> Metrics <span class="tag-added">Added</span></h2>
   <p class="oneliner">Metrics are numbers measured over time. They're cheap to store, fast to query, and ideal for dashboards, trends and alerts. They tell you <b>that</b> something is wrong.</p>
 
   <h3>Metric types</h3>
@@ -835,7 +1077,7 @@ using (logger.BeginScope(new Dictionary&lt;string, object&gt; { ["CorrelationId"
 
 <!-- ALERTING -->
 <section class="concept" id="alerting">
-  <h2><span class="num">13.10</span> Alerting <span class="tag-added">Added</span></h2>
+  <h2><span class="num">13.12</span> Alerting <span class="tag-added">Added</span></h2>
   <p class="oneliner">An alert should page a human only when something <b>needs action now</b>. Every page should be urgent, actionable and tied to user impact.</p>
   <div class="flow">
     <div class="n">Metrics / logs / traces</div><div class="ar">→</div>
@@ -921,10 +1163,10 @@ using (logger.BeginScope(new Dictionary&lt;string, object&gt; { ["CorrelationId"
 
 <!-- INCIDENT -->
 <section class="concept" id="incident">
-  <h2><span class="num">13.11</span> Incident management <span class="tag-added">Added</span></h2>
+  <h2><span class="num">13.13</span> Incident management <span class="tag-added">Added</span></h2>
   <p class="oneliner">How a team detects, responds to and learns from production incidents.</p>
   <div class="flow"><div class="n r">Detect<small>alert</small></div><div class="ar">→</div><div class="n a">Triage<small>severity P1–P4</small></div><div class="ar">→</div><div class="n p">Mitigate<small>rollback, failover, runbook</small></div><div class="ar">→</div><div class="n g">Resolve</div><div class="ar">→</div><div class="n">Blameless post-incident review<small>actions</small></div></div>
-  <ul><li><b>MTTD</b> (time to detect), <b>MTTR</b> (time to restore), <b>MTBF</b> (time between failures).</li><li>Mitigate first (restore service), find the root cause second.</li></ul>
+  <ul><li><b>MTTD</b> (time to detect), <b>MTTR</b> (time to restore), <b>MTBF</b> (time between failures).</li><li>Mitigate first (restore service), find the root cause second.</li><li>Postmortem template and on-call health: <a href="#sre">13.14</a>. Change-caused incidents feed DORA's change fail rate and recovery time: <a href="#dora">13.15</a>.</li></ul>
 <div class="dotnet">
   <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
   <table>
@@ -936,6 +1178,244 @@ using (logger.BeginScope(new Dictionary&lt;string, object&gt; { ["CorrelationId"
 </div>
   </section>
 
+<!-- SRE -->
+<section class="concept" id="sre">
+  <h2><span class="num">13.14</span> SRE practices <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Site Reliability Engineering runs operations as a software problem: agree how reliable a service must be, spend the leftover risk on purpose, and automate the repetitive work away.</p>
+  <p class="tip">SLI vs SLO vs SLA and the error-budget maths are in <a href="03-scalability-reliability.html#sla">3.10</a>. Burn-rate alerts are in <a href="#alerting">13.12</a>. This section covers the team practices around them.</p>
+
+  <h3>Error budget policy</h3>
+  <p>A written agreement, signed off by product and engineering <b>before</b> anything goes wrong, saying what happens as the budget runs down.</p>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"interval":2400,"frames":[
+ {"label":"Healthy","caption":"Plenty of budget left: ship features at full speed","rows":[[{"t":"80%","sub":"error budget left","c":"green","big":true,"w":170}],[{"k":"arrow","g":"↓"}],[{"t":"Ship features","c":"green","w":150},{"t":"Normal canaries","c":"green","w":150}]]},
+ {"label":"Burning","caption":"Budget burning fast: slow down and reduce risk","rows":[[{"t":"30%","sub":"error budget left","c":"amber","big":true,"w":170}],[{"k":"arrow","g":"↓"}],[{"t":"Smaller batches","c":"amber","w":150},{"t":"Extra review for risky changes","c":"amber","w":150}]]},
+ {"label":"Exhausted","caption":"Budget gone: freeze features, fix reliability","ms":3000,"rows":[[{"t":"0%","sub":"error budget left","c":"red","big":true,"w":170}],[{"k":"arrow","g":"↓"}],[{"t":"Feature freeze","c":"red","w":150},{"t":"Only reliability and security fixes","c":"red","w":150}]]},
+ {"label":"Recovered","caption":"Back within the SLO for the window: resume feature work","rows":[[{"t":"100%","sub":"new 30-day window","c":"green","big":true,"w":170}],[{"k":"arrow","g":"↓"}],[{"t":"Resume features","c":"green","w":150},{"t":"Postmortem actions done","c":"blue","w":150}]]}
+]}
+</script></figure>
+  <ul>
+    <li>Define thresholds and actions, who decides, and the exceptions (security patches, legal deadlines).</li>
+    <li>Name an escalation path for disagreements (e.g. head of engineering).</li>
+    <li>If the budget is always untouched, the SLO may be too loose, or you could take more risk. If it's always gone, renegotiate the SLO or invest in reliability.</li>
+  </ul>
+
+  <h3>Toil and the 50% rule</h3>
+  <div class="grid">
+    <div class="box amber"><h4>🔁 What toil is</h4><p>Manual, repetitive, automatable work with no lasting value that grows with the service. E.g. restarting a stuck job, renewing certificates by hand, re-running failed batches.</p></div>
+    <div class="box blue"><h4>⚖️ The 50% cap</h4><p>Google SRE caps operational work at 50% of each engineer's time. The rest goes to engineering that removes toil or improves reliability. Over the cap? Hand work back to the dev team.</p></div>
+    <div class="box green"><h4>🛠️ Reduce it</h4><p>Measure it (tickets, pages, hours). Automate the most frequent task first, offer self-service, fix the root cause, delete useless alerts.</p></div>
+  </div>
+
+  <h3>On-call health</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Practice</th><th>Why</th></tr>
+    <tr><td><b>Big enough rotation</b></td><td>Google SRE: at least 8 people for a single-site 24×7 primary + secondary rota, or 6 per site with follow-the-sun</td></tr>
+    <tr><td><b>Page only on symptoms</b></td><td>Users hurting or the SLO burning (<a href="#alerting">13.12</a>). Causes go to dashboards and tickets</td></tr>
+    <tr><td><b>Runbook on every page</b></td><td>The responder knows the first steps at 3 a.m.</td></tr>
+    <tr><td><b>Cap the load</b></td><td>Google aims for at most 2 incidents per 12-hour shift. More means fix the system, not hire heroes</td></tr>
+    <tr><td><b>Written handover</b></td><td>At each rotation change: open incidents, silenced alerts, risky changes in flight</td></tr>
+    <tr><td><b>Recovery &amp; review</b></td><td>Time off after a bad night. Review pages per week and false positives every month</td></tr>
+  </table></div>
+
+  <h3>Blameless postmortems</h3>
+<figure class="viz" data-viz="journey"><script type="application/json">
+{"stepMs":1100,"steps":[
+ {"icon":"📝","t":"Summary","d":"One paragraph: what happened and how it was fixed"},
+ {"icon":"👥","t":"Impact","d":"Who was affected, for how long, how many failed payments, SLO budget used"},
+ {"icon":"⏱️","t":"Timeline","d":"UTC timestamps: trigger, detection, key decisions, mitigation, resolution"},
+ {"icon":"🧩","t":"Contributing factors","d":"Usually several: a change, a missing alert, a confusing runbook. Not one person"},
+ {"icon":"🍀","t":"What went well, badly, and where we got lucky","d":"Luck is a hidden risk worth fixing"},
+ {"icon":"✅","t":"Action items","d":"Each with an owner, a priority and a due date, tracked as tickets","c":"green"}
+]}
+</script></figure>
+  <ul>
+    <li><b>Blameless</b>: assume people acted sensibly with what they knew. Fix the system, not the person. Blame makes people hide information.</li>
+    <li><b>Triggers</b>: any Sev 1/2, data loss, a big error-budget burn, or an incident that monitoring missed.</li>
+    <li>Share postmortems widely and review open action items regularly. An unfinished action item is a repeat incident waiting to happen.</li>
+  </ul>
+
+  <h3>Production readiness review (PRR)</h3>
+  <p>A checklist a service passes before it goes live or before SRE takes on its pager.</p>
+  <div class="grid">
+    <div class="box blue"><h4>📈 Observability</h4><p>SLIs and SLOs defined, dashboards, alerts with runbooks, distributed tracing.</p></div>
+    <div class="box green"><h4>🛡️ Resilience</h4><p>Timeouts, retries, circuit breakers (<a href="03-scalability-reliability.html#resilience">3.6</a>), load tested, DR tested (<a href="03-scalability-reliability.html#dr">3.13</a>).</p></div>
+    <div class="box purple"><h4>🚀 Deploy &amp; rollback</h4><p>Safe deployment strategy, flags, a tested rollback, backward-compatible DB migrations.</p></div>
+    <div class="box amber"><h4>🔐 Security &amp; capacity</h4><p>Threat model, secrets in a vault, capacity plan with headroom.</p></div>
+    <div class="box teal"><h4>📟 Ownership</h4><p>On-call rota, escalation contacts, support docs, dependencies listed.</p></div>
+  </div>
+
+  <h3>Game days</h3>
+  <p>Planned exercises that inject a real failure (zone outage, slow dependency, expired certificate) while the on-call team responds as if it were live. They test runbooks, alerts and people, not just code. Chaos principles and tools are in <a href="#testing">13.3</a>.</p>
+  <div class="remember"><ul>
+    <li>SLOs and error budgets turn "features vs reliability" into an agreed, data-driven rule.</li>
+    <li>Agree the error budget policy in advance, not in the middle of an incident.</li>
+    <li>Keep toil under 50%. Automate the most frequent manual task first.</li>
+    <li>Page on symptoms with a runbook. Write blameless postmortems with owned action items.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>SLIs</b></td><td><span class="pill builtin">built-in</span> <code>http.server.request.duration</code> + <code>System.Diagnostics.Metrics</code></td><td>Request success and latency for free; custom good/total counters for business SLIs (code in <a href="03-scalability-reliability.html#sla">3.10</a>)</td></tr>
+    <tr><td><b>Histogram buckets</b></td><td><code>OpenTelemetry.Extensions.Hosting</code> (<code>AddView</code>)</td><td>Put a bucket edge exactly at the SLO threshold</td></tr>
+    <tr><td><b>Readiness for PRR</b></td><td><span class="pill builtin">built-in</span> <code>AddHealthChecks</code> / <code>MapHealthChecks</code></td><td>Liveness and readiness probes (<a href="#k8s">13.8</a>)</td></tr>
+    <tr><td><b>Toil automation</b></td><td><span class="pill builtin">built-in</span> <code>BackgroundService</code> (Worker template); <code>Azure.ResourceManager</code></td><td>Turn manual runbook steps into scheduled, logged, tested jobs</td></tr>
+    <tr><td><b>Game days in code</b></td><td><code>Polly.Core</code> chaos strategies</td><td>Inject faults and latency on purpose (<a href="#testing">13.3</a>)</td></tr>
+  </table>
+<pre class="code"><code>// SLO: 99% of requests faster than 300 ms, so 0.3 s must be a bucket edge
+builder.Services.AddOpenTelemetry().WithMetrics(m =&gt; m
+    .AddAspNetCoreInstrumentation()
+    .AddView("http.server.request.duration",
+        new ExplicitBucketHistogramConfiguration
+        {
+            Boundaries = [0.05, 0.1, 0.3, 0.5, 1, 2.5, 5]
+        }));
+// SLI = requests with duration &lt;= 0.3 s / all requests, over 30 days (PromQL / KQL)</code></pre>
+  <p class="warn">If no bucket edge sits on the SLO threshold, the backend has to interpolate, and your "under 300 ms" SLI is only an estimate.</p>
+</div>
+  <div class="post">
+    <p>Reliability is a feature with a budget 💰</p>
+    <p>🎯 Agree an SLO with the business. "100% uptime" isn't a target</p>
+    <p>📉 Budget left? Ship. Budget gone? Freeze features, fix reliability</p>
+    <p>🔁 Toil over half the week? Automate before taking on more</p>
+    <p>📟 Page only when users hurt, and always with a runbook</p>
+    <p>📝 Blameless postmortems: fix the system, not the person</p>
+    <p>What does your team do when the error budget runs out?</p>
+    <p>#SRE #Reliability #OnCall #DevOps #Observability</p>
+  </div>
+</section>
+
+<!-- DORA -->
+<section class="concept" id="dora">
+  <h2><span class="num">13.15</span> DORA metrics &amp; engineering effectiveness <span class="tag-added">Added</span></h2>
+  <p class="oneliner">DORA's research-backed metrics measure software delivery outcomes, <b>how fast and how safely</b> changes reach production, so teams can see whether their improvements work.</p>
+  <h3>The five metrics (DORA, 2024 onwards)</h3>
+  <div class="cols2">
+    <div class="box green"><h4>🚀 Throughput</h4><ul>
+      <li><b>Change lead time</b>: from commit to running in production.</li>
+      <li><b>Deployment frequency</b>: how often you deploy to production.</li>
+      <li><b>Failed deployment recovery time</b>: how long to recover from a deployment that needed immediate intervention. It replaced MTTR in 2023.</li>
+    </ul></div>
+    <div class="box red"><h4>💥 Instability</h4><ul>
+      <li><b>Change fail rate</b>: % of deployments that need immediate intervention (rollback or hotfix).</li>
+      <li><b>Deployment rework rate</b> (added 2024): % of deployments that are unplanned, made to fix a production incident.</li>
+    </ul></div>
+  </div>
+  <p class="tip">These are the original "four keys" plus rework rate. DORA keeps finding that speed and stability <b>aren't a trade-off</b>: top performers do well on all of them. The lever behind all five is <b>small batches</b>.</p>
+
+  <h3>Performance clusters</h3>
+  <div class="tablewrap"><table>
+    <tr><th>2024 cluster</th><th>Lead time</th><th>Deploy frequency</th><th>Change fail rate</th><th>Recovery time</th><th>Share</th></tr>
+    <tr><td><span class="pill g">Elite</span></td><td>&lt; 1 day</td><td>On demand (many a day)</td><td>5%</td><td>&lt; 1 hour</td><td>19%</td></tr>
+    <tr><td><span class="pill b">High</span></td><td>1 day – 1 week</td><td>Daily to weekly</td><td>20%</td><td>&lt; 1 day</td><td>22%</td></tr>
+    <tr><td><span class="pill a">Medium</span></td><td>1 week – 1 month</td><td>Weekly to monthly</td><td>10%</td><td>&lt; 1 day</td><td>35%</td></tr>
+    <tr><td><span class="pill r">Low</span></td><td>1 – 6 months</td><td>Monthly to 6-monthly</td><td>40%</td><td>1 week – 1 month</td><td>25%</td></tr>
+  </table></div>
+<figure class="viz" data-viz="bars"><script type="application/json">
+{"title":"2024 clusters: change fail rate (lower is better)","max":45,
+ "rows":[
+  {"label":"Elite","v":5,"show":"5%","c":"green"},
+  {"label":"High","v":20,"show":"20%","c":"amber","note":"faster than Medium, less stable"},
+  {"label":"Medium","v":10,"show":"10%","c":"teal","note":"slower, but more stable"},
+  {"label":"Low","v":40,"show":"40%","c":"red"}
+ ]}
+</script></figure>
+  <p class="tip"><b>Latest (2025 DORA report):</b> DORA dropped the single elite-to-low ladder. It now gives benchmarks per metric and describes <b>seven team archetypes</b>, from "Foundational challenges" to "Harmonious high-achievers", that also factor in well-being, friction and product performance. DORA's advice: aim for elite <i>improvement</i>, not an elite label.</p>
+
+  <h3>Measuring them from pipelines and incidents</h3>
+  <div class="flow">
+    <div class="n">Git<small>commit times, PRs</small></div><div class="ar">→</div>
+    <div class="n p">Pipeline<small>deploy events: service, version, SHA</small></div><div class="ar">→</div>
+    <div class="n r">Incident tool<small>incident ↔ deploy link</small></div><div class="ar">→</div>
+    <div class="n a">Metrics store</div><div class="ar">→</div>
+    <div class="n g">Team dashboard<small>trend per service</small></div>
+  </div>
+  <div class="tablewrap"><table>
+    <tr><th>Metric</th><th>Data source</th><th>Calculation</th></tr>
+    <tr><td><b>Deployment frequency</b></td><td>Production deploy events</td><td>Deploys per day or week, per service</td></tr>
+    <tr><td><b>Change lead time</b></td><td>Commit time + the deploy that shipped it</td><td>Median of deploy time − commit time</td></tr>
+    <tr><td><b>Change fail rate</b></td><td>Deploys linked to rollbacks, hotfixes or incidents</td><td>Failed deploys ÷ all deploys</td></tr>
+    <tr><td><b>Recovery time</b></td><td>Incident opened → resolved, for change-caused incidents</td><td>Median duration</td></tr>
+    <tr><td><b>Rework rate</b></td><td>Deploys tagged unplanned / hotfix</td><td>Unplanned deploys ÷ all deploys</td></tr>
+  </table></div>
+  <ul>
+    <li>Tag every deploy with service, version, commit SHA and environment. Link each incident to the change that caused it.</li>
+    <li>Measure one service at a time, use medians, and watch trends over months.</li>
+    <li>Start with a conversation or the free DORA Quick Check (dora.dev) before building a big data pipeline.</li>
+  </ul>
+
+  <h3>SPACE framework in brief</h3>
+  <p>Forsgren, Storey and others (2021): developer productivity can't be one number. Pick metrics from <b>at least three</b> of these dimensions, mixing surveys and system data.</p>
+  <div class="grid">
+    <div class="box green"><h4>😊 Satisfaction &amp; well-being</h4><p>Fulfilment, burnout, tooling happiness (surveys).</p></div>
+    <div class="box blue"><h4>🎯 Performance</h4><p>Outcomes: quality, reliability, customer impact.</p></div>
+    <div class="box amber"><h4>📊 Activity</h4><p>Counts of PRs, builds, deploys. Never use them alone.</p></div>
+    <div class="box purple"><h4>💬 Communication &amp; collaboration</h4><p>Review turnaround, knowledge sharing, onboarding time.</p></div>
+    <div class="box teal"><h4>🌊 Efficiency &amp; flow</h4><p>Uninterrupted focus time, handoffs, waiting time.</p></div>
+  </div>
+
+  <h3>Anti-patterns</h3>
+  <div class="cols2">
+    <div class="box red"><h4>❌ Don't</h4><ul>
+      <li><b>Rank or compare teams</b>, or use the metrics in individual performance reviews</li>
+      <li>Set them as targets from above (Goodhart's law: they get gamed)</li>
+      <li>Game them: split deploys, skip logging incidents, redefine "failure"</li>
+      <li>Track speed without stability, or count lines of code and commits</li>
+    </ul></div>
+    <div class="box green"><h4>✅ Do</h4><ul>
+      <li>Let the team own its metrics and discuss them in retros</li>
+      <li>Compare a team with its own past, not with other teams</li>
+      <li>Pair them with SLOs (<a href="#sre">13.14</a>) and well-being signals</li>
+      <li>Pick one improvement (smaller PRs, faster reviews) and watch the trend</li>
+    </ul></div>
+  </div>
+  <div class="remember"><ul>
+    <li>Five metrics: lead time, deployment frequency, recovery time (throughput); change fail rate, rework rate (instability).</li>
+    <li>Speed and stability move together. Small batches improve both.</li>
+    <li>Use them for team learning, never to rank teams or people.</li>
+    <li>2025: no more elite ladder. Per-metric benchmarks plus seven team archetypes.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Deployment metrics</b></td><td><span class="pill builtin">built-in</span> <code>System.Diagnostics.Metrics</code> + <code>OpenTelemetry.Exporter.OpenTelemetryProtocol</code></td><td>A counter for deployments and a histogram for lead time, tagged by service and result</td></tr>
+    <tr><td><b>GitHub data</b></td><td><code>Octokit</code></td><td>Deployments, workflow runs, pull requests and commits through the GitHub REST API</td></tr>
+    <tr><td><b>Azure DevOps data</b></td><td><code>Microsoft.TeamFoundationServer.Client</code></td><td>Builds, pipeline runs and work items. Latest stable is 20.256.x; newer builds are <span class="pill preview">preview</span></td></tr>
+    <tr><td><b>Incident data</b></td><td><code>HttpClient</code> + <code>Microsoft.Extensions.Http.Resilience</code></td><td>Call your incident tool's REST API and join incidents to deploys by change ID</td></tr>
+  </table>
+<pre class="code"><code>var meter = new Meter("Delivery");   // or IMeterFactory in a DI-based app
+var deploys = meter.CreateCounter&lt;long&gt;("delivery.deployments");
+var leadTime = meter.CreateHistogram&lt;double&gt;("delivery.change_lead_time", unit: "h");
+
+// the pipeline POSTs here after every production deployment
+app.MapPost("/deployments", (DeploymentEvent e) =&gt;
+{
+    var tags = new TagList { { "service", e.Service }, { "result", e.Result } };
+    deploys.Add(1, tags);
+    foreach (var committedAt in e.CommitTimes)
+        leadTime.Record((e.DeployedAt - committedAt).TotalHours, tags);
+    return Results.Accepted();
+});
+
+// add .AddMeter("Delivery") to OpenTelemetry. Change fail rate =
+// deployments{result="failed"} / deployments, calculated in the dashboard
+record DeploymentEvent(string Service, string Result, DateTimeOffset DeployedAt,
+    DateTimeOffset[] CommitTimes);</code></pre>
+</div>
+  <div class="post">
+    <p>Speed vs stability is a false choice 📊</p>
+    <p>🚀 Deployment frequency and lead time: how fast changes flow</p>
+    <p>🛟 Failed deployment recovery time: how fast you bounce back</p>
+    <p>💥 Change fail rate and rework rate: how often deploys hurt</p>
+    <p>📦 The lever behind all five: smaller batches</p>
+    <p>🚫 Never use them to rank teams. Goodhart's law wins every time</p>
+    <p>Which metric would move first if your PRs were half the size?</p>
+    <p>#DORA #DevOps #EngineeringMetrics #SRE #ContinuousDelivery</p>
+  </div>
+</section>
+
 <div class="qa-wrap">
   <h2>⚡ Quick-fire Q&amp;A</h2>
   <details class="qa"><summary>Blue-green vs canary?</summary><p>Blue-green switches all traffic at once between two full environments, with instant rollback and double cost. Canary shifts traffic gradually and validates on real users with a smaller blast radius, but needs strong monitoring.</p></details>
@@ -946,6 +1426,14 @@ using (logger.BeginScope(new Dictionary&lt;string, object&gt; { ["CorrelationId"
   <details class="qa"><summary>What should you alert on?</summary><p>User-facing symptoms: error rate, latency against the SLO (burn rate), failed synthetic journeys, missing heartbeats, and business KPIs dropping. Show causes like CPU or memory on dashboards, and ticket them rather than paging.</p></details>
   <details class="qa"><summary>Why are high-cardinality metric labels a problem?</summary><p>Each unique label combination is a separate time series. Labels like userId or paymentId create millions of series, which blow up memory, cost and query time. Put those IDs in logs and traces instead.</p></details>
   <details class="qa"><summary>How do you reduce alert fatigue?</summary><p>Page only on actionable symptoms, add duration windows, use multi-window burn-rate alerts, group and deduplicate, attach runbooks, and delete or downgrade alerts nobody acts on.</p></details>
+  <details class="qa"><summary>Trunk-based development vs GitFlow?</summary><p>GitFlow keeps long-lived develop and release branches. It suits versioned products with several supported releases, but merges arrive late and big. Trunk-based development merges small changes into trunk at least daily and hides unfinished work behind feature flags, which is what CI/CD needs. Most web teams use trunk-based or GitHub flow.</p></details>
+  <details class="qa"><summary>What makes a good pull request and code review?</summary><p>A small PR (around a few hundred lines at most) with a clear description of why and how it was tested. Automated checks cover style, tests and security, so reviewers focus on correctness, design, tests, security and operability. Reviews are kind, label nits as optional, and get a response within a business day.</p></details>
+  <details class="qa"><summary>How do you version a NuGet library or an API?</summary><p>SemVer: MAJOR for breaking changes, MINOR for backward-compatible features, PATCH for fixes. Derive the version from git (MinVer, Nerdbank.GitVersioning or GitVersion), turn on package validation to catch accidental breaks, and never overwrite a published version. HTTP APIs usually expose only the major (/v2) and keep changes within it additive.</p></details>
+  <details class="qa"><summary>Why build once and promote the same artifact?</summary><p>What reaches production is exactly what was tested. Rebuilding per environment can pull different dependencies or compiler output. Promote one immutable, signed artifact (by image digest) and only change config per environment.</p></details>
+  <details class="qa"><summary>What is an error budget policy?</summary><p>A pre-agreed rule between product and engineering about what happens as the error budget (100% − SLO) is used: ship normally while there's budget, slow down as it burns, freeze features and fix reliability when it's gone. Exceptions and escalation are written down in advance.</p></details>
+  <details class="qa"><summary>What goes into a blameless postmortem?</summary><p>Summary, impact, a timestamped timeline, contributing factors (not a person to blame), what went well, badly and where we got lucky, and action items with owners and due dates. The goal is to fix the system so the same failure can't recur.</p></details>
+  <details class="qa"><summary>What are the DORA metrics today?</summary><p>Five since 2024: change lead time, deployment frequency and failed deployment recovery time (throughput), plus change fail rate and deployment rework rate (instability). The 2025 report replaced the elite/high/medium/low clusters with per-metric benchmarks and seven team archetypes.</p></details>
+  <details class="qa"><summary>How can DORA metrics be misused?</summary><p>By ranking teams, tying them to individual performance reviews, or setting them as top-down targets. Teams then game them, for example by splitting deploys or not recording incidents. Use them for a team's own improvement over time, together with SLOs and well-being signals (SPACE).</p></details>
 </div>
 
 <div class="pager"><a href="12-security-iam.html">← 12 · Security &amp; IAM</a><a class="next" href="14-rag-genai.html">14 · RAG &amp; GenAI →</a></div>
