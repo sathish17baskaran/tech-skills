@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>28 · Engineering Manager Behavioural Questions | Tech Concepts Prep</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<nav class="top"><a href="27-solution-designer-behavioural-questions.html">← Solution Designer Questions</a><span class="here">28 · Engineering Manager Behavioural Questions</span><a href="index.html">🏠 Roadmap</a></nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">Section 28</div>
+  <h1>Engineering manager: behavioural questions</h1>
+  <p>These are 25 behavioural questions for engineering manager roles, covering technical direction, cloud, engineering practices, API and integration delivery, AI/GenAI adoption, people, delivery and culture. Each one has a full STAR(R) answer built on an unusual example, plus the psychology behind the question (what the interviewer is really testing) and the philosophy behind a strong answer, with the key words in bold.</p>
+  <div class="toc">
+    <a href="#howto" class="added">How to use these answers</a>
+    <a href="#strategy" class="added">Technical direction</a>
+    <a href="#cloud" class="added">Cloud, reliability &amp; cost</a>
+    <a href="#engineering" class="added">Engineering practices</a>
+    <a href="#api" class="added">API &amp; integration delivery</a>
+    <a href="#ai" class="added">AI &amp; GenAI adoption</a>
+    <a href="#people" class="added">Hiring, performance &amp; growth</a>
+    <a href="#delivery" class="added">Delivery under pressure</a>
+    <a href="#culture" class="added">Culture &amp; hard decisions</a>
+  </div>
+</header>
+
+<!-- HOWTO -->
+<section class="concept" id="howto">
+  <h2><span class="num">28.1</span> How to use these answers <span class="tag-added">Added</span></h2>
+  <p class="oneliner">An engineering manager round tests whether you get <b>results through people and systems</b>, not through your own keyboard. These answers show the depth to aim for. They are not scripts.</p>
+  <h3>What an EM interview tests</h3>
+  <ul>
+    <li><b>People</b>: hiring, growth, hard feedback and team health. Expect at least one question about an underperformer.</li>
+    <li><b>Delivery</b>: predictable flow, clear priorities and honest dates.</li>
+    <li><b>Technical judgement</b>: you can steer cloud, quality, API and AI choices without making every decision yourself.</li>
+    <li><b>Business partnership</b>: you trade off with product and finance in their language: cost, risk and time.</li>
+    <li><b>Self-awareness</b>: what you got wrong, and what you changed in how you lead.</li>
+  </ul>
+  <h3>How it differs from the other two rounds</h3>
+  <div class="cols2">
+    <div class="box blue"><h4>Architect (26)</h4><p>Standards and decisions across many teams. The story is about <b>influence and design</b>. See <a href="26-leadership-behavioural-questions.html#howto">26.1</a>.</p></div>
+    <div class="box purple"><h4>Solution designer (27)</h4><p>One solution, end to end. The story is about <b>trade-offs in the design</b>. See <a href="27-solution-designer-behavioural-questions.html#howto">27.1</a>.</p></div>
+  </div>
+  <p>In an EM round, the same technical story must also say <b>who grew, what the team owned, and what it cost</b>. The technology is the setting, not the hero.</p>
+  <h3>The EM lens: use it in every answer</h3>
+  <div class="grid wide">
+    <div class="box amber"><h4>1 · People</h4><p>Who was affected, what they feared, and how you <b>involved them</b>.</p></div>
+    <div class="box blue"><h4>2 · Process</h4><p>The <b>mechanism</b> you changed: a policy, a ritual, a metric, a split of capacity.</p></div>
+    <div class="box purple"><h4>3 · Technology</h4><p>The technical choice, in one plain sentence. Show you <b>understand it</b>.</p></div>
+    <div class="box green"><h4>4 · Outcome</h4><p>Numbers for the business <b>and</b> for the team: attrition, growth, on-call load.</p></div>
+  </div>
+  <p>Then add one line on <b>what I did vs what the team did</b>. "I set the guardrails and the measure; the engineers chose the fixes" is the shape interviewers want.</p>
+<figure class="viz" data-viz="steps"><script type="application/json">
+{"title":"The EM lens applied to one story","stepMs":1100,
+ "items":[
+  {"k":"People","t":"<b>Name the human problem</b>: fear, overload, a skills gap or low trust","c":"amber"},
+  {"k":"Process","t":"<b>Change the system, not the people</b>: a policy, a metric or a ritual","c":"blue"},
+  {"k":"Agree","t":"Agree it with product or the business in <b>their language</b>: cost, risk, time","c":"blue","indent":1},
+  {"k":"Tech","t":"<b>One clear technical choice</b> the team owned, explained in one sentence","c":"purple"},
+  {"k":"Outcome","t":"<b>Business and people numbers</b>: dates met, spend, attrition, who grew","c":"green"},
+  {"k":"Me vs team","t":"<b>What I did</b> (framed, protected, decided) vs <b>what the team did</b> (built, chose, owned)","c":"teal"},
+  {"k":"Lesson","t":"<b>What I now do differently</b> as a leader","c":"slate"}
+ ]}
+</script></figure>
+  <div class="box red">
+    <h4>⚠️ Integrity note</h4>
+    <p>Every example here is an <b>illustrative composite</b>, with invented stories and numbers. <b>Never present them as your own.</b> Map each one to a <b>real story from your career</b> with the same shape, and use your <b>real numbers</b>. For the story bank template and delivery tips, see <a href="26-leadership-behavioural-questions.html#howto">26.1</a>.</p>
+  </div>
+  <h3>What interviewers listen for, by theme</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Theme</th><th>What they listen for</th><th>Red flag</th></tr>
+    <tr><td><b>Technical direction</b></td><td>You sold a direction in business terms and kept decisions with the team</td><td>"I approve every PR"</td></tr>
+    <tr><td><b>Cloud, reliability &amp; cost</b></td><td>Agreed policies (error budgets, cost in the definition of done) and care for people through change</td><td>Heroics and feature freezes</td></tr>
+    <tr><td><b>Engineering practices</b></td><td>Experiments the team agreed to, measured with flow or DORA metrics</td><td>Mandates with no measure</td></tr>
+    <tr><td><b>API &amp; integration</b></td><td>Contracts, dependency management and owning breakage across teams</td><td>Blaming the other team or vendor</td></tr>
+    <tr><td><b>AI &amp; GenAI</b></td><td>Guardrails, evaluation, honest results and care for staff affected</td><td>Hype, or "AI will replace X roles"</td></tr>
+    <tr><td><b>People, delivery &amp; culture</b></td><td>Care and standards together, clear trade-offs, safety to speak up</td><td>"We all worked weekends to make it"</td></tr>
+  </table></div>
+  <div class="remember"><ul>
+    <li>Run every answer through the lens: people, process, technology, outcome.</li>
+    <li>Say "I" for the system you changed and "we" for what the team built. Never take credit for the engineering.</li>
+    <li>Always give a <b>people result</b> as well as a business result.</li>
+  </ul></div>
+</section>
+
+<!-- STRATEGY -->
+<section class="concept" id="strategy">
+  <h2><span class="num">28.2</span> Technical direction &amp; strategy <span class="tag-added">Added</span></h2>
+  <p class="oneliner">This theme tests whether you can set a <b>technical direction</b> the business will fund, balance it against features, and stay credible <b>without becoming the bottleneck</b>.</p>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"From hidden engineering work to a funded, team-owned direction (Q1–Q3)","interval":2800,
+ "frames":[
+  {"label":"Hidden","caption":"<b>The problem is invisible.</b> Hand-built environments, repeat audit findings, and every decision waiting on the manager.","rows":[
+   [{"t":"Hand-built envs","sub":"3 weeks each","c":"red"},{"k":"arrow"},{"t":"Audit findings","sub":"same 4 again","c":"red"},{"k":"arrow"},{"t":"EM approval","sub":"every PR","c":"amber"}]]},
+  {"label":"Business terms","caption":"<b>Translate it.</b> Findings, lead time and recovery time are words a sponsor funds.","rows":[
+   [{"t":"Audit risk","sub":"repeat findings","c":"purple"},{"t":"Lead time","sub":"weeks to days","c":"blue"},{"t":"Recovery time","sub":"rebuild in hours","c":"teal"}]]},
+  {"label":"Capacity","caption":"<b>Make the split visible.</b> Agreed with product, reviewed every quarter.","ms":3200,"rows":[
+   [{"t":"70%","sub":"features","c":"blue","big":true},{"t":"20%","sub":"health","c":"teal"},{"t":"10%","sub":"learning","c":"purple"}]]},
+  {"label":"Team-owned","caption":"<b>Step back.</b> Engineers own decisions through clinics and ADRs. The manager reviews risk.","rows":[
+   [{"t":"Design clinic","sub":"engineer-led","c":"teal"},{"k":"arrow"},{"t":"ADR","sub":"decision owner","c":"green"},{"k":"arrow"},{"t":"EM","sub":"risk review only","c":"slate"}]]}
+ ]}
+</script></figure>
+
+<article class="bq" id="q1">
+  <div class="bq-q"><span class="qnum">Q1</span><span>Tell me about setting a technical direction the business didn't initially value.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>🧠 Psychology: what they're really testing</h5><p>Can you sell engineering work to people who don't care about engineering? Red flags are "the business just didn't get it" or a big-bang rewrite. Strong managers <b>translate the direction into business outcomes</b> and deliver it in slices beside features.</p></div>
+    <div class="bq-phi"><h5>🧭 Philosophy: the principle behind a strong answer</h5><p>Nobody funds "infrastructure as code". They fund fewer audit findings and faster recovery. Speak the sponsor's language, then <b>earn the next slice with the results of the last one</b>.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> My team ran a lending platform on cloud environments that engineers built by hand from a wiki page. A new environment took about 3 weeks. Internal audit raised the same 4 findings two years running: drift, missing tags, open ports and no change trail.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I wanted to move to <b>infrastructure as code</b> and <b>policy as code</b>. The product owner saw it as a year of no features.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I reframed it as a business case, not a tooling wish.</p><ul>
+      <li>I put three numbers on one page: <b>repeat audit findings</b>, environment lead time, and how long we would take to rebuild after losing a region.</li>
+      <li>I rejected a big-bang rebuild. I proposed an <b>incremental programme</b>: one environment per sprint, using about 15% of capacity, beside features.</li>
+      <li>I asked the risk team to co-own the policy rules, so the audit fixes became <b>automated guardrails</b>, not promises.</li>
+      <li>Two engineers who knew the wiki best led the templates. I cleared their other work and ran the sponsor demos with them.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> In 6 months every environment was in code. <b>DORA change lead time</b> fell from weeks to about 2 days. The next audit had <b>zero repeat findings</b>. A full environment rebuild dropped to under 2 hours. Both template leads were promoted within the year.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> I would bring audit in on day one next time. Their support carried more weight with the sponsor than any engineering argument I made.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> business terms, not tooling · incremental programme · policy as code · zero repeat findings · earn the next slice</p>
+</article>
+
+<article class="bq" id="q2">
+  <div class="bq-q"><span class="qnum">Q2</span><span>How do you balance roadmap features against platform and tech-debt work?</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>🧠 Psychology: what they're really testing</h5><p>They want to know if you have a <b>repeatable mechanism</b>, or if you fight every sprint. Red flags are "we sneak debt into feature estimates" or "product always wins". Senior managers make the trade-off <b>visible and shared</b>.</p></div>
+    <div class="bq-phi"><h5>🧭 Philosophy: the principle behind a strong answer</h5><p>Tech debt is like a loan: what matters is the <b>interest you pay</b> each month. Price the interest in hours and incidents, and product will often ask you to pay it down.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> My team owned a card-servicing platform. Every planning session became a fight between new features and "engineering stuff". Debt work was hidden inside estimates, so product felt misled and engineers felt ignored.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I had to stop the sprint-by-sprint argument and find a split that both sides trusted.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I turned a hidden fight into an open agreement.</p><ul>
+      <li>I proposed a <b>visible capacity split</b> to the product manager: 70% features, 20% health, 10% learning. We agreed it for one quarter as a trial.</li>
+      <li>The team scored every debt item by <b>"interest paid"</b>: incident minutes and toil hours per month. The top item cost about 30 hours of manual reconciliation a month.</li>
+      <li>I added a <b>health metric</b> to the team dashboard, next to the feature burn-up, so progress was visible to everyone.</li>
+      <li>I set a <b>quarterly review</b> with product. If health was green, we could lend some of the 20% back to features.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> In two quarters, toil fell by about 60% and incidents by about 40%. In the third quarter, the product manager asked to keep 25% for health before a peak season. She <b>became an ally rather than an opponent</b>. Feature throughput did not drop, because fewer interruptions hit the sprint.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> The split mattered less than the scoring. Once debt had a price, the debate moved from opinions to <b>numbers</b>.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> visible capacity split · interest paid · health metric · quarterly review · product as an ally</p>
+</article>
+
+<article class="bq" id="q3">
+  <div class="bq-q"><span class="qnum">Q3</span><span>How do you stay technically credible as a manager without becoming the bottleneck?</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>🧠 Psychology: what they're really testing</h5><p>This tests self-awareness about the move from engineer to manager. Red flags are a manager who still writes the critical code, or one who has lost touch with production. Strong answers show you <b>noticed you were the constraint</b> and redesigned how decisions get made.</p></div>
+    <div class="bq-phi"><h5>🧭 Philosophy: the principle behind a strong answer</h5><p>A manager's job is to <b>scale judgement, not to supply it</b>. Stay close enough to ask good questions, and far enough back that the team owns the answers.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> A year into managing a team of 9, I noticed every design came through me. PRs waited an average of 1.5 days for my approval. In my one-to-ones, two senior engineers said they felt like "ticket takers".</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I had to remove myself as the <b>bottleneck</b> without losing technical credibility or control of risk.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I changed what I reviewed, not just how much.</p><ul>
+      <li>I <b>stepped back from approving PRs</b>. Peer review by two engineers became the rule.</li>
+      <li>I set up weekly <b>engineer-led design clinics</b>, with a rotating chair. Decisions were written up as short <b>ADRs</b> with a named decision owner.</li>
+      <li>I kept one <b>on-call shift a month</b>, so I still felt production pain and could ask sharp questions.</li>
+      <li>I limited my input to <b>designs and risks</b>: security, cost and blast radius. I said "I'd ask about X" instead of "do X".</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> PR wait time fell from about 1.5 days to under 4 hours. Design decisions took days, not weeks. Within 6 months <b>two engineers grew into decision owners</b>, and one became the team's tech lead. My on-call shifts led to two reliability fixes I could sponsor with real context.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> Letting go felt risky at first. The quality of decisions went up, because the people closest to the code made them.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> scale judgement · design clinics · decision owners · review risk, not code · close to production</p>
+</article>
+
+  <div class="remember"><ul>
+    <li>Frame any technical direction in <b>business numbers</b>: audit, lead time, recovery, cost.</li>
+    <li>Use a <b>visible mechanism</b> (a split, a score, a review) instead of winning arguments one by one.</li>
+    <li>Show how your involvement <b>shrank over time</b> while the team's ownership grew.</li>
+  </ul></div>
+  <div class="post">
+    <p>As a manager, I was the slowest part of my own team 🐢</p>
+    <p>⏳ Every PR waited 1.5 days for my approval.</p>
+    <p>🧑‍💻 Two senior engineers told me they felt like ticket takers.</p>
+    <p>🔄 I stopped approving PRs, started engineer-led design clinics, and asked for short ADRs with a named owner.</p>
+    <p>📟 I kept one on-call shift a month to stay close to production.</p>
+    <p>PR wait time dropped to under 4 hours, and two people grew into decision owners. A manager's job is to scale judgement, not supply it. Where are you the bottleneck?</p>
+    <p>#EngineeringManagement #Leadership #TechLead #Delegation</p>
+  </div>
+</section>
+
+<!-- CLOUD -->
+<section class="concept" id="cloud">
+  <h2><span class="num">28.3</span> Cloud, reliability &amp; cost <span class="tag-added">Added</span></h2>
+  <p class="oneliner">This theme tests whether you can lead people through a <b>cloud change</b>, own <b>reliability</b> and <b>spend</b> as a manager, and use agreed policies instead of heroics.</p>
+<figure class="viz" data-viz="bars"><script type="application/json">
+{"title":"Cost as an engineering habit: monthly cloud spend vs budget after making cost visible per service (illustrative, Q5)","max":140,
+ "threshold":{"v":100,"t":"budget = 100%"},
+ "rows":[
+  {"label":"Month 0","v":135,"show":"<b>135%</b>","c":"red","note":"nobody could see it"},
+  {"label":"Month 1","v":116,"show":"<b>116%</b>","c":"amber","note":"rightsizing, log tiers"},
+  {"label":"Month 2","v":98,"show":"<b>98%</b>","c":"teal","note":"reserved, token cache"},
+  {"label":"Month 4","v":91,"show":"<b>91%</b>","c":"green","note":"cost in definition of done"}
+ ]}
+</script></figure>
+
+<article class="bq" id="q4">
+  <div class="bq-q"><span class="qnum">Q4</span><span>Tell me about leading a team through a cloud migration.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>🧠 Psychology: what they're really testing</h5><p>The tech of a migration is the easy part. They want to hear how you handled <b>fear of redundancy</b> and kept the team. Red flags are an answer that only lists apps and waves, or "some people left, which was fine".</p></div>
+    <div class="bq-phi"><h5>🧭 Philosophy: the principle behind a strong answer</h5><p>Change goes at the speed of trust. People fight a change that has no place for them. Give them a <b>visible path into the new world</b>, and they become its strongest builders.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> I managed an operations-heavy team of 12 that ran about 40 apps in an ageing data centre. The lease ended in 18 months. In a town hall, one engineer asked, "So what happens to us when the servers go?" The room went quiet.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I had to move the apps to cloud on time and keep the people who knew them best.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I treated the people plan as part of the migration plan.</p><ul>
+      <li>I answered the question in writing: no role cuts from the migration. I had agreed that with my director first.</li>
+      <li>I built a <b>reskilling plan</b>: a certification budget, two hours of learning time a week, and an <b>SRE career path</b> with clear levels.</li>
+      <li>We ran <b>paired migration waves</b>. Each app moved with one ops engineer and one cloud engineer, so knowledge flowed both ways.</li>
+      <li>We moved about 40 apps in <b>3 waves</b>, simplest first, so early wins built confidence.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> All apps moved 2 months before the lease ended. 9 of the 12 earned a cloud certification. <b>Former ops staff became the SRE core</b> of the new platform. We had <b>no regretted attrition</b>, and engagement scores rose by 11 points.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> I wish I had answered the redundancy question before the town hall. Silence is filled with the worst story.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> reskilling plan · SRE career path · paired migration waves · no regretted attrition · change at the speed of trust</p>
+</article>
+
+<article class="bq" id="q5">
+  <div class="bq-q"><span class="qnum">Q5</span><span>Tell me about owning a cloud cost overrun.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>🧠 Psychology: what they're really testing</h5><p>Do you own the budget, or blame "the cloud"? Red flags are a feature freeze, a top-down list of cuts, or a one-off clean-up that grows back. Strong answers make <b>cost visible to engineers</b> and turn it into a habit.</p></div>
+    <div class="bq-phi"><h5>🧭 Philosophy: the principle behind a strong answer</h5><p>Engineers optimise what they can see. In the cloud, every design choice is a <b>spending decision</b>, so put cost next to latency and errors on the same dashboard.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> Finance flagged that my team's cloud spend was running about <b>35% over budget</b>. Nobody on the team knew which service cost what. A new GenAI summary feature had doubled its token bill in a month.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> As the accountable manager, I had to get back on budget without stopping feature work.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I gave the problem to the team, with the data.</p><ul>
+      <li>I owned the overrun with finance first, and promised a plan in 2 weeks.</li>
+      <li>We tagged every resource and put <b>cost per service</b> on the team dashboard.</li>
+      <li>I added <b>"cost impact" to the definition of done</b>. Any change that moved spend by more than 5% had to say so.</li>
+      <li>I asked the engineers to choose the fixes. They picked <b>rightsizing</b>, <b>reserved capacity</b> for steady loads, <b>log-retention tiers</b>, and <b>token caching</b> for repeated GenAI prompts.</li>
+      <li>I rejected a feature freeze. It would have hidden the cause and hurt trust with product.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> We were <b>back on budget in 2 months</b>, with no feature freeze. Token spend fell by about half. Six months later, engineers still raised cost in design clinics on their own. Cost had become an <b>engineering habit</b>.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> I should have asked for cost visibility on day one, not after finance found the gap.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> cost per service · cost impact in the definition of done · engineers chose the fixes · no feature freeze · engineering habit</p>
+</article>
+
+<article class="bq" id="q6">
+  <div class="bq-q"><span class="qnum">Q6</span><span>Describe handling a reliability problem where you were the accountable manager.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>🧠 Psychology: what they're really testing</h5><p>Can you hold a line with product when reliability slips? Red flags are heroics, blaming on-call, or "we just worked harder". Senior managers use an <b>agreed policy</b>, so the decision isn't a fight each time.</p></div>
+    <div class="bq-phi"><h5>🧭 Philosophy: the principle behind a strong answer</h5><p>An SLO with no consequence is a wish. Google's SRE practice uses an <b>error budget policy</b>, agreed in advance: when the budget is spent, reliability work comes first. It turns a debate into a rule.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> Our payment-status API had a 99.9% availability <b>SLO</b>. It missed it three months running. Product kept pushing features, and the same two engineers took most of the night pages.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I was accountable for the service. I had to restore reliability and protect my on-call people.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I swapped a monthly argument for a written agreement.</p><ul>
+      <li>I showed the product lead what each miss cost: failed payment-status checks and support calls.</li>
+      <li>We wrote an <b>error-budget policy</b> together. When the budget is burnt, reliability work comes first until we are back within SLO. My director signed it as the tie-breaker.</li>
+      <li>The budget was already spent, so we ran <b>two reliability sprints</b>. We fixed the <b>top 3 failure modes</b>: a connection-pool limit, a slow dependency with no timeout, and a noisy deploy step.</li>
+      <li>I <b>rebalanced the on-call rotation</b> across all 8 engineers, with paired shadowing first.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> The <b>SLO was met for the next 6 months</b>. Night pages fell by about 70%. Product later used the policy to push back on a risky launch date themselves. The two burnt-out engineers stayed.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> The policy worked because product co-wrote it. I'd write one for every service before it misses, not after.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> error-budget policy · reliability work comes first · top failure modes · fair on-call rotation · agreed in advance</p>
+</article>
+
+  <div class="remember"><ul>
+    <li>In cloud stories, the <b>people plan</b> is as important as the migration plan.</li>
+    <li>Make cost and reliability <b>visible to engineers</b>, then let them choose the fixes.</li>
+    <li>Prefer an <b>agreed policy</b> (error budget, definition of done) over a one-off fight or a freeze.</li>
+  </ul></div>
+  <div class="post">
+    <p>Our cloud bill was 35% over budget. I didn't freeze features 💸</p>
+    <p>📊 We put cost per service on the team dashboard, next to latency and errors.</p>
+    <p>✅ "Cost impact" went into the definition of done.</p>
+    <p>🛠️ Engineers chose the fixes: rightsizing, reserved capacity, log tiers, token caching.</p>
+    <p>📉 Back on budget in 2 months. Six months later, people still raise cost in design reviews.</p>
+    <p>Engineers optimise what they can see. Can your team see what their services cost?</p>
+    <p>#FinOps #CloudCost #EngineeringManagement #Cloud</p>
+  </div>
+</section>
+
+<!-- ENGINEERING -->
+<section class="concept" id="engineering">
+  <h2><span class="num">28.4</span> Engineering practices &amp; quality <span class="tag-added">Added</span></h2>
+  <p class="oneliner">This theme tests whether you improve how the team works through <b>measured experiments</b> the team agrees to, and how you handle a <b>bad decision</b> without blame.</p>
+<figure class="viz" data-viz="lanes"><script type="application/json">
+{"title":"Two working weeks, before and after trunk-based development with feature flags (illustrative, Q8)","max":10,"labelW":130,"rowH":36,"dur":5500,
+ "rows":[
+  {"label":"Before: branch","blocks":[{"s":0,"e":8.5,"t":"long-lived feature branch","c":"blue"},{"s":8.5,"e":10,"t":"merge pain","c":"red"}]},
+  {"label":"Before: deploy","blocks":[{"s":9.3,"e":10,"c":"amber"}]},
+  {"label":"After: trunk","blocks":[{"s":0,"e":0.8,"c":"green"},{"s":1,"e":1.8,"c":"green"},{"s":2,"e":2.8,"c":"green"},{"s":3,"e":3.8,"c":"green"},{"s":4,"e":4.8,"c":"green"},{"s":5,"e":5.8,"c":"green"},{"s":6,"e":6.8,"c":"green"},{"s":7,"e":7.8,"c":"green"},{"s":8,"e":8.8,"c":"green"},{"s":9,"e":9.8,"c":"green"}]},
+  {"label":"After: deploy","blocks":[{"s":0.8,"e":1,"c":"teal"},{"s":1.8,"e":2,"c":"teal"},{"s":2.8,"e":3,"c":"teal"},{"s":3.8,"e":4,"c":"teal"},{"s":4.8,"e":5,"c":"teal"},{"s":5.8,"e":6,"c":"teal"},{"s":6.8,"e":7,"c":"teal"},{"s":7.8,"e":8,"c":"teal"},{"s":8.8,"e":9,"c":"teal"},{"s":9.8,"e":10,"c":"teal"}]}
+ ],
+ "markers":[{"at":7,"t":"Flag on for pilot users","c":"purple"}],
+ "ticks":[{"at":0,"t":"day 0"},{"at":5,"t":"day 5"},{"at":9.8,"t":"day 10"}],
+ "axis":"working days (unfinished work hides behind a flag)"}
+</script></figure>
+
+<article class="bq" id="q7">
+  <div class="bq-q"><span class="qnum">Q7</span><span>Tell me about improving delivery predictability.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>🧠 Psychology: what they're really testing</h5><p>Do you understand why estimates fail, or do you just push for better ones? Red flags are "we padded the estimates" or "I made the team commit harder". Strong managers change the <b>system of work</b> and talk about dates as <b>probabilities</b>.</p></div>
+    <div class="bq-phi"><h5>🧭 Philosophy: the principle behind a strong answer</h5><p>A single date hides uncertainty; a range shows it honestly. Measure how work really flows, limit work in progress, and forecast from history, for example with <b>Monte Carlo forecasting</b>.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> My team built features for a merchant onboarding platform. We met only about half of our committed dates. Stakeholders had stopped believing our plans, and planning took a full day each sprint.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I had to rebuild trust in our dates without making the team work longer hours.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I moved the conversation from estimates to evidence.</p><ul>
+      <li>I pulled 6 months of ticket history. <b>Cycle time</b> ranged from 2 to 40 days. The long tail came from big items and too many things in progress.</li>
+      <li>The team agreed <b>WIP limits</b>: no more than 4 items in progress at once.</li>
+      <li>We practised <b>slicing work thinner</b>, until most items finished in under 5 days.</li>
+      <li>I replaced point estimates with <b>probabilistic forecasts</b> from our <b>throughput</b>: "85% likely by 14 March". I explained the method to stakeholders once, in 15 minutes.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> In two quarters, <b>commitments met went from about 50% to about 85%</b>. Median cycle time fell from 9 to 4 days. Planning shrank from a day to an hour. One stakeholder began asking for "the 85% date" in their own steering papers.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> Thin slicing did most of the work. The forecast only became reliable once items were small and similar in size.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> flow metrics · WIP limits · thinner slices · probabilistic forecast · "85% likely by"</p>
+</article>
+
+<article class="bq" id="q8">
+  <div class="bq-q"><span class="qnum">Q8</span><span>Tell me about introducing an engineering practice the team resisted.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>🧠 Psychology: what they're really testing</h5><p>Do you mandate, or do you bring people with you? Red flags are "I made it the standard" or giving up at the first push-back. Strong managers <b>lower the cost of saying yes</b> with a safe, time-boxed trial.</p></div>
+    <div class="bq-phi"><h5>🧭 Philosophy: the principle behind a strong answer</h5><p>People resist loss of control more than change itself. A <b>time-boxed experiment</b> with team-agreed measures and an opt-out gives control back. The data then makes the decision.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> My team used long-lived feature branches, some open for 3 weeks. Merges often took a day, and we deployed once a week. When I suggested <b>trunk-based development</b>, two senior engineers said it would break production.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I wanted faster, safer delivery, but I needed the team to own the change, not just obey it.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I offered an experiment, not a rule.</p><ul>
+      <li>I listened to the fears first. The main one was half-built features reaching customers.</li>
+      <li>I proposed a <b>4-week time-boxed experiment</b>. Small commits to main every day, with unfinished work hidden behind <b>feature flags</b>.</li>
+      <li>The team chose the <b>success measures</b>: merge time, deploy frequency and <b>change failure rate</b>. They also agreed an <b>opt-out</b>: any failure measure worse after 2 weeks and we would stop.</li>
+      <li>I asked the most sceptical engineer to design the flag clean-up rule. That turned a critic into a co-owner.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> <b>Merge pain disappeared</b>. Deploys went from <b>weekly to daily</b>, and change failure rate did not rise. At the retro, <b>the team voted to keep it</b>, including both sceptics.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> The opt-out was never used, but it made the yes possible. I now offer one for every practice change.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> time-boxed experiment · team-agreed success measures · opt-out · feature flags · the team chose to keep it</p>
+</article>
+
+<article class="bq" id="q9">
+  <div class="bq-q"><span class="qnum">Q9</span><span>Tell me about a time a design decision in your team caused problems, and how you handled it as the manager.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>🧠 Psychology: what they're really testing</h5><p>This tests <b>psychological safety</b> and accountability together. Red flags are naming the engineer who made the call, or quietly living with the pain. Strong managers <b>protect the person</b>, fix the system and fund the repair.</p></div>
+    <div class="bq-phi"><h5>🧭 Philosophy: the principle behind a strong answer</h5><p>Judge a decision by what was known at the time, not by how it turned out. A <b>blameless re-decision</b> asks "what would we decide now?", and a superseding ADR keeps the history honest.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> To hit a regulatory date, my team built two services, rewards and statements, on <b>one shared database</b>. Six months later, every release needed both teams to coordinate. Two schema changes broke the other service in production.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I had to fix the coupling without making the original engineer the scapegoat.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I treated it as a decision to revisit, not a mistake to punish.</p><ul>
+      <li>In the team meeting I said first: "That was the right call for the date. I approved it. Now the context has changed."</li>
+      <li>I ran a <b>blameless re-decision</b> session with three options: keep it and add change rules, split the schemas inside one database, or fully separate databases.</li>
+      <li>We chose separate schemas with clear ownership as step one. The engineer who made the first call led the new design.</li>
+      <li>I <b>funded the decoupling in the roadmap</b> with product, using the cost of the coordination: about 2 days per release.</li>
+      <li>We wrote an <b>ADR superseding the old one</b>, linking both.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> Decoupling took 6 weeks. The two services then released on their own schedules, with no cross-service breaks in the next 9 months. The engineer said it was the first time a "bad" decision had felt safe to raise.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> I now add a <b>review trigger</b> to any shortcut ADR, so we revisit it before it hurts.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> blameless re-decision · protected the engineer · superseding ADR · funded in the roadmap · review trigger</p>
+</article>
+
+  <div class="remember"><ul>
+    <li>Use <b>measures the team chose</b> (flow or DORA metrics), not targets imposed on them.</li>
+    <li>Offer <b>time-boxed experiments with an opt-out</b>. They turn resistance into curiosity.</li>
+    <li>When a decision goes wrong, <b>own your part first</b> and protect the person who made the call.</li>
+  </ul></div>
+  <div class="post">
+    <p>My team pushed back hard on trunk-based development. So I didn't mandate it 🌳</p>
+    <p>🧪 I offered a 4-week experiment instead.</p>
+    <p>📏 The team chose the measures: merge time, deploy frequency, change failure rate.</p>
+    <p>🚪 They also got an opt-out if any measure got worse.</p>
+    <p>🚀 Result: no more merge pain, and weekly deploys became daily. The team voted to keep it.</p>
+    <p>People resist losing control more than they resist change. What practice would you trial this way?</p>
+    <p>#EngineeringManagement #ContinuousDelivery #DevOps #TrunkBasedDevelopment</p>
+  </div>
+</section>
+
+<!-- API -->
+<section class="concept" id="api">
+  <h2><span class="num">28.5</span> API &amp; integration delivery <span class="tag-added">Added</span></h2>
+  <p class="oneliner">This theme tests how you deliver when <b>other teams depend on you</b>, or you depend on them: contracts, slipping dependencies, owning breakage and choosing what to build.</p>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Consumer-driven contract tests catch a breaking change before release (Q10, Q12)","stepMs":900,
+ "actors":[{"t":"Consumer team","c":"blue"},{"t":"Contract broker","c":"purple"},{"t":"Provider CI","c":"teal"},{"t":"Provider API","c":"green"}],
+ "steps":[
+  {"from":0,"to":1,"t":"Publish expectations","c":"blue"},
+  {"from":2,"to":1,"t":"Fetch all contracts","c":"teal"},
+  {"from":2,"to":2,"t":"Verify: renamed field","c":"red"},
+  {"note":"Build blocked: 2 consumers still read the old field","c":"red"},
+  {"from":2,"to":2,"t":"Add field, keep old","c":"teal"},
+  {"from":2,"to":1,"t":"All contracts pass","c":"green","dash":true},
+  {"from":2,"to":3,"t":"Deploy","c":"green"},
+  {"note":"Old field removed only when no contract uses it","c":"slate"}
+ ]}
+</script></figure>
+
+<article class="bq" id="q10">
+  <div class="bq-q"><span class="qnum">Q10</span><span>Tell me about leading delivery of an API that many teams depended on.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>🧠 Psychology: what they're really testing</h5><p>Can you coordinate many teams without becoming a project-status machine? Red flags are "integration testing found the issues in the last month". Strong managers design the <b>feedback loops</b> so surprises appear early.</p></div>
+    <div class="bq-phi"><h5>🧭 Philosophy: the principle behind a strong answer</h5><p>An API is a promise to other teams. Agree the promise first (<b>contract-first</b>), test it continuously, and treat consumers as customers with a voice.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> My team was building a new shared customer API for a bank's digital channels. <b>Six dependent teams</b>, including mobile, web, contact centre and lending, all had one launch date 5 months away. The last shared API had slipped 2 months because of late integration surprises.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I owned delivery. I had to land the API on date with no last-month integration crisis.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I set up mechanisms that pulled integration forward.</p><ul>
+      <li>We did <b>contract-first design</b>. The OpenAPI spec was agreed with consumers before we wrote code, and mocks were live in week 2.</li>
+      <li>Each consumer wrote <b>consumer-driven contract tests</b>, run in our pipeline on every build.</li>
+      <li>We held a <b>weekly integration demo</b> with real calls from consumer test apps, not slides.</li>
+      <li>I formed a <b>consumer advisory group</b>, one engineer from each team, to review changes, and published a <b>change calendar</b>.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> The API <b>launched on date</b> with all six consumers live. There were <b>no integration surprises</b> in the final month. Contract tests blocked 11 breaking changes before release. Two consumer teams later copied the advisory group model.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> The weekly demo was the most valuable ritual. Real calls exposed gaps that status reports would have hidden.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> contract-first · consumer-driven contract tests · weekly integration demo · consumer advisory group · change calendar</p>
+</article>
+
+<article class="bq" id="q11">
+  <div class="bq-q"><span class="qnum">Q11</span><span>Tell me about managing a dependency on another team or vendor that kept slipping.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>🧠 Psychology: what they're really testing</h5><p>Do you wait, complain, or act? Red flags are "we were blocked by the vendor" with nothing you did about it. Strong managers <b>decouple their team</b> from the delay and escalate with <b>data, not emotion</b>.</p></div>
+    <div class="bq-phi"><h5>🧭 Philosophy: the principle behind a strong answer</h5><p>You can't control another team's date, but you can control how much it hurts you. Build against the <b>agreed contract</b>, and put a price on each week of delay so leaders can act.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> We were integrating a new identity-verification vendor for online account opening. Their <b>API sandbox</b> was promised in week 3. It slipped every fortnight and ended up <b>6 weeks late</b>. My 5 engineers were idle on that stream.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I had to keep my team productive and stop the vendor's slip becoming our launch slip.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I removed the wait, then escalated with numbers.</p><ul>
+      <li>We had a signed API spec. The team built a <b>mock from the agreed contract</b> and coded against it.</li>
+      <li>We wrote <b>contract tests</b> to run against the real sandbox the day it arrived.</li>
+      <li>I calculated the <b>cost of delay per week</b>: about 1,200 applications still going through manual checks, plus idle engineering time.</li>
+      <li>I escalated through the <b>vendor manager</b>, not around them, with that number and a clear ask: a dedicated vendor engineer and a weekly date check.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> When the sandbox arrived, contract tests found 3 differences from the spec in a day. The vendor fixed them in a week. <b>Go-live slipped 1 week instead of 2 months</b>. The vendor manager reused our cost-of-delay sheet for other suppliers.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> I'd now ask for a sandbox date and an exit clause in the contract, before signing.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> mock from the agreed contract · contract tests · cost of delay per week · escalate with data · decouple from the slip</p>
+</article>
+
+<article class="bq" id="q12">
+  <div class="bq-q"><span class="qnum">Q12</span><span>Describe a time your team broke another team's service.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>🧠 Psychology: what they're really testing</h5><p>This tests ownership under embarrassment. Red flags are "they should have validated the payload" or a quiet fix. Strong managers <b>own it publicly</b>, help the other team first, and then fix the <b>system</b> that allowed it.</p></div>
+    <div class="bq-phi"><h5>🧭 Philosophy: the principle behind a strong answer</h5><p>Every field you publish becomes a promise, even one you think nobody uses. That idea is close to <b>Hyrum's law</b>. Prevention belongs in the pipeline, not in people's memory.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> My team renamed a field in a card-transaction event, from <i>merchantCat</i> to <i>merchantCategory</i>. A downstream <b>fraud-scoring job</b> read the old name. It did not crash. It scored transactions with a missing value, <b>silently, for 2 hours</b>.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> As the manager of the team that caused it, I had to limit the harm, own it, and make it hard to repeat.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I put the other team's recovery ahead of our pride.</p><ul>
+      <li>We <b>rolled back</b> within 20 minutes of the fraud team's call.</li>
+      <li>I posted in the incident channel: "This was our change. We're rolling back now." I <b>owned it publicly</b> in the review too.</li>
+      <li>Two of my engineers helped the fraud team re-score the affected transactions that afternoon.</li>
+      <li>I funded <b>schema compatibility checks in CI</b>. A breaking change to an event now fails the build.</li>
+      <li>We created a <b>consumer registry</b>, so every event lists who reads it and who to tell.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> All affected transactions were re-scored the same day, with no customer losses. In the next year, CI blocked 7 breaking event changes. The fraud team lead later asked us to help roll the checks out to their own events.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> Silent failures are worse than crashes. I now ask consumers to alert on missing fields, not just errors.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> owned it publicly · helped them recover first · schema compatibility checks · consumer registry · prevention in the pipeline</p>
+</article>
+
+<article class="bq" id="q13">
+  <div class="bq-q"><span class="qnum">Q13</span><span>Tell me about a build vs buy vs reuse decision for an integration capability.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>🧠 Psychology: what they're really testing</h5><p>Engineers often love to build. Can you steer them to where they add the most value, without killing their energy? Red flags are "build, because we can" or "buy, because it's safer" with no criteria. Strong managers ask <b>what makes us different</b>.</p></div>
+    <div class="bq-phi"><h5>🧭 Philosophy: the principle behind a strong answer</h5><p>Build what differentiates you; buy or reuse the commodity. <b>Engineering capacity is the scarcest budget</b> a manager has, so spend it where customers notice.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> My team had to connect a business-banking platform to about 15 SaaS tools: CRM, e-signature, accounting packages. The engineers proposed an <b>in-house integration framework</b> with connectors, retries and data mapping. Their estimate was 3 engineers for 9 months.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I had to make a sound decision and keep a motivated team behind it.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I ran the decision openly with the team, not over them.</p><ul>
+      <li>We agreed the criteria first: <b>engineering capacity</b>, 3-year <b>run cost</b>, time to first connector and <b>differentiation</b>.</li>
+      <li>We compared three options: build it all, a <b>managed integration platform</b>, or reuse the bank's existing ESB.</li>
+      <li>The ESB lacked SaaS connectors. Building meant owning 15 connectors forever, with no customer benefit.</li>
+      <li>The one thing that was ours was the <b>orchestration</b>: onboarding flows with our own credit and KYC rules. We chose to <b>build only that</b>.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> We bought the platform for standard connectors and built the orchestration in 4 months. That <b>freed about 2 engineers</b> for product work. The engineers who wanted to build led the orchestration design, which became the part they were proudest of.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> I'd add an <b>exit plan</b> earlier, keeping our mappings in our own format so we could leave the platform.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> build what differentiates · engineering capacity · run cost · managed platform for the commodity · exit plan</p>
+</article>
+
+  <div class="remember"><ul>
+    <li>Pull integration risk <b>forward</b>: contracts, mocks and real demos early.</li>
+    <li>When something outside your control slips, <b>decouple, then escalate with a number</b>.</li>
+    <li>When your team breaks something, <b>help the other team first</b>, then fix the system.</li>
+  </ul></div>
+  <div class="post">
+    <p>My team renamed one field. A fraud job failed silently for 2 hours 😬</p>
+    <p>🔙 We rolled back in 20 minutes and said "this was our change" in the incident channel.</p>
+    <p>🤝 Two of our engineers helped the other team re-score every transaction that afternoon.</p>
+    <p>🧪 Then we added schema compatibility checks in CI. Breaking event changes now fail the build.</p>
+    <p>📇 And a consumer registry: every event lists who reads it.</p>
+    <p>Every field you publish is a promise. How does your pipeline protect your consumers?</p>
+    <p>#APIs #EventDrivenArchitecture #EngineeringManagement #Integration</p>
+  </div>
+</section>
+
+<!-- AI -->
+<section class="concept" id="ai">
+  <h2><span class="num">28.6</span> AI &amp; GenAI adoption <span class="tag-added">Added</span></h2>
+  <p class="oneliner">This theme tests whether you adopt AI with <b>measured outcomes</b>, <b>human review</b> and real guardrails, and whether you can grow skills and keep trust while the hype runs ahead of the evidence.</p>
+<figure class="viz" data-viz="bars"><script type="application/json">
+{"title":"AI coding assistant, 8-week pilot: median PR cycle time change by type of work (illustrative, Q14)","max":50,
+ "rows":[
+  {"label":"Unit tests","v":40,"show":"<b>~40% faster</b>","c":"green","note":"biggest, most repeatable gain"},
+  {"label":"Boilerplate","v":30,"show":"<b>~30% faster</b>","c":"green","note":"mapping code, scaffolding"},
+  {"label":"Docs &amp; READMEs","v":20,"show":"<b>~20% faster</b>","c":"teal","note":"still edited by a human"},
+  {"label":"Bug fixes","v":8,"show":"<b>~8% faster</b>","c":"amber","note":"within normal noise"},
+  {"label":"Complex design","v":0,"show":"<b>no gain</b>","c":"slate","note":"thinking time didn't shrink"}
+ ]}
+</script></figure>
+
+<article class="bq" id="q14">
+  <div class="bq-q"><span class="qnum">Q14</span><span>Tell me about introducing AI coding assistants to your team.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>&#x1F9E0; Psychology: what they're really testing</h5><p>Can you adopt a new tool without either banning it or letting it run wild? Red flags are "everyone got 50% faster" with no data, or no thought about security and juniors. Senior answers show <b>guardrails</b>, an honest <b>measurement plan</b> and care for how people learn.</p></div>
+    <div class="bq-phi"><h5>&#x1F9ED; Philosophy: the principle behind a strong answer</h5><p>A tool is a bet, so measure the <b>outcome</b>, not the activity. Lines of code or "suggestions accepted" are easy to game (Goodhart's law). Track delivery and quality together, so speed never hides new risk.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> Engineers in my team of 9 were pasting code into free public AI chat tools. Nobody had checked what data left the building. Leadership wanted "AI productivity" but had no way to measure it.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I owned a safe rollout and an honest answer on whether it helped.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I chose a guarded pilot over a ban or a free-for-all.</p><ul>
+      <li>I worked with security to switch to an <b>enterprise-licensed</b> assistant that doesn't train on our code, and asked people to stop using the public tools.</li>
+      <li>We agreed simple rules: <b>no secrets or customer data in prompts</b>, and every AI-written change gets the same <b>human review</b> as any other code.</li>
+      <li>I paired juniors with seniors on AI-assisted work, so they learned to question the output, not just accept it.</li>
+      <li>I set a <b>baseline</b>, then tracked PR cycle time, <b>change failure rate</b> and a short developer survey for 8 weeks.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> Tests and boilerplate got about 30–40% faster. Complex design work showed no gain, and change failure rate stayed flat. I reported exactly that. Leadership got a real number instead of a slogan, and the survey showed juniors felt more confident, not replaced.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> I'd set the baseline even earlier. The honest "no gain on design" result did more for trust than a big headline would have.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> guarded pilot · enterprise licence · no customer data in prompts · human review · baseline first · change failure rate</p>
+</article>
+
+<article class="bq" id="q15">
+  <div class="bq-q"><span class="qnum">Q15</span><span>Tell me about leading a team to deliver its first GenAI feature.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>&#x1F9E0; Psychology: what they're really testing</h5><p>Can you lead into a skill gap without faking expertise or hiring your way out? Red flags are "we called the API and shipped it" or risk being told at the end. Senior answers show <b>capability building</b>, early <b>risk partnership</b> and a clear quality bar.</p></div>
+    <div class="bq-phi"><h5>&#x1F9ED; Philosophy: the principle behind a strong answer</h5><p>GenAI output is <b>non-deterministic</b>, so "it looked fine in the demo" proves nothing. Write the test before the feature: an <b>evaluation set</b> is the GenAI version of a unit test. Grow people alongside the product.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> Contact-centre staff spent about 4 minutes after each call typing notes. The business asked my team for a GenAI summary feature. Nobody on my team had shipped anything with a language model.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I had to deliver it safely and leave the team able to do the next one without outside help.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I built the skill and the guardrails before the feature.</p><ul>
+      <li>I formed a 4-person <b>learning guild</b> with 4 hours a week, a shared reading list and small spikes.</li>
+      <li>I brought <b>risk and privacy</b> in during week 1, not week 10. We agreed on masked transcripts and a model hosted within our approved cloud region.</li>
+      <li>I set an <b>"evaluation first"</b> rule: no feature work until we had a <b>golden test set</b> of 150 calls with notes written by experienced staff.</li>
+      <li>Staff <b>review and edit</b> every summary before saving it. The AI drafts; a person decides.</li>
+      <li>I kept a <b>skills matrix</b> and gave two engineers clear stretch goals as AI leads.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> The internal feature launched in 10 weeks. Average after-call work fell from about 4 minutes to about 1.5. About 1 in 10 summaries needed a real correction, which we tracked weekly. Both engineers now lead the team's AI work and have coached another squad.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> Starting internal, with staff in the loop, made the first mistakes cheap. I'd add the cost per summary to the dashboard from day one.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> evaluation first · golden test set · risk partner from week 1 · human in the loop · skills matrix · learning guild</p>
+</article>
+
+<article class="bq" id="q16">
+  <div class="bq-q"><span class="qnum">Q16</span><span>Tell me about managing leadership's expectations around AI hype.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>&#x1F9E0; Psychology: what they're really testing</h5><p>Will you tell a senior leader the truth, and protect the people whose jobs are in question? Red flags are promising a headcount number to please the boss, or flatly refusing to engage. Senior answers turn a loaded question into <b>measurable pilots</b> and report <b>failures</b> as openly as wins.</p></div>
+    <div class="bq-phi"><h5>&#x1F9ED; Philosophy: the principle behind a strong answer</h5><p>Automate <b>tasks</b>, not job titles. A claim without a <b>baseline</b> is a guess. Trust is the asset you spend when you overpromise, and it is slow to earn back.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> After a vendor demo, an executive asked me, "How many roles can AI remove from the operations team?" They wanted a number for next year's budget. The operations staff had heard the rumour and were anxious.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I needed to give the executive a real answer without guessing, and keep the operations team's trust.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I reframed the question from roles to tasks.</p><ul>
+      <li>I said, "I can't give you a credible number today. In 8 weeks I can give you a measured one."</li>
+      <li>With operations leads, I picked two <b>specific tasks</b>: classifying incoming correspondence, and drafting replies to address-change requests.</li>
+      <li>We measured a <b>baseline</b> of handling time and error rate for 2 weeks before any AI was switched on.</li>
+      <li>Every AI output had <b>human oversight</b>: staff approved or fixed it, and we logged every fix.</li>
+      <li>I briefed the operations team myself and shared the results with them first.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> Correspondence classification cut handling time by about 18%. The drafting pilot showed no gain, because staff rewrote most drafts, so we <b>stopped</b> it. I reported both results with the same weight. The executive used the 18% to absorb growth without new hires, not to cut roles. Operations staff asked for the next pilot.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> Showing the stopped pilot made the successful one believable. I now agree stop criteria before any AI pilot starts.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> tasks, not job titles · baseline before claims · measurable pilot · stop criteria · human oversight · report failures openly</p>
+</article>
+
+<article class="bq" id="q17">
+  <div class="bq-q"><span class="qnum">Q17</span><span>Describe how you handled an AI-related failure in production.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>&#x1F9E0; Psychology: what they're really testing</h5><p>Did you design AI to fail safely, and do you treat AI failures with normal engineering discipline? Red flags are "the model hallucinated" as the whole root cause, or no way to switch it off. Senior answers show a <b>kill switch</b>, a <b>blameless</b> incident review and fixes in the pipeline, not just the prompt.</p></div>
+    <div class="bq-phi"><h5>&#x1F9ED; Philosophy: the principle behind a strong answer</h5><p>An AI feature is still a production system. Most GenAI "hallucinations" in retrieval systems trace back to <b>data</b>, not the model. Treat source content like code: <b>versioned</b>, tested and gated before release.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> My team ran an internal GenAI assistant that answered staff questions from policy documents. One morning a branch manager flagged that it quoted an old account fee. A fee change had gone live the day before.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> As the accountable manager, I had to stop the harm, find the cause and restore trust with the business.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I ran it as a normal incident, not an AI mystery.</p><ul>
+      <li>I used the <b>kill switch</b> (a feature flag) within 6 minutes. Staff saw a banner pointing them to the policy site instead.</li>
+      <li>I sent the business clear updates: what was wrong, which fee, and that a person should check any answer from the last 24 hours.</li>
+      <li>The <b>root cause</b>: the search index rebuilt nightly, but the policy update landed after the run. The model faithfully used <b>stale content</b>.</li>
+      <li>We added <b>index freshness checks</b>, source-document versioning with an effective date, and <b>evaluation regression gates</b>: every content change reruns the test questions before release.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> The assistant was back in 2 days. We traced 11 staff who had seen the old fee, and no customer was charged wrongly. In the next 6 months, the gates caught 3 bad content updates before staff saw them. Usage recovered to previous levels within a month.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> We had evaluated the model but not the content pipeline. I now ask, "What happens when the source changes?" in every AI design review.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> kill switch · stale index · content is code · evaluation regression gate · source versioning · blameless review</p>
+</article>
+
+  <div class="remember"><ul>
+    <li>Every AI answer needs the same four things: a <b>baseline</b>, <b>human review</b>, an <b>evaluation set</b> and a way to <b>switch it off</b>.</li>
+    <li>Report what didn't work as clearly as what did. A stopped pilot makes the good results believable.</li>
+    <li>Show the people side: how juniors kept learning, how staff were briefed, and who grew into an AI lead.</li>
+  </ul></div>
+  <div class="post">
+    <p>We measured our AI coding assistant for 8 weeks. Here's the honest result 📊</p>
+    <p>✅ Unit tests: about 40% faster</p>
+    <p>✅ Boilerplate: about 30% faster</p>
+    <p>🤷 Complex design: no gain at all</p>
+    <p>🛡️ Change failure rate: flat, because every AI change still got a human review</p>
+    <p>🔒 Rule one: no secrets or customer data in prompts</p>
+    <p>AI speeds up typing, not thinking. What did your team actually measure?</p>
+    <p>#EngineeringManagement #GenAI #DeveloperProductivity #DORA #Leadership</p>
+  </div>
+</section>
+
+<!-- PEOPLE -->
+<section class="concept" id="people">
+  <h2><span class="num">28.7</span> Hiring, performance &amp; growth <span class="tag-added">Added</span></h2>
+  <p class="oneliner">This theme tests whether you hire fairly, hold a <b>clear bar</b> with real <b>support</b>, grow people on purpose, and build a team where everyone can speak up.</p>
+<figure class="viz" data-viz="steps"><script type="application/json">
+{"title":"Care and standards together: a fair support plan when performance slips (Q19)","stepMs":1100,
+ "items":[
+  {"k":"1 · Notice","t":"<b>Talk early and privately.</b> Ask what's changed before you judge. Check for anything outside work","c":"slate"},
+  {"k":"2 · Name","t":"<b>Write down the gap</b>: what good looks like, with examples, agreed with HR","c":"blue"},
+  {"k":"3 · Support","t":"<b>Learning plan, pairing and time</b> protected in the sprint","c":"teal"},
+  {"k":"check-ins","t":"Fortnightly check-ins with honest, specific feedback, written up after each one","c":"teal","indent":1},
+  {"k":"4 · Review","t":"<b>Review at 12 weeks</b> against the same written measures","c":"purple"},
+  {"k":"met","t":"Bar met: close the plan, recognise the effort","c":"green","indent":1},
+  {"k":"not met","t":"Bar not met: a better-fit role or the formal process, done with respect and with HR","c":"amber","indent":1}
+ ]}
+</script></figure>
+
+<article class="bq" id="q18">
+  <div class="bq-q"><span class="qnum">Q18</span><span>Tell me about hiring for a hard-to-fill role.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>&#x1F9E0; Psychology: what they're really testing</h5><p>Do you fix the hiring system, or just complain about the market? Red flags are lowering the bar in a panic, or waiting a year for a "unicorn". Senior answers show a fairer <b>job-relevant</b> process and a <b>build-not-just-buy</b> plan for skills.</p></div>
+    <div class="bq-phi"><h5>&#x1F9ED; Philosophy: the principle behind a strong answer</h5><p>Test the job, not trivia. Research on selection (for example Sackett and colleagues, 2022) ranks <b>structured interviews</b> and <b>work samples</b> among the better predictors of performance. In a fast-moving field, <b>learning ability</b> matters more than today's tool list.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> I had 4 open roles for senior cloud and AI engineers. They had been open for 5 months. Our process used algorithm puzzles, and strong candidates dropped out or failed on trivia unrelated to the job.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I had to fill the roles within a quarter without lowering the bar.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I changed what we tested and where we looked.</p><ul>
+      <li>I replaced puzzles with a 90-minute <b>paid-time work sample</b>: debug a small, broken cloud deployment and explain the fix.</li>
+      <li>Every interviewer used the same questions and a written <b>scoring rubric</b>, and scored before discussing. This cut "gut feel" bias.</li>
+      <li>I rewrote the advert around outcomes and removed a "10 years' experience" line nobody could justify.</li>
+      <li>I started an internal <b>apprenticeship</b>: two people from adjacent support and testing teams joined on a 6-month paired plan.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> All 4 roles were filled in one quarter: 2 external hires and 2 apprentices. Candidate drop-out fell by about half. As a side effect, the team became more <b>diverse</b> in background and gender. A year on, both apprentices were carrying a full on-call rotation.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> The bar didn't drop; it moved to what the job really needs. I'd track 12-month performance of each hiring route to keep checking that.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> paid-time work sample · scoring rubric · hire for learning ability · internal apprenticeship · test the job, not trivia</p>
+</article>
+
+<article class="bq" id="q19">
+  <div class="bq-q"><span class="qnum">Q19</span><span>Tell me about managing an underperformer.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>&#x1F9E0; Psychology: what they're really testing</h5><p>Can you be kind and clear at the same time? Red flags are avoiding the talk for months, or moving straight to a formal process. Senior answers show <b>written expectations</b>, real <b>support</b>, a fair timeline and respect for the person's dignity and privacy.</p></div>
+    <div class="bq-phi"><h5>&#x1F9ED; Philosophy: the principle behind a strong answer</h5><p>Clear is kind. Unclear expectations are unfair to the person and to the team who carries the gap. Start by looking at the <b>system</b>: did we change the job without changing the support?</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> A developer with 12 years on our on-premises batch systems moved with the team to cloud-native work. Six months later, their changes often failed review, and teammates were quietly redoing their work. The developer was frustrated too.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I had to address it fairly: give real support, and keep the team's standard.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I started with a private, honest conversation.</p><ul>
+      <li>I asked what had changed and whether anything outside work was affecting them. It wasn't. They admitted they felt lost in the new stack.</li>
+      <li>With my HR partner, I wrote down <b>clear expectations</b> with examples: changes pass review in two rounds, and they handle one on-call shift alone.</li>
+      <li>I agreed a <b>learning plan</b> with protected time, and <b>paired</b> them with a patient senior engineer twice a week.</li>
+      <li>We held <b>fortnightly check-ins</b> with specific feedback, written up and shared with them after each one.</li>
+      <li>I used their batch knowledge where it was valuable, in planning the legacy data migration.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> By week 12 they met both measures, and we closed the plan. A year later they led the batch-to-event migration design. Redone work stopped, and the team saw that problems are dealt with fairly, not ignored.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> I should have funded training before the move, not after the slump. If the bar had not been met, I'd have helped find a better-fit role first, then followed the formal process with HR.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> clear is kind · written expectations · learning plan · fortnightly check-ins · HR partner · care and standards</p>
+</article>
+
+<article class="bq" id="q20">
+  <div class="bq-q"><span class="qnum">Q20</span><span>How did you keep a team motivated through a long, hard programme?</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>&#x1F9E0; Psychology: what they're really testing</h5><p>Do you understand what really drives engineers, beyond pizza and speeches? Red flags are "we pushed through" or burnout dressed up as commitment. Senior answers show <b>visible progress</b>, fair sharing of the dull work and a link to <b>purpose</b>.</p></div>
+    <div class="bq-phi"><h5>&#x1F9ED; Philosophy: the principle behind a strong answer</h5><p>Teresa Amabile's <b>progress principle</b>: making progress on meaningful work is one of the strongest everyday motivators. On a long programme, the manager's job is to make small wins <b>visible</b> and share the grind fairly.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> My team of 8 had an 18-month programme to switch off a legacy lending platform with 64 interfaces. The work was mostly careful mapping and testing. By month 5, the retro mood was flat and two people had asked to move.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I had to keep the team engaged and stable to the end, without slowing delivery.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I made progress and purpose visible.</p><ul>
+      <li>I put a <b>burn-down of legacy interfaces</b> on the team wall and dashboard: 64 down to zero.</li>
+      <li>Each time a legacy component was retired, we held a short <b>"switch-off" celebration</b>. The engineer who did it pressed the final button.</li>
+      <li>I <b>rotated</b> people off the grindiest reconciliation work every 6 weeks, and gave each person a small improvement project of their choice.</li>
+      <li>I invited a lending officer to show how the old system's delays hurt customers, linking the work to <b>customer outcomes</b>.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> The platform was switched off 3 weeks early. Engagement scores held at the pre-programme level, and there was no <b>regretted attrition</b>. Both people who'd asked to move stayed, and one later led the final cutover.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> The rotation mattered more than the celebrations. I'd plan it from day one, not after morale dipped.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> progress principle · visible burn-down · switch-off celebration · rotate the grind · customer outcome · no regretted attrition</p>
+</article>
+
+<article class="bq" id="q21">
+  <div class="bq-q"><span class="qnum">Q21</span><span>Tell me about growing an engineer into a tech lead.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>&#x1F9E0; Psychology: what they're really testing</h5><p>Do you grow leaders on purpose, or just promote your best coder and hope? Red flags are throwing someone in without support, or never really letting go. Senior answers show a deliberate <b>stretch</b>, a <b>safety net</b> and real <b>delegated decisions</b>.</p></div>
+    <div class="bq-phi"><h5>&#x1F9ED; Philosophy: the principle behind a strong answer</h5><p>People grow at the edge of their comfort zone, not far past it. Delegate <b>decisions</b>, not just tasks. If you still make every call, the title is all you've given away.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> A senior developer on my payments team wrote excellent code but avoided anything unclear. In meetings with stakeholders, they went quiet. They told me they wanted to grow, but "not into politics".</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I wanted to grow them into a tech lead without setting them up to fail.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I offered a time-boxed stretch with support.</p><ul>
+      <li>I proposed <b>"lead for a quarter"</b> on a new card-dispute API, with an easy way back and no stigma if they chose it.</li>
+      <li>I <b>coached weekly</b> for 30 minutes, using their real situations, not theory.</li>
+      <li>I <b>delegated real design decisions</b> to them, including the error-handling model. I gave input but didn't overrule.</li>
+      <li>They ran the fortnightly <b>stakeholder demos</b>. I attended the first two, then stepped out.</li>
+      <li>I reframed "politics" as <b>helping others decide well</b>, which matched how they already thought.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> The API shipped on time. Stakeholders asked for them by name. After the quarter, they chose to stay as the <b>permanent tech lead</b>. Two years on, they coach two newer leads with the same model.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> The hardest part was staying quiet while they found their own answer. A slower decision of theirs taught more than a faster one of mine.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> stretch with a safety net · lead for a quarter · delegate decisions · weekly coaching · step out of the room</p>
+</article>
+
+<article class="bq" id="q22">
+  <div class="bq-q"><span class="qnum">Q22</span><span>Tell me about building psychological safety or inclusion in your team.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>&#x1F9E0; Psychology: what they're really testing</h5><p>Do you know what safety really means, and can you change a habit rather than give a speech? Red flags are "we're all friends here" or treating safety as never disagreeing. Senior answers change the <b>format</b> of how work gets done and show a concrete <b>outcome</b>.</p></div>
+    <div class="bq-phi"><h5>&#x1F9ED; Philosophy: the principle behind a strong answer</h5><p>Amy Edmondson defines <b>psychological safety</b> as a shared belief that the team is safe for interpersonal risk-taking. It is not comfort; it makes <b>candour</b> possible. Inclusion is designed into meetings, not hoped for.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> My team had 11 engineers, four of them remote and several newer to the language we work in. In design reviews, the same three people spoke. Remote and quieter engineers stayed muted, then raised concerns privately after decisions were made.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I wanted every engineer's view heard before decisions, not after.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I changed the meeting design, not just the message.</p><ul>
+      <li>Designs went out as <b>written pre-reads</b> 2 days ahead.</li>
+      <li>Each review started with 10 minutes of <b>silent commenting</b> in the document, so the loudest voice didn't anchor the room.</li>
+      <li>We used <b>round-robin input</b>, remote people first.</li>
+      <li>Decisions were recorded <b>with dissent</b>, so disagreeing was normal and visible.</li>
+      <li>I modelled it: I asked for critique of my own proposals, and thanked people for it in public.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> Comments per review roughly tripled, and most new ones came from remote engineers. A newer engineer used silent commenting to flag that a planned cache would show customers stale balances after transfers. It was a <b>serious design flaw</b>, caught before build. Survey scores on "I can raise a concern" rose from 58% to 86%.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> The format helped, but me thanking dissent in public changed the culture. I'd measure it with the survey from the start.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> psychological safety · silent commenting · written pre-reads · round-robin · decisions recorded with dissent · candour</p>
+</article>
+
+  <div class="remember"><ul>
+    <li>In people stories, show <b>care and standards together</b>: support, plus a clear bar written down.</li>
+    <li>Keep details private and respectful. Mention your <b>HR partner</b> where it's a formal matter, and never share personal details.</li>
+    <li>Change the <b>system</b> (process, format, rotation) rather than just asking people to try harder.</li>
+  </ul></div>
+  <div class="post">
+    <p>Our design reviews had 11 engineers and 3 voices 🔇</p>
+    <p>📄 Written pre-reads 2 days ahead</p>
+    <p>🤫 10 minutes of silent commenting before anyone speaks</p>
+    <p>🔄 Round-robin input, remote people first</p>
+    <p>📝 Decisions recorded with dissent</p>
+    <p>🚨 A quiet newer engineer then caught a stale-balance flaw before build</p>
+    <p>Psychological safety isn't comfort. It's what makes candour possible. How do you hear your quietest engineer?</p>
+    <p>#PsychologicalSafety #EngineeringManagement #Inclusion #Leadership #TeamCulture</p>
+  </div>
+</section>
+
+<!-- DELIVERY -->
+<section class="concept" id="delivery">
+  <h2><span class="num">28.8</span> Delivery under pressure <span class="tag-added">Added</span></h2>
+  <p class="oneliner">This theme tests whether you make hard <b>trade-offs</b> in the open when money or time runs short, and protect your people when things go badly wrong.</p>
+<figure class="viz" data-viz="lanes"><script type="application/json">
+{"title":"A 14-hour outage (Q24): two engineer shifts, enforced rest and one voice to executives","max":16,"labelW":110,"rowH":36,"dur":6000,
+ "rows":[
+  {"label":"Shift A","blocks":[{"s":0.5,"e":7.5,"t":"Diagnose and contain","c":"blue"},{"s":7.5,"e":16,"t":"Rest (enforced)","c":"slate"}]},
+  {"label":"Shift B","blocks":[{"s":6.5,"e":14,"t":"Fix and restore","c":"teal"},{"s":14,"e":16,"t":"Rest","c":"slate"}]},
+  {"label":"Manager","blocks":[{"s":0.5,"e":7,"t":"Shields the responders","c":"purple"},{"s":7,"e":14.5,"t":"Owns all exec comms","c":"purple"}]},
+  {"label":"Updates","blocks":[{"s":1,"e":1.3,"c":"amber"},{"s":2,"e":2.3,"c":"amber"},{"s":3,"e":3.3,"c":"amber"},{"s":4,"e":4.3,"c":"amber"},{"s":5,"e":5.3,"c":"amber"},{"s":6,"e":6.3,"c":"amber"},{"s":7,"e":7.3,"c":"amber"},{"s":8,"e":8.3,"c":"amber"},{"s":9,"e":9.3,"c":"amber"},{"s":10,"e":10.3,"c":"amber"},{"s":11,"e":11.3,"c":"amber"},{"s":12,"e":12.3,"c":"amber"},{"s":13,"e":13.3,"c":"amber"},{"s":14,"e":14.3,"c":"amber"}]}
+ ],
+ "markers":[{"at":0.5,"t":"Alert","c":"red"},{"at":7,"t":"Handover","c":"blue"},{"at":14,"t":"Restored","c":"green"}],
+ "spans":[{"s":0,"e":14,"t":"Customer impact about 14 hours","c":"red"}],
+ "ticks":[{"at":0,"t":"0"},{"at":4,"t":"4"},{"at":8,"t":"8"},{"at":12,"t":"12"},{"at":16,"t":"16"}],
+ "axis":"hours (amber = hourly updates; blameless review 3 days later)"}
+</script></figure>
+
+<article class="bq" id="q23">
+  <div class="bq-q"><span class="qnum">Q23</span><span>Tell me about delivering after your budget or team was cut.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>&#x1F9E0; Psychology: what they're really testing</h5><p>Will you make a real choice, or spread the pain thinly and miss everything? Red flags are "we all worked harder" or quietly slowing every project. Senior answers show open <b>prioritisation</b> with stakeholders and the courage to <b>stop</b> work.</p></div>
+    <div class="bq-phi"><h5>&#x1F9ED; Philosophy: the principle behind a strong answer</h5><p>Stopping is a strategy. <b>Cost of delay</b> (from Don Reinertsen's work on product flow) puts a value on time, so you can compare very different work. Ten projects at 70% speed usually deliver less than five at full speed: <b>stop starting, start finishing</b>.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> Mid-year, my area's budget was cut by 30%. Two contractor roles ended within a month. We had 6 initiatives in flight, and every stakeholder expected theirs to continue.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I had to re-plan with fewer people and keep the business's trust.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I made the trade-off visible instead of hiding it.</p><ul>
+      <li>I scored each initiative on <b>cost of delay</b> per month (revenue, risk and regulatory exposure) with the product owners.</li>
+      <li>I ran one session with all 6 sponsors and showed the ranking. I proposed to <b>explicitly stop 2</b> initiatives, rather than slow all 6.</li>
+      <li>I <b>protected the top 2 outcomes</b>: a regulatory reporting change and a digital loan top-up feature.</li>
+      <li>I funded two weeks to <b>automate toil</b>: manual environment builds and release checklists ate about 15% of the team's time.</li>
+      <li>The stopped work was parked with a written restart note, so nothing was lost.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> Both protected outcomes shipped on their original dates. Toil automation returned about a day per engineer each fortnight. One sponsor was unhappy at first, but later said the <b>clarity</b> helped them plan. The team said it was the calmest half-year in a while.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> Saying "we are stopping this" out loud was harder than any technical choice. I'd now keep a cost-of-delay ranking all year, not just in a crisis.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> cost of delay · stop, don't slow · protect the top outcomes · automate toil · restart note · trade-offs in the open</p>
+</article>
+
+<article class="bq" id="q24">
+  <div class="bq-q"><span class="qnum">Q24</span><span>Describe how you supported your team during and after a major incident.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>&#x1F9E0; Psychology: what they're really testing</h5><p>As a manager, do you add pressure or absorb it? Red flags are joining the bridge to demand updates, or praising people for working 20 hours straight. Senior answers show <b>shielding</b>, owned <b>comms</b>, enforced rest and follow-up that actually gets <b>funded</b>.</p></div>
+    <div class="bq-phi"><h5>&#x1F9ED; Philosophy: the principle behind a strong answer</h5><p>Tired people make risky changes, so <b>rest is a reliability control</b>. In a <b>blameless</b> review, you look for how the system allowed the failure, not who to blame. Actions that never reach the roadmap are just a wish list.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> A storage failure after a planned database upgrade took our card-servicing platform down for 14 hours, from evening into the next morning. Executives were phoning engineers directly for updates.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> An incident lead ran the technical response. My job was to protect the responders, own the stakeholders and make sure we learned.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I took the noise away from the people fixing the problem.</p><ul>
+      <li>I asked executives to route all questions through me, and sent <b>hourly updates</b> in plain language: impact, progress, next update time.</li>
+      <li>At hour 7 I set up a <b>rest handover</b>: a fresh shift took over with a written state of play, and I sent shift A home, including two people who wanted to stay.</li>
+      <li>I organised food and taxis, and gave the next day off in lieu.</li>
+      <li>Three days later I facilitated a <b>blameless review</b> with a full timeline. I asked "what made this easy to get wrong?"</li>
+      <li>I put the top 5 actions into the next two sprints, with owners, and reported their progress to the executives.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> Service was restored without a second mistake during the night. All 5 actions closed within 6 weeks, including an <b>upgrade rehearsal</b> on a copy of production. Executives later said hourly updates were better than constant calls. Nobody on the team asked to leave the rotation.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> I'd write the rest-handover rule into the incident process before the next long outage, so nobody has to argue for it at 2am.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> shield the responders · one voice to executives · rest is a reliability control · rest handover · blameless review · funded follow-up</p>
+</article>
+
+  <div class="remember"><ul>
+    <li>Under pressure, <b>name the trade-off</b> out loud: what you stopped, what you protected, and why.</li>
+    <li>Your role in an incident is different from an engineer's: <b>shield, communicate, rest, learn</b>.</li>
+    <li>Prove follow-through: actions in the roadmap, with owners and dates, reported back.</li>
+  </ul></div>
+  <div class="post">
+    <p>Our budget was cut 30% mid-year. We stopped two projects on purpose ✋</p>
+    <p>💸 Ranked all 6 initiatives by cost of delay, with the sponsors in one room</p>
+    <p>🛑 Stopped 2 outright, instead of slowing all 6</p>
+    <p>🛡️ Protected the top 2 outcomes</p>
+    <p>🤖 Spent 2 weeks automating toil, and got a day per engineer back each fortnight</p>
+    <p>✅ Both protected outcomes shipped on their original dates</p>
+    <p>Stopping is a strategy. What would you stop first?</p>
+    <p>#EngineeringManagement #Prioritisation #CostOfDelay #Leadership #Delivery</p>
+  </div>
+</section>
+
+<!-- CULTURE -->
+<section class="concept" id="culture">
+  <h2><span class="num">28.9</span> Culture &amp; hard decisions <span class="tag-added">Added</span></h2>
+  <p class="oneliner">This theme tests whether you can make an <b>unpopular call</b> for the long term, and bring the team with you with respect for what they built.</p>
+<figure class="viz" data-viz="journey"><script type="application/json">
+{"title":"Retiring a much-loved internal tool, with the team rather than to them (Q25)","stepMs":1300,
+ "steps":[
+  {"icon":"📊","t":"Show the real cost","d":"About 30% of team time spent keeping the in-house deploy tool alive","c":"slate"},
+  {"icon":"🧩","t":"Agree the criteria together","d":"The team writes the scorecard before any option is scored","c":"blue"},
+  {"icon":"⚖️","t":"Score the options openly","d":"Keep and invest, or move to the enterprise standard","c":"purple"},
+  {"icon":"🏆","t":"Honour the builders","d":"Public credit; their best ideas go upstream to the standard","c":"amber"},
+  {"icon":"🛣️","t":"Migrate together in waves","d":"Original builders lead the migration plan","c":"teal","tag":"2 quarters"},
+  {"icon":"🚀","t":"Spend the freed capacity","d":"About 30% back for product work","c":"green","tag":"outcome"}
+ ]}
+</script></figure>
+
+<article class="bq" id="q25">
+  <div class="bq-q"><span class="qnum">Q25</span><span>Tell me about an unpopular decision you made for the long-term health of the team or product.</span></div>
+  <div class="bq-why">
+    <div class="bq-psy"><h5>&#x1F9E0; Psychology: what they're really testing</h5><p>Can you hold a hard line and still keep people's respect? Red flags are deciding alone and announcing it, or never deciding to avoid upset. Senior answers show a <b>shared decision process</b>, respect for people's <b>emotional investment</b> and clear long-term value.</p></div>
+    <div class="bq-phi"><h5>&#x1F9ED; Philosophy: the principle behind a strong answer</h5><p>People value what they built more than outsiders do: researchers call this the <b>IKEA effect</b>. Past effort is a <b>sunk cost</b>, not a reason to continue. Involve people in the criteria, and the decision becomes theirs too.</p></div>
+  </div>
+  <div class="star">
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> Five years earlier, two engineers in my team built an in-house deployment tool. It was clever and well loved. But the company had since adopted a standard delivery platform, and keeping our tool working with new security controls now took about 30% of the team's time.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I believed we should retire it. I had to make that call without losing the people who built it.</p></div>
+    <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I made the decision shared, not imposed.</p><ul>
+      <li>I showed the <b>real cost</b>: 8 months of time logs, security patches and the features we hadn't built.</li>
+      <li>I asked the team to write the <b>decision criteria</b> first: security, developer experience, run cost and roadmap fit. Then we scored both options together.</li>
+      <li>The standard won on 3 of 4. I said plainly that I would retire our tool, and I <b>recorded the dissent</b> on developer experience.</li>
+      <li>I <b>recognised the original builders</b> publicly at an all-hands, and helped them propose their best feature upstream to the platform team.</li>
+      <li>The builders led the <b>migration plan</b>, in waves, with the noisiest services moving last.</li>
+    </ul></div></div>
+    <div class="st-r"><span class="k">R</span><p><b>Result:</b> Migration finished in 2 quarters. About 30% of team capacity went back to product work. The builders' feature was adopted by the platform team and used by 20 other teams. Both builders stayed, and one joined the platform's design group.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> I'd start the conversation a year earlier, when the cost was 10%, not 30%. Unpopular decisions get harder the longer you wait.</p></div>
+  </div>
+  <p class="bq-keys"><b>Power words to land:</b> sunk cost · shared decision criteria · recorded dissent · honour the builders · migrate together · freed capacity</p>
+</article>
+
+  <div class="remember"><ul>
+    <li>For unpopular decisions, <b>involve people in the criteria</b>, then decide clearly yourself. Shared process, single owner.</li>
+    <li>Respect what people built: give <b>public credit</b> and a role in what comes next.</li>
+    <li>Show the cost of waiting, and what the freed capacity was spent on.</li>
+  </ul></div>
+  <div class="post">
+    <p>The hardest decision I made as a manager: retiring a tool my own team loved 💔</p>
+    <p>📊 It was eating about 30% of our time</p>
+    <p>🧩 The team wrote the decision criteria before we scored anything</p>
+    <p>🏆 The original builders got public credit, and their best idea went upstream</p>
+    <p>🛣️ They led the migration plan themselves</p>
+    <p>🚀 Result: about 30% of capacity back for product work, and both builders stayed</p>
+    <p>Past effort is a sunk cost. Respect for people is not. What have you had to let go of?</p>
+    <p>#EngineeringManagement #Leadership #TechDebt #PlatformEngineering #TeamCulture</p>
+  </div>
+</section>
+
+<div class="qa-wrap">
+  <h2>⚡ Quick-fire Q&amp;A</h2>
+  <details class="qa"><summary>How technical should an engineering manager's answers be?</summary><p>Technical enough to prove you understand the choice, and no deeper. Name the mechanism in one plain sentence ("an error-budget policy", "consumer-driven contract tests"), then move to why it mattered and how the team owned it. Be ready for one follow-up level. If you go into code detail, the interviewer may wonder who was leading.</p></details>
+  <details class="qa"><summary>How do I talk about performance management or letting someone go?</summary><p>Keep it respectful and anonymous. Never name or mock the person. Show the process: clear written expectations, support, honest check-ins, and a fair time frame. Then the outcome, whether they improved or moved to a better-fit role. Interviewers listen for <b>care and standards together</b>, and for whether you acted early.</p></details>
+  <details class="qa"><summary>Should a manager say "we" or "I"?</summary><p>Both, on purpose. Use "I" for the system you changed: the policy, the priority call, the coaching, the escalation. Use "we" or "the team" for what was built. "I agreed the error-budget policy with product; the team fixed the top three failure modes" gives credit and shows your part.</p></details>
+  <details class="qa"><summary>How do I answer if I'm a first-time manager?</summary><p>Use stories where you led without the title: running a guild, leading a migration wave, mentoring, or owning an incident. Say so plainly: "I wasn't the line manager, but I owned the outcome." Then show what you'd do differently with the authority. Self-awareness about the gap is a strength in this round.</p></details>
+  <details class="qa"><summary>What if the interviewer asks what I'd do if product refuses the trade-off?</summary><p>Show a calm path: make the cost visible in their terms, offer a small time-boxed trial, and agree a tie-breaker in advance (often your shared manager). If the business still accepts the risk, record it and its owner. Then "disagree and commit", and keep measuring.</p></details>
+</div>
+
+<div class="pager"><a href="27-solution-designer-behavioural-questions.html">← 27 · Solution Designer Behavioural Questions</a><a class="next" href="index.html">🏠 Back to Roadmap</a></div>
+</main>
+<footer>Tech Concepts Prep · Section 28</footer>
+<script src="assets/menu-data.js"></script>
+<script src="assets/menu.js"></script>
+<script src="assets/app.js"></script>
+<script src="assets/viz.js"></script>
+</body>
+</html>
