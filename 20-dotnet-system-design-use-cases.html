@@ -1,0 +1,1726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>20 · Top 10 .NET Use Cases | Tech Concepts Prep</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<nav class="top"><a href="19-design-case-studies.html">← Case Studies</a><span class="here">20 · Top 10 .NET Use Cases</span><a href="21-cloud-cheat-sheet.html">Next: Cloud Cheat Sheet →</a></nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">Section 20</div>
+  <h1>Top 10 system design use cases in .NET</h1>
+  <p>Ten real problems, solved the .NET 10 way. Each one follows the same path: the <b>problem statement</b> (with numbers), the <b>solution</b> as an animated flow plus the key trade-offs, the <b>steps to build it</b> with the exact APIs and NuGet packages, and the <b>test scenarios</b>: positive, negative and edge cases, with the .NET tool for each.</p>
+  <p>These are implementation-focused. The classic architecture case studies (URL shortener, rate limiter, chat, notifications, feed, ledger) live in <a href="19-design-case-studies.html" style="color:#fff;text-decoration:underline">19 Design Case Studies</a>.</p>
+  <div class="toc">
+    <a href="#flash-sale" class="added">Flash sale without overselling</a>
+    <a href="#booking" class="added">Booking with temporary holds</a>
+    <a href="#autocomplete" class="added">Search autocomplete</a>
+    <a href="#proximity" class="added">Proximity service</a>
+    <a href="#file-upload" class="added">Large file upload</a>
+    <a href="#scheduler" class="added">Distributed job scheduler</a>
+    <a href="#crawler" class="added">Web crawler</a>
+    <a href="#fraud" class="added">Real-time fraud detection</a>
+    <a href="#onboarding" class="added">Customer onboarding (KYC) workflow</a>
+    <a href="#rag-assistant" class="added">Enterprise RAG assistant</a>
+  </div>
+</header>
+
+<!-- FLASH SALE -->
+<section class="concept" id="flash-sale">
+  <h2><span class="num">20.1</span> Flash-sale order &amp; inventory without overselling <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Thousands of people press "Buy" in the same second for a few thousand items. Take the stock in one atomic step, answer fast, and do the slow work (payment, order rows) in the background.</p>
+
+  <h3>Problem statement</h3>
+  <p>A retailer (or a bank's rewards store) sells 5,000 limited items at 12:00 sharp. About 200,000 shoppers arrive in the first minute. A normal "read stock, then write stock" flow sells the same last item to many people, and the database melts under the spike.</p>
+  <div class="cols2">
+    <div class="box blue"><h4>Functional</h4><ul>
+      <li>Show remaining stock (can be a few seconds old)</li>
+      <li>Reserve and place an order; pay within 10 minutes</li>
+      <li>Limit: 2 items per customer</li>
+      <li>Release stock if payment fails or times out</li>
+      <li>A double-click or retry must not buy twice</li>
+    </ul></div>
+    <div class="box green"><h4>Non-functional</h4><ul>
+      <li><b>Peak:</b> 50,000 requests/s on "Buy" for about 2 minutes</li>
+      <li><b>Latency:</b> reserve answer p99 &lt; 200 ms</li>
+      <li><b>Correctness:</b> 0 oversold items, ever</li>
+      <li><b>Availability:</b> 99.95% during the sale window</li>
+      <li><b>Durability:</b> no accepted order is lost</li>
+    </ul></div>
+  </div>
+  <p><b>Constraints &amp; assumptions:</b> one Azure region; SQL Server holds the real stock and orders; Redis is available; the payment provider is external and slow (1&ndash;3 s); the sale time is known in advance, so you can pre-scale.</p>
+
+  <h3>Solution</h3>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Reserve in Redis, write orders in the background","actors":[{"t":"Shopper","c":"blue"},{"t":"Order API","c":"purple"},{"t":"Redis (Lua)","c":"red"},{"t":"Service Bus","c":"amber"},{"t":"Worker + SQL","c":"green"}],"colW":165,"rowH":42,"stepMs":950,
+ "steps":[
+  {"note":"12:00 - 200k shoppers press Buy","over":[0,4],"c":"slate"},
+  {"from":0,"to":1,"t":"POST /orders","sub":"Idempotency-Key header","c":"blue"},
+  {"from":1,"to":2,"t":"EVAL reserve script","sub":"check key, stock, limit, then DECRBY","c":"purple"},
+  {"from":2,"to":1,"t":"OK, 4,999 left","dash":true,"c":"green"},
+  {"from":1,"to":3,"t":"OrderReserved event","c":"purple"},
+  {"from":1,"to":0,"t":"202 Accepted + orderId","dash":true,"c":"green"},
+  {"from":3,"to":4,"t":"write order (SQL guard)","sub":"UPDATE ... WHERE Stock >= qty","c":"amber"},
+  {"note":"Stock is 0: the script says no","over":[0,2],"c":"red"},
+  {"from":1,"to":0,"t":"409 Sold out","c":"red"},
+  {"note":"Payment fails or 10 minutes pass: give the stock back","over":[2,4],"c":"amber"}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>Key decision</th><th>Trade-off</th></tr>
+    <tr><td><b>Gate in Redis, truth in SQL.</b> A Lua script checks and decrements stock in one atomic step in memory.</td><td>Very fast, but Redis and SQL can drift, so SQL keeps a final <code>WHERE Stock &gt;= @qty</code> guard and a job reconciles.</td></tr>
+    <tr><td><b>Reserve now, write later.</b> The API answers 202 and a queue absorbs the spike.</td><td>The shopper sees "pending" for a moment, and you need a timeout to release unpaid stock.</td></tr>
+    <tr><td><b>Idempotency key per checkout.</b> Retries return the first result.</td><td>One extra Redis key per order (kept 24 h).</td></tr>
+    <tr><td><b>Admission control.</b> Rate limit or a waiting room in front of "Buy".</td><td>Some shoppers wait or get 429, but the system stays up.</td></tr>
+    <tr><td><b>Pre-scale before 12:00.</b> Set minimum replicas ahead of time.</td><td>You pay for idle capacity for a few minutes; autoscale reacts too slowly for a 2-minute spike.</td></tr>
+  </table></div>
+
+  <h3>Steps to implement in .NET 10</h3>
+  <ol>
+    <li><b>Set up:</b> <code>dotnet new webapi</code> (minimal APIs) plus an Aspire 13 AppHost with <code>Aspire.Hosting.Redis</code>, <code>Aspire.Hosting.SqlServer</code> and <code>Aspire.Hosting.Azure.ServiceBus</code>, so Redis, SQL and the Service Bus emulator start locally with one command.</li>
+    <li><b>Model:</b> EF Core 10 (<code>Microsoft.EntityFrameworkCore.SqlServer</code>) with <code>Product</code> (Id, Stock, <code>[Timestamp] byte[] RowVersion</code>), <code>Order</code> (PK = orderId) and an outbox table. RowVersion makes admin edits (price, stock top-ups) fail with <code>DbUpdateConcurrencyException</code> instead of silently overwriting.</li>
+    <li><b>Load stock into Redis</b> before the sale: <code>StringSetAsync("stock:{sku}", 5000)</code> with <code>StackExchange.Redis</code>.</li>
+    <li><b>Reserve endpoint:</b> run the Lua script with <code>IDatabase.ScriptEvaluateAsync</code> (core trick 1). It also adds the order to a sorted set scored by its expiry time, so the sweeper can find unpaid reservations.</li>
+    <li><b>Idempotency:</b> require an <code>Idempotency-Key</code> header (an IETF draft name, widely used). Check it inside the same Lua script, so "seen before?" and "take stock" can't race.</li>
+    <li><b>Publish</b> <code>OrderReserved</code> with <code>Azure.Messaging.ServiceBus</code>. Set <code>MessageId = orderId</code> and turn on duplicate detection on the queue.</li>
+    <li><b>Order worker:</b> a <code>BackgroundService</code> with <code>ServiceBusProcessor</code> writes the order using the SQL guard (core trick 2), in one transaction with the outbox row.</li>
+    <li><b>Admission control:</b> built-in <code>Microsoft.AspNetCore.RateLimiting</code> (<code>AddRateLimiter</code>, token bucket per client, 429 + <code>Retry-After</code>), plus Azure Front Door WAF rate rules at the edge.</li>
+    <li><b>Release expired reservations:</b> a <code>BackgroundService</code> using <code>new PeriodicTimer(TimeSpan.FromSeconds(15), timeProvider)</code> reads expired entries (<code>SortedSetRangeByScoreAsync</code> up to "now"), returns their stock and removes them. Inject <code>TimeProvider</code> so tests can fake time.</li>
+    <li><b>Deploy &amp; observe:</b> Azure Container Apps with min replicas raised before the sale, Azure Managed Redis, <code>Azure.Monitor.OpenTelemetry.AspNetCore</code> for traces and metrics (reserved, sold out, released). Run the load test a day before.</li>
+  </ol>
+  <p><b>Core trick 1: atomic reserve + idempotency in one Lua script</b></p>
+<pre class="code"><code style="background:none;padding:0">const string ReserveLua = """
+    -- KEYS: 1 stock, 2 customer count, 3 idempotency key, 4 reservations (sorted set)
+    if redis.call('EXISTS', KEYS[3]) == 1 then return -2 end            -- seen before
+    local qty, limit = tonumber(ARGV[1]), tonumber(ARGV[2])
+    local stock = tonumber(redis.call('GET', KEYS[1]) or '0')
+    if stock &lt; qty then return -1 end                                     -- sold out
+    if tonumber(redis.call('GET', KEYS[2]) or '0') + qty &gt; limit then return -3 end
+    redis.call('DECRBY', KEYS[1], qty)
+    redis.call('INCRBY', KEYS[2], qty)
+    redis.call('SET', KEYS[3], ARGV[3], 'EX', 86400)                      -- remember orderId 24 h
+    redis.call('ZADD', KEYS[4], ARGV[4], ARGV[3])                        -- score = expiry time
+    return stock - qty
+    """;
+
+var tag = "{sku-123}";            // hash tag: all keys land on the same cluster slot
+var left = (long)await db.ScriptEvaluateAsync(ReserveLua,
+    [$"stock:{tag}", $"cust:{tag}:{customerId}", $"idem:{tag}:{idemKey}", $"resv:{tag}"],
+    [qty, 2, orderId.ToString(), clock.GetUtcNow().AddMinutes(10).ToUnixTimeSeconds()]);
+return left switch
+{
+    -1 =&gt; Results.Conflict("Sold out"),
+    -2 =&gt; Results.Accepted($"/orders/{await db.StringGetAsync($"idem:{tag}:{idemKey}")}"),
+    -3 =&gt; Results.UnprocessableEntity("Limit is 2 per customer"),
+    _  =&gt; Results.Accepted($"/orders/{orderId}")
+};</code></pre>
+  <p><b>Core trick 2: the SQL guard in the worker (EF Core <code>ExecuteUpdateAsync</code>)</b></p>
+<pre class="code"><code style="background:none;padding:0">await using var tx = await db.Database.BeginTransactionAsync(ct);
+if (await db.Orders.AnyAsync(o =&gt; o.Id == msg.OrderId, ct)) return;       // redelivered message
+
+var rows = await db.Products
+    .Where(p =&gt; p.Id == msg.ProductId &amp;&amp; p.Stock &gt;= msg.Qty)              // final guard
+    .ExecuteUpdateAsync(s =&gt; s.SetProperty(p =&gt; p.Stock, p =&gt; p.Stock - msg.Qty), ct);
+
+if (rows == 0)                                                           // Redis and SQL disagreed
+{
+    await tx.RollbackAsync(ct);
+    await ReleaseInRedisAsync(msg, ct);
+    return;
+}
+db.Orders.Add(Order.AwaitingPayment(msg.OrderId, msg.CustomerId, msg.ProductId, msg.Qty));
+await db.SaveChangesAsync(ct);                                           // order + outbox row together
+await tx.CommitAsync(ct);</code></pre>
+
+  <h3>Testing scenarios</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Type</th><th>Scenario</th><th>Expected result</th><th>How to test (.NET)</th></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>Buy 1 when stock is 10</td><td>202 + orderId; Redis stock 9; order row "AwaitingPayment"</td><td>xUnit v3 + <code>WebApplicationFactory</code>; Testcontainers Redis + MsSql</td></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>Same <code>Idempotency-Key</code> sent twice</td><td>Same orderId both times; stock goes down once</td><td>Two calls with one key; assert stock and order count</td></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>Payment succeeds within 10 minutes</td><td>Order "Paid"; reservation removed; stock not returned</td><td>Service Bus emulator (<code>Testcontainers.ServiceBus</code>) or a fake payment handler</td></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>Customer buys exactly 2 (the limit)</td><td>Both accepted</td><td>Integration test with one customerId</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Stock is 0</td><td>409 Sold out; no order, no message</td><td>Seed stock 0; assert queue is empty</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Same customer tries a 3rd item</td><td>422; stock unchanged</td><td>Integration test</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Missing <code>Idempotency-Key</code></td><td>400 with a ProblemDetails body</td><td><code>HttpClient</code> without the header; Verify snapshot of the body</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Redis is down</td><td>503 (fail closed: never sell blind)</td><td>Stop the Redis container mid-test, or a Polly chaos fault on the Redis call</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Payment fails</td><td>Order "Cancelled"; stock back in Redis</td><td>Fake payment returns a decline</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>500 parallel buys for the last 100 items</td><td>Exactly 100 accepted, 400 sold out, stock never below 0</td><td><code>Task.WhenAll</code> against Testcontainers Redis (sample below)</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>Reservation reaches 10:00 exactly</td><td>Stock returned once; a late payment is refunded</td><td><code>FakeTimeProvider.Advance(TimeSpan.FromMinutes(10))</code></td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>Service Bus delivers the same message twice</td><td>One order row only</td><td>Call the worker handler twice with the same message</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>Redis says 1 left, SQL says 0</td><td>SQL guard rejects; reservation released; shopper told "sold out"</td><td>Seed the two stores differently</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>50,000 req/s for 2 minutes</td><td>p99 &lt; 200 ms; error rate &lt; 0.1%; 0 oversold</td><td>k6 (free) or NBomber (commercial licence for organisations)</td></tr>
+  </table></div>
+  <p><b>Sample test: no overselling under concurrency</b> (the factory starts <code>new RedisBuilder("redis:7.4").Build()</code> and points the app at it)</p>
+<pre class="code"><code style="background:none;padding:0">public sealed class FlashSaleTests(SaleApiFactory factory) : IClassFixture&lt;SaleApiFactory&gt;
+{
+    [Fact]
+    public async Task Never_sells_more_than_the_stock()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await factory.SeedStockAsync("sku-123", 100);
+
+        var calls = Enumerable.Range(0, 500).Select(async i =&gt;
+        {
+            using var client = factory.CreateClient();
+            var req = new HttpRequestMessage(HttpMethod.Post, "/orders")
+            { Content = JsonContent.Create(new { sku = "sku-123", qty = 1, customerId = $"c{i}" }) };
+            req.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString());
+            return (await client.SendAsync(req, ct)).StatusCode;
+        });
+        var results = await Task.WhenAll(calls);
+
+        Assert.Equal(100, results.Count(s =&gt; s == HttpStatusCode.Accepted));
+        Assert.Equal(400, results.Count(s =&gt; s == HttpStatusCode.Conflict));
+        Assert.Equal(0, await factory.GetRedisStockAsync("sku-123"));
+    }
+}</code></pre>
+
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> The .NET stack for this use case</div>
+  <table>
+    <tr><th>Component</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Atomic gate</b></td><td><code>StackExchange.Redis</code> <code>ScriptEvaluateAsync</code></td><td>Lua runs as one step; use hash tags on Redis Cluster</td></tr>
+    <tr><td><b>Final guard</b></td><td>EF Core 10 <code>ExecuteUpdateAsync</code> + <code>[Timestamp]</code> rowversion</td><td>Conditional UPDATE; optimistic concurrency for edits</td></tr>
+    <tr><td><b>Async orders</b></td><td><code>Azure.Messaging.ServiceBus</code></td><td>Duplicate detection on <code>MessageId</code></td></tr>
+    <tr><td><b>Admission</b></td><td><span class="pill builtin">built-in</span> <code>Microsoft.AspNetCore.RateLimiting</code></td><td>429 + <code>Retry-After</code></td></tr>
+    <tr><td><b>Expiry sweeper</b></td><td><span class="pill builtin">built-in</span> <code>BackgroundService</code>, <code>PeriodicTimer</code>, <code>TimeProvider</code></td><td>Fake time in tests</td></tr>
+    <tr><td><b>Tests</b></td><td><code>xunit.v3</code>, <code>Microsoft.AspNetCore.Mvc.Testing</code>, <code>Testcontainers.Redis</code>; <code>NBomber</code> <span class="pill lic">commercial licence</span> or k6</td><td>NBomber is free only for personal use</td></tr>
+  </table>
+  <p class="warn">Never "read stock, then write stock" in two calls. Whatever store you use, the check and the decrement must be one atomic operation.</p>
+</div>
+  <div class="remember"><ul>
+    <li>Check-and-decrement in one atomic step: a Redis Lua script or <code>UPDATE ... WHERE Stock &gt;= @qty</code>.</li>
+    <li>Answer 202 fast; a queue and a worker do the slow part.</li>
+    <li>Idempotency key + reservation expiry turn retries and abandoned carts into non-events.</li>
+    <li>Prove it with a <code>Task.WhenAll</code> race test, not with hope.</li>
+  </ul></div>
+  <div class="post">
+    <p>5,000 items. 200,000 shoppers. 12:00 sharp. How do you sell exactly 5,000? 🛒</p>
+    <p>⚛️ Check and take stock in ONE atomic step (Redis Lua or a conditional SQL UPDATE)</p>
+    <p>📨 Answer 202 in milliseconds, let a queue write the orders</p>
+    <p>🔑 Idempotency keys: a double-click never buys twice</p>
+    <p>⏳ Unpaid after 10 minutes? The stock goes back automatically</p>
+    <p>🧪 Test it: 500 parallel requests for 100 items must give exactly 100 orders</p>
+    <p>Overselling is a design bug, not bad luck.</p>
+    <p>#SystemDesign #DotNet #Redis #Ecommerce #Testing</p>
+  </div>
+</section>
+
+<!-- BOOKING -->
+<section class="concept" id="booking">
+  <h2><span class="num">20.2</span> Seat / appointment booking with temporary holds <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Let a user hold a seat or time slot for a few minutes while they pay, block everyone else, and release it automatically if they walk away.</p>
+
+  <h3>Problem statement</h3>
+  <p>Concert tickets, flight seats and branch appointments all have the same shape: a limited set of named slots. Users need a short, exclusive hold while they fill in details or pay. Without holds, two people pay for the same seat; with holds that never expire, seats look "sold out" when they are not.</p>
+  <div class="cols2">
+    <div class="box blue"><h4>Functional</h4><ul>
+      <li>See free, held and booked seats/slots</li>
+      <li>Hold 1&ndash;6 seats for 10 minutes, all or nothing</li>
+      <li>Confirm (after payment) or cancel a hold</li>
+      <li>Holds release by themselves when time runs out</li>
+      <li>Show a countdown; other screens update live</li>
+    </ul></div>
+    <div class="box green"><h4>Non-functional</h4><ul>
+      <li><b>Peak:</b> 2,000 hold requests/s at a big on-sale (appointments: ~50/s)</li>
+      <li><b>Latency:</b> hold p99 &lt; 300 ms; seat map p95 &lt; 100 ms</li>
+      <li><b>Correctness:</b> zero double bookings</li>
+      <li><b>Availability:</b> 99.9%</li>
+      <li><b>Freshness:</b> seat map may be 2&ndash;3 s stale; hold/confirm never</li>
+    </ul></div>
+  </div>
+  <p><b>Constraints &amp; assumptions:</b> SQL Server is the source of truth; up to 60,000 seats per event; app servers are NTP-synced (seconds of skew don't matter for a 10-minute hold); all times are stored in UTC (<code>DateTimeOffset</code>).</p>
+
+  <h3>Solution</h3>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"A seat hold with a 10-minute timer","interval":2600,
+ "frames":[
+  {"label":"Free","caption":"Four seats are free. Anyone can hold them.",
+   "rows":[
+    {"label":"Seats","items":[{"t":"A1","sub":"free","c":"green","w":110},{"t":"A2","sub":"free","c":"green","w":110},{"t":"A3","sub":"free","c":"green","w":110},{"t":"A4","sub":"free","c":"green","w":110}]},
+    {"label":"Timer","items":[{"k":"text","t":"no holds"}]}
+   ]},
+  {"label":"Alice holds","caption":"Alice holds <b>A2 + A3</b>. One conditional UPDATE marks both seats, or neither.",
+   "rows":[
+    {"label":"Seats","items":[{"t":"A1","sub":"free","c":"green","w":110},{"t":"A2","sub":"held: Alice","c":"amber","w":110},{"t":"A3","sub":"held: Alice","c":"amber","w":110},{"t":"A4","sub":"free","c":"green","w":110}]},
+    {"label":"Timer","items":[{"k":"text","t":"10:00 left","c":"amber"}]}
+   ]},
+  {"label":"Bob tries","caption":"Bob asks for A3 a second later. His UPDATE matches 0 rows, so he gets <b>409 Conflict</b>.","ms":3000,
+   "rows":[
+    {"label":"Seats","items":[{"t":"A1","sub":"free","c":"green","w":110},{"t":"A2","sub":"held: Alice","c":"amber","w":110},{"t":"A3","sub":"Bob: 409","c":"red","w":110},{"t":"A4","sub":"free","c":"green","w":110}]},
+    {"label":"Timer","items":[{"k":"text","t":"9:59 left","c":"amber"}]}
+   ]},
+  {"label":"Alice pays","caption":"Alice pays in time. Confirm checks she still owns an unexpired hold, then marks the seats <b>booked</b>.",
+   "rows":[
+    {"label":"Seats","items":[{"t":"A1","sub":"free","c":"green","w":110},{"t":"A2","sub":"booked","c":"blue","w":110},{"t":"A3","sub":"booked","c":"blue","w":110},{"t":"A4","sub":"free","c":"green","w":110}]},
+    {"label":"Timer","items":[{"k":"text","t":"confirmed at 6:12","c":"green"}]}
+   ]},
+  {"label":"Or time runs out","caption":"If Alice walks away, the hold simply <b>expires</b>. Queries treat expired holds as free; a sweeper tidies up and tells other screens.","ms":3200,
+   "rows":[
+    {"label":"Seats","items":[{"t":"A1","sub":"free","c":"green","w":110},{"t":"A2","sub":"free again","c":"green","w":110},{"t":"A3","sub":"free again","c":"green","w":110},{"t":"A4","sub":"free","c":"green","w":110}]},
+    {"label":"Timer","items":[{"k":"text","t":"0:00 expired","c":"red"}]}
+   ]}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>Key decision</th><th>Trade-off</th></tr>
+    <tr><td><b>Hold columns on the seat row + a conditional UPDATE.</b> <code>WHERE BookedBy IS NULL AND (HoldExpiresAt IS NULL OR HoldExpiresAt &lt;= @now)</code>.</td><td>One source of truth and transactional with booking; SQL row locks become the bottleneck at very big on-sales.</td></tr>
+    <tr><td><b>Lazy expiry.</b> An expired hold counts as free in every query; no exact-time job is needed.</td><td>Expired values stay in the row until a sweeper or the next hold overwrites them.</td></tr>
+    <tr><td><b>All-or-nothing multi-seat holds</b> in one transaction.</td><td>One taken seat fails the whole request; the UI must suggest alternatives.</td></tr>
+    <tr><td><b>Redis <code>SET NX PX</code> in front</b> for huge on-sales (plus a waiting room).</td><td>Much faster, but now two stores must agree; SQL still does the final confirm.</td></tr>
+    <tr><td><b>10-minute hold, one extension.</b></td><td>Longer holds mean fewer failed payments but more "fake sold out" seats.</td></tr>
+  </table></div>
+
+  <h3>Steps to implement in .NET 10</h3>
+  <ol>
+    <li><b>Set up:</b> minimal API + Aspire AppHost (<code>Aspire.Hosting.SqlServer</code>); EF Core 10 with <code>Microsoft.EntityFrameworkCore.SqlServer</code>.</li>
+    <li><b>Model:</b> <code>Seat</code> (Id, EventId, <code>HeldBy</code>, <code>HoldExpiresAt</code> as <code>DateTimeOffset?</code>, <code>BookedBy</code>, <code>[Timestamp] RowVersion</code>), index on (EventId, Id). A <code>Booking</code> row per confirmed payment with a unique <code>PaymentId</code>.</li>
+    <li><b>Time:</b> register <code>builder.Services.AddSingleton(TimeProvider.System)</code> and never call <code>DateTime.UtcNow</code> directly. Tests swap in <code>FakeTimeProvider</code>.</li>
+    <li><b>Hold endpoint:</b> one <code>ExecuteUpdateAsync</code> inside a transaction; if fewer rows changed than seats asked for, roll back (core trick 1). Reject duplicate seat IDs and more than 6 seats up front (400).</li>
+    <li><b>Confirm endpoint:</b> <code>UPDATE ... SET BookedBy = @me WHERE HeldBy = @me AND HoldExpiresAt &gt; @now</code>, idempotent on <code>PaymentId</code>. If the hold expired but the seat is still free, book it; if someone else has it, trigger an automatic refund.</li>
+    <li><b>Seat map reads:</b> <code>HybridCache</code> (<code>Microsoft.Extensions.Caching.Hybrid</code>) with a 2 s expiry and a tag per event; call <code>RemoveByTagAsync</code> after holds change.</li>
+    <li><b>Live updates:</b> ASP.NET Core SignalR (built-in), one group per event: push "held", "booked", "free again". Use Azure SignalR Service (<code>Microsoft.Azure.SignalR</code>) to scale out.</li>
+    <li><b>Sweeper:</b> <code>BackgroundService</code> with <code>new PeriodicTimer(TimeSpan.FromSeconds(30), timeProvider)</code> clears expired holds and pushes "free again" events.</li>
+    <li><b>Big on-sale mode:</b> Redis hold first with <code>StringSetAsync(key, user, TimeSpan.FromMinutes(10), When.NotExists)</code> (core trick 2), plus a queue-based waiting room; SQL confirm stays the final check.</li>
+    <li><b>Deploy:</b> App Service or Container Apps, Azure SQL (read replica for seat-map reads if needed), OpenTelemetry metrics for holds created, expired and confirmed.</li>
+  </ol>
+  <p><b>Core trick 1: all-or-nothing hold with a conditional UPDATE</b></p>
+<pre class="code"><code style="background:none;padding:0">app.MapPost("/events/{eventId:int}/holds", async (int eventId, HoldRequest req, BookingDb db,
+    TimeProvider clock, ClaimsPrincipal user, CancellationToken ct) =&gt;
+{
+    var now = clock.GetUtcNow();
+    var me = user.FindFirstValue(ClaimTypes.NameIdentifier)!;
+    await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+    var held = await db.Seats
+        .Where(s =&gt; s.EventId == eventId &amp;&amp; req.SeatIds.Contains(s.Id) &amp;&amp; s.BookedBy == null
+                 &amp;&amp; (s.HoldExpiresAt == null || s.HoldExpiresAt &lt;= now))      // free or expired
+        .ExecuteUpdateAsync(s =&gt; s
+            .SetProperty(x =&gt; x.HeldBy, me)
+            .SetProperty(x =&gt; x.HoldExpiresAt, now.AddMinutes(10)), ct);
+
+    if (held != req.SeatIds.Length)                    // someone else got at least one seat
+    {
+        await tx.RollbackAsync(ct);                    // all or nothing
+        return Results.Conflict("One or more seats are no longer free");
+    }
+    await tx.CommitAsync(ct);
+    return Results.Ok(new { expiresAt = now.AddMinutes(10) });
+});</code></pre>
+  <p><b>Core trick 2: Redis hold with expiry, and a safe release</b></p>
+<pre class="code"><code style="background:none;padding:0">// SET hold:7:A3 alice NX PX 600000  -&gt; only the first caller wins
+bool got = await redis.StringSetAsync($"hold:{eventId}:{seatId}", userId,
+                                      TimeSpan.FromMinutes(10), When.NotExists);
+if (!got) return Results.Conflict("Seat is held by someone else");
+
+// Release only if the hold is still yours (compare-and-delete in one step)
+await redis.ScriptEvaluateAsync(
+    "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) end return 0",
+    [$"hold:{eventId}:{seatId}"], [userId]);</code></pre>
+
+  <h3>Testing scenarios</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Type</th><th>Scenario</th><th>Expected result</th><th>How to test (.NET)</th></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>Hold 2 free seats</td><td>200 + <code>expiresAt</code> = now + 10 min</td><td><code>WebApplicationFactory</code> + Testcontainers MsSql; <code>FakeTimeProvider</code> fixes "now"</td></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>Confirm within the hold</td><td>Seats "booked"; one Booking row</td><td>Integration test, fake payment callback</td></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>Cancel a hold</td><td>Seats free at once; SignalR "free again" sent</td><td>Assert DB + a test SignalR client (<code>Microsoft.AspNetCore.SignalR.Client</code>)</td></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>Hold a seat after someone else's hold expired</td><td>200</td><td><code>FakeTimeProvider.Advance(TimeSpan.FromMinutes(10))</code> (sample below)</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Hold a seat another user holds</td><td>409 Conflict</td><td>Two test users via a test auth handler</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Confirm after the hold expired and the seat was taken</td><td>410 Gone; refund started</td><td>Advance fake time; second user holds; first confirms</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Confirm someone else's hold</td><td>403; seats unchanged</td><td>Integration test</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>7 seats, or duplicate seat IDs</td><td>400 validation error</td><td>Unit test the validator; Verify snapshot of ProblemDetails</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>50 users race for the same seat</td><td>Exactly 1 gets 200, 49 get 409</td><td><code>Task.WhenAll</code> against a real SQL container (not the in-memory provider)</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>Request at exactly <code>HoldExpiresAt</code></td><td>Seat counts as free (<code>&lt;=</code>), matching the docs</td><td>Advance fake time by exactly 10:00</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>Overlapping requests A1+A2 vs A2+A3</td><td>One wins both seats; the other gets none (no half holds)</td><td>Parallel requests; assert no user holds just one seat</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>Payment callback arrives twice</td><td>One booking (unique <code>PaymentId</code>)</td><td>Replay the callback</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>DB times out during hold</td><td>500/503 and no half-held seats (transaction rolled back)</td><td>Polly chaos latency/fault strategy, or pause the container</td></tr>
+  </table></div>
+  <p><b>Sample test: expiry without real waiting</b> (<code>Microsoft.Extensions.TimeProvider.Testing</code>)</p>
+<pre class="code"><code style="background:none;padding:0">[Fact]
+public async Task Hold_expires_after_ten_minutes()
+{
+    var ct = TestContext.Current.CancellationToken;
+    var clock = new FakeTimeProvider(DateTimeOffset.Parse("2026-10-16T09:00:00Z"));
+    await using var app = factory.WithWebHostBuilder(b =&gt;
+        b.ConfigureTestServices(s =&gt; s.AddSingleton&lt;TimeProvider&gt;(clock)));
+    var alice = app.CreateClientFor("alice");          // helper: test auth handler sets the user
+    var bob = app.CreateClientFor("bob");
+    var seat12 = new { seatIds = new[] { 12 } };
+
+    var first = await alice.PostAsJsonAsync("/events/7/holds", seat12, ct);
+    Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+
+    var tooEarly = await bob.PostAsJsonAsync("/events/7/holds", seat12, ct);
+    Assert.Equal(HttpStatusCode.Conflict, tooEarly.StatusCode);
+
+    clock.Advance(TimeSpan.FromMinutes(10));           // ten minutes pass instantly
+    var later = await bob.PostAsJsonAsync("/events/7/holds", seat12, ct);
+    Assert.Equal(HttpStatusCode.OK, later.StatusCode);
+}</code></pre>
+
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> The .NET stack for this use case</div>
+  <table>
+    <tr><th>Component</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Hold / confirm</b></td><td>EF Core 10 <code>ExecuteUpdateAsync</code> in a transaction</td><td>Conditional UPDATE is the lock</td></tr>
+    <tr><td><b>Time</b></td><td><span class="pill builtin">built-in</span> <code>TimeProvider</code>; tests: <code>Microsoft.Extensions.TimeProvider.Testing</code></td><td><code>FakeTimeProvider.Advance</code></td></tr>
+    <tr><td><b>Fast holds</b></td><td><code>StackExchange.Redis</code> <code>StringSetAsync(..., When.NotExists)</code></td><td>Redis TTL uses Redis's clock, not <code>TimeProvider</code></td></tr>
+    <tr><td><b>Seat map cache</b></td><td><code>Microsoft.Extensions.Caching.Hybrid</code></td><td>Short expiry + tag invalidation</td></tr>
+    <tr><td><b>Live updates</b></td><td><span class="pill builtin">built-in</span> SignalR; <code>Microsoft.Azure.SignalR</code> to scale</td><td>Group per event</td></tr>
+  </table>
+  <p class="warn">Test concurrency against a real database (Testcontainers). The EF Core in-memory provider has no row locks, so race tests pass there and fail in production.</p>
+</div>
+  <div class="remember"><ul>
+    <li>A hold is "mine until time X". A conditional UPDATE (or <code>SET NX PX</code>) grants it atomically.</li>
+    <li>Make expiry lazy: an expired hold is free in every query; the sweeper only tidies up.</li>
+    <li>Multi-seat holds are all or nothing, in one transaction.</li>
+    <li>Inject <code>TimeProvider</code> so expiry tests take milliseconds, not minutes.</li>
+  </ul></div>
+  <div class="post">
+    <p>Two people. One seat. Both pressed "Pay". Who gets it? 🎟️</p>
+    <p>🔒 Give a 10-minute hold with one conditional UPDATE (or Redis SET NX PX)</p>
+    <p>⏳ Let holds expire lazily: an expired hold is simply "free"</p>
+    <p>🧩 Multi-seat holds are all or nothing</p>
+    <p>✅ Confirm re-checks the hold; late payments get an automatic refund</p>
+    <p>🧪 .NET tip: inject TimeProvider, then FakeTimeProvider.Advance(10 min) in tests</p>
+    <p>How long should a hold last on your platform?</p>
+    <p>#SystemDesign #DotNet #EFCore #Testing #Architecture</p>
+  </div>
+</section>
+
+<!-- AUTOCOMPLETE -->
+<section class="concept" id="autocomplete">
+  <h2><span class="num">20.3</span> Search autocomplete (typeahead) <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Suggest the best 5&ndash;10 completions while the user types. Precompute the answers per prefix, cache hard, and send fewer requests from the client.</p>
+
+  <h3>Problem statement</h3>
+  <p>A large store or banking app has a search box: products, merchants, help articles. Every keystroke could be a request, so a naive "LIKE 'hom%'" query on the main database is slow and expensive. Users expect suggestions to appear as fast as they type.</p>
+  <div class="cols2">
+    <div class="box blue"><h4>Functional</h4><ul>
+      <li>Top 10 suggestions for a prefix, most popular first</li>
+      <li>Case- and accent-insensitive ("Café" = "cafe")</li>
+      <li>New trending terms show up within ~15 minutes</li>
+      <li>Never suggest blocked or offensive terms</li>
+      <li>Nice to have: typo tolerance, personal history</li>
+    </ul></div>
+    <div class="box green"><h4>Non-functional</h4><ul>
+      <li><b>Traffic:</b> 10M daily users &times; 5 searches &times; ~6 requests (after debounce) &asymp; 300M/day &asymp; <b>3,500/s</b>, peak ~15,000/s</li>
+      <li><b>Latency:</b> server p99 &lt; 20 ms; end to end &lt; 100 ms</li>
+      <li><b>Availability:</b> 99.9% (if it fails, search still works)</li>
+      <li><b>Freshness:</b> minutes are fine</li>
+    </ul></div>
+  </div>
+  <p><b>Constraints &amp; assumptions:</b> ~5M distinct terms from search logs; English first; prefixes capped at 10 characters for the precomputed lists; Azure hosting with a CDN in front.</p>
+
+  <h3>Solution</h3>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"One keystroke, mostly served from cache","actors":[{"t":"Browser","c":"blue"},{"t":"CDN / output cache","c":"teal"},{"t":"Suggest API","c":"purple"},{"t":"Redis","c":"red"},{"t":"Indexer job","c":"amber"}],"colW":165,"rowH":42,"stepMs":950,
+ "steps":[
+  {"note":"User types h-o-m quickly","over":[0,1],"c":"slate"},
+  {"from":0,"to":0,"t":"wait 250 ms, cancel the old call","c":"blue"},
+  {"from":0,"to":1,"t":"GET /suggest?q=hom","c":"blue"},
+  {"from":1,"to":0,"t":"hit: cached 60 s","dash":true,"c":"teal"},
+  {"note":"Cache miss","over":[1,3],"c":"slate"},
+  {"from":1,"to":2,"t":"forward","c":"teal"},
+  {"from":2,"to":3,"t":"ZRANGE ac:v42:hom 0 9 REV","sub":"top 10 already sorted","c":"purple"},
+  {"from":3,"to":2,"t":"home loan, home insurance...","dash":true,"c":"red"},
+  {"from":2,"to":0,"t":"200 JSON + Cache-Control","c":"green"},
+  {"note":"Every 15 min: rebuild top 10 per prefix from search logs","over":[3,4],"c":"amber"},
+  {"from":4,"to":3,"t":"write v43, then switch pointer","c":"amber"}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>Key decision</th><th>Trade-off</th></tr>
+    <tr><td><b>Precompute top 10 per prefix</b> (a trie flattened into one Redis sorted set per prefix).</td><td>Reads are one call and already ranked; costs memory (a few GB) and a rebuild job.</td></tr>
+    <tr><td><b>Client debounce (200&ndash;300 ms) + cancel stale calls.</b></td><td>Cuts requests several times over; adds a small delay before the first suggestion.</td></tr>
+    <tr><td><b>Cache short prefixes at the edge</b> (60 s). One- and two-letter prefixes are the hottest.</td><td>Suggestions can be up to a minute old.</td></tr>
+    <tr><td><b>Batch rebuild from logs</b>, written to a new version and switched with one pointer key.</td><td>Trending terms appear after the next batch, not instantly; readers never see half-built data.</td></tr>
+    <tr><td><b>Managed search (Azure AI Search suggester)</b> when you need typo tolerance and filters.</td><td>Less code, fuzzy matching built in; higher cost and latency than a Redis lookup.</td></tr>
+  </table></div>
+
+  <h3>Steps to implement in .NET 10</h3>
+  <ol>
+    <li><b>Set up:</b> minimal API; Redis via <code>Aspire.StackExchange.Redis</code> (client integration) or plain <code>StackExchange.Redis</code>.</li>
+    <li><b>Log searches:</b> send each final query as an event to Event Hubs (<code>Azure.Messaging.EventHubs</code>). Never log personal data in the term.</li>
+    <li><b>Aggregate:</b> a timer job (Azure Functions timer trigger, or a <code>BackgroundService</code>) counts term frequency with time decay, and drops blocked terms.</li>
+    <li><b>Build the index:</b> for each term and each prefix up to 10 chars, <code>SortedSetAddAsync</code> then trim with <code>SortedSetRemoveRangeByRankAsync(key, 0, -11)</code> to keep the top 10 (core trick 1). Use batching/pipelining; write to <code>ac:v43:*</code>, then set <code>ac:current = v43</code>.</li>
+    <li><b>Normalise once, everywhere:</b> <code>Trim()</code>, <code>ToLowerInvariant()</code>, remove accents (<code>string.Normalize(NormalizationForm.FormD)</code> and drop non-spacing marks). Same function in the indexer and the API.</li>
+    <li><b>Suggest endpoint:</b> validate 1&ndash;50 chars, read <code>SortedSetRangeByRankAsync(key, 0, 9, Order.Descending)</code>. For prefixes longer than 10 chars, read the 10-char list and filter with <code>StartsWith</code>.</li>
+    <li><b>Cache:</b> built-in output caching (<code>AddOutputCache</code>, <code>.CacheOutput(p =&gt; p.Expire(...).SetVaryByQuery("q"))</code>) and a <code>Cache-Control: public, max-age=60</code> header for the CDN (Azure Front Door).</li>
+    <li><b>Protect:</b> built-in rate limiter per IP; if Redis fails, return an empty list (200), not an error.</li>
+    <li><b>Client:</b> debounce 250 ms and cancel the previous request (<code>AbortController</code> in JS, a new <code>CancellationTokenSource</code> per keystroke in Blazor/MAUI).</li>
+    <li><b>Optional managed option:</b> Azure AI Search (<code>Azure.Search.Documents</code>) with a <code>SearchSuggester</code> on the index and <code>SearchClient.AutocompleteAsync</code> / <code>SuggestAsync</code> with <code>UseFuzzyMatching = true</code> (core trick 2).</li>
+  </ol>
+  <p><b>Core trick 1: top 10 per prefix in Redis sorted sets</b></p>
+<pre class="code"><code style="background:none;padding:0">// Indexer: put a term into the top-10 list of each of its prefixes
+async Task IndexTermAsync(IDatabase db, string version, string term, double score)
+{
+    var t = Normalise(term);
+    for (int len = 1; len &lt;= Math.Min(10, t.Length); len++)
+    {
+        var key = $"ac:{version}:{t[..len]}";
+        await db.SortedSetAddAsync(key, t, score);
+        await db.SortedSetRemoveRangeByRankAsync(key, 0, -11);      // keep only the top 10
+    }
+}
+
+// API: one Redis call per uncached keystroke
+app.MapGet("/suggest", async (string q, IConnectionMultiplexer mux) =&gt;
+{
+    var norm = Normalise(q);
+    if (norm.Length is 0 or &gt; 50) return Results.BadRequest();
+    var db = mux.GetDatabase();
+    var version = await db.StringGetAsync("ac:current");             // switched after each rebuild
+    var hits = await db.SortedSetRangeByRankAsync($"ac:{version}:{norm[..Math.Min(10, norm.Length)]}",
+                                                  0, 9, Order.Descending);
+    return Results.Ok(hits.Select(h =&gt; h.ToString()).Where(h =&gt; h.StartsWith(norm)));
+}).CacheOutput(p =&gt; p.Expire(TimeSpan.FromSeconds(60)).SetVaryByQuery("q"));</code></pre>
+  <p><b>Core trick 2: Azure AI Search with typo tolerance</b></p>
+<pre class="code"><code style="background:none;padding:0">// Index definition includes: Suggesters = { new SearchSuggester("sg", "name") }
+var response = await searchClient.AutocompleteAsync("hom", "sg", new AutocompleteOptions
+{
+    Mode = AutocompleteMode.OneTermWithContext,
+    UseFuzzyMatching = true,          // "hmoe" still finds "home"
+    Size = 8
+});
+var suggestions = response.Value.Results.Select(r =&gt; r.Text);</code></pre>
+
+  <h3>Testing scenarios</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Type</th><th>Scenario</th><th>Expected result</th><th>How to test (.NET)</th></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>"hom" with seeded popular terms</td><td>Highest score first, max 10 items</td><td><code>WebApplicationFactory</code> + Testcontainers Redis; Verify snapshot of the JSON</td></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>"HOM" and " hom " (case, spaces)</td><td>Same result as "hom"</td><td>xUnit <code>[Theory]</code> with <code>[InlineData]</code></td></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>New trending term after a rebuild</td><td>Appears once the pointer switches</td><td>Run the indexer in the test, then query</td></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>Second identical request</td><td>Served from output cache (Redis not called)</td><td>Count calls with a Redis wrapper or OpenTelemetry in-memory exporter</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Empty <code>q</code> or 51+ chars</td><td>400</td><td><code>[Theory]</code> integration test</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Blocked/offensive term in the logs</td><td>Never suggested</td><td>Unit test the aggregator's filter</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Redis down</td><td>200 with an empty list, fast (no 500, no hang)</td><td>Stop the container, or Polly chaos fault/latency; assert response &lt; 200 ms</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Special characters (<code>*</code>, <code>%</code>, <code>\</code>, emoji)</td><td>Treated as plain text; no error</td><td><code>[Theory]</code> with odd inputs</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>Accents: "café" vs "cafe"</td><td>Both return the same list</td><td>Unit test <code>Normalise</code> on both sides</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>Prefix longer than 10 chars</td><td>Uses the 10-char list, filtered by full prefix</td><td>Integration test with a 15-char query</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>Query during a rebuild</td><td>Old or new version, never a mix or empty</td><td>Run indexer and queries in parallel; assert every response is non-empty</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>User types 6 letters in 300 ms</td><td>1 request sent (debounce), older calls cancelled</td><td>Playwright for .NET (<code>Microsoft.Playwright</code>) counting network calls</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>15,000 req/s peak</td><td>Server p99 &lt; 20 ms; cache hit rate &gt; 80%</td><td>k6 or NBomber (commercial licence) against a staging slot</td></tr>
+  </table></div>
+  <p><b>Sample test: ranking snapshot with Verify</b> (<code>Verify.XunitV3</code>)</p>
+<pre class="code"><code style="background:none;padding:0">public sealed class SuggestTests(SuggestApiFactory factory) : IClassFixture&lt;SuggestApiFactory&gt;
+{
+    [Fact]
+    public async Task Returns_top_terms_by_popularity()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await factory.IndexAsync(("home loan", 900), ("home insurance", 700),
+                                 ("homepage", 50), ("holiday", 400));     // runs the real indexer
+
+        var client = factory.CreateClient();
+        var result = await client.GetFromJsonAsync&lt;string[]&gt;("/suggest?q=HOM", ct);
+
+        await Verify(result);   // snapshot: ["home loan", "home insurance", "homepage"]
+    }
+}</code></pre>
+
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> The .NET stack for this use case</div>
+  <table>
+    <tr><th>Component</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Prefix index</b></td><td><code>StackExchange.Redis</code> sorted sets</td><td><code>SortedSetRangeByRankAsync</code>; <code>SortedSetRangeByValueAsync</code> for plain A&ndash;Z prefix lists</td></tr>
+    <tr><td><b>Managed option</b></td><td><code>Azure.Search.Documents</code></td><td>Suggesters, <code>AutocompleteAsync</code>, fuzzy matching</td></tr>
+    <tr><td><b>Caching</b></td><td><span class="pill builtin">built-in</span> Output caching; <code>Microsoft.AspNetCore.OutputCaching.StackExchangeRedis</code> to share it</td><td>Vary by <code>q</code>; CDN with <code>Cache-Control</code></td></tr>
+    <tr><td><b>Search logs</b></td><td><code>Azure.Messaging.EventHubs</code></td><td>Feed the batch rebuild</td></tr>
+    <tr><td><b>Tests</b></td><td><code>Verify.XunitV3</code>, <code>Testcontainers.Redis</code>, <code>Microsoft.Playwright</code></td><td>Snapshot ranking; browser test for debounce</td></tr>
+  </table>
+  <p class="tip">A single sorted set with <code>ZRANGEBYLEX</code> (<code>SortedSetRangeByValueAsync</code>) finds all terms with a prefix, but in A&ndash;Z order. For "most popular first", precompute per prefix as above.</p>
+</div>
+  <div class="remember"><ul>
+    <li>Do the work at write time: a ready-sorted top 10 per prefix makes reads one lookup.</li>
+    <li>The cheapest request is the one never sent: debounce and cancel on the client.</li>
+    <li>Cache short prefixes hard; rebuild in a new version and switch a pointer.</li>
+    <li>Autocomplete must fail soft: an empty list, never an error.</li>
+  </ul></div>
+  <div class="post">
+    <p>Your search box sends a request on every keystroke. At 10M users, that's a lot of "h", "ho", "hom". ⌨️</p>
+    <p>🌳 Precompute the top 10 for every prefix (a trie, flattened into Redis sorted sets)</p>
+    <p>⏱️ Debounce 250 ms and cancel the old request</p>
+    <p>🗄️ Cache short prefixes at the CDN for 60 seconds</p>
+    <p>🔄 Rebuild from search logs every 15 minutes, switch versions atomically</p>
+    <p>🧯 If Redis fails, return an empty list. Search still works.</p>
+    <p>Fast typeahead is mostly about not doing work at read time.</p>
+    <p>#SystemDesign #DotNet #Redis #Search #Performance</p>
+  </div>
+</section>
+
+<!-- PROXIMITY -->
+<section class="concept" id="proximity">
+  <h2><span class="num">20.4</span> Proximity service: find nearby ATMs, branches or drivers <span class="tag-added">Added</span></h2>
+  <p class="oneliner">"What is near me?" Static places (ATMs, branches) live in a spatial database; fast-moving things (drivers, couriers) live in an in-memory geo index that is updated every few seconds.</p>
+
+  <h3>Problem statement</h3>
+  <p>A banking app needs "nearest ATM or branch" with filters. A delivery or ride app needs "available drivers within 3 km", where every driver moves and reports a new location every few seconds. Scanning every row and computing distances is too slow, and moving objects create a heavy write load.</p>
+  <div class="cols2">
+    <div class="box blue"><h4>Functional</h4><ul>
+      <li>Nearest N ATMs/branches within a radius, with filters (deposits, open now, accessible)</li>
+      <li>Drivers report location every ~4 s</li>
+      <li>Find available drivers within 3 km, nearest first</li>
+      <li>Hide drivers that stopped reporting</li>
+    </ul></div>
+    <div class="box green"><h4>Non-functional</h4><ul>
+      <li><b>Places:</b> ~20k locations, 2,000 queries/s, p95 &lt; 100 ms</li>
+      <li><b>Drivers:</b> 200k online &times; 1 update / 4 s = <b>50,000 writes/s</b>; 5,000 searches/s, p99 &lt; 50 ms</li>
+      <li><b>Freshness:</b> driver location at most ~10 s old</li>
+      <li><b>Availability:</b> 99.95%</li>
+    </ul></div>
+  </div>
+  <p><b>Constraints &amp; assumptions:</b> WGS84 latitude/longitude (SRID 4326); distances in metres; the customer's location is never stored or logged in full; driver history is not kept in the hot store.</p>
+
+  <h3>Solution</h3>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Drivers write every 4 s, riders search nearby","actors":[{"t":"Driver app","c":"amber"},{"t":"Location API","c":"purple"},{"t":"Redis GEO","c":"red"},{"t":"Rider app","c":"blue"}],"colW":190,"rowH":44,"stepMs":950,
+ "steps":[
+  {"note":"Every ~4 s, each online driver","over":[0,2],"c":"slate"},
+  {"from":0,"to":1,"t":"PUT /location (lat, lon)","c":"amber"},
+  {"from":1,"to":2,"t":"GEOADD drivers:syd","sub":"+ heartbeat key, 15 s TTL","c":"purple"},
+  {"note":"A rider asks for a car","over":[1,3],"c":"slate"},
+  {"from":3,"to":1,"t":"GET /drivers/near?r=3km","c":"blue"},
+  {"from":1,"to":2,"t":"GEOSEARCH BYRADIUS 3 km ASC","sub":"COUNT 20","c":"purple"},
+  {"from":2,"to":1,"t":"d42 0.4 km, d17 1.1 km...","dash":true,"c":"red"},
+  {"from":1,"to":1,"t":"drop stale, keep available","c":"purple"},
+  {"from":1,"to":3,"t":"5 nearest drivers","c":"green"}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>Key decision</th><th>Trade-off</th></tr>
+    <tr><td><b>Two stores for two problems.</b> Places in SQL (<code>geography</code> + spatial index); drivers in Redis GEO (in memory).</td><td>Each fits its load (rich filters vs 50k writes/s), but you run two technologies.</td></tr>
+    <tr><td><b>Shard drivers by city/region key</b> (<code>drivers:syd</code>, <code>drivers:mel</code>).</td><td>Small sets and spread load; a rider near a boundary must query two keys.</td></tr>
+    <tr><td><b>Heartbeat key with a TTL</b> per driver. GEO members can't expire on their own.</td><td>One extra key and an MGET per search; a cleanup job removes stale members.</td></tr>
+    <tr><td><b>Client-side throttling:</b> send only if moved &gt; 50 m or 4 s passed.</td><td>Far fewer writes; position can be ~50 m off.</td></tr>
+    <tr><td><b>Cache place searches by rounded location</b> (e.g. 3 decimals &asymp; 110 m).</td><td>High hit rate in busy areas; recompute exact distances for display.</td></tr>
+  </table></div>
+
+  <h3>Steps to implement in .NET 10</h3>
+  <ol>
+    <li><b>Set up:</b> minimal API; <code>Microsoft.EntityFrameworkCore.SqlServer.NetTopologySuite</code> (or <code>Npgsql.EntityFrameworkCore.PostgreSQL.NetTopologySuite</code> for PostGIS); <code>StackExchange.Redis</code>.</li>
+    <li><b>Model places:</b> <code>Atm</code> with <code>NetTopologySuite.Geometries.Point Location</code> mapped to SQL Server <code>geography</code>; register with <code>UseSqlServer(cs, x =&gt; x.UseNetTopologySuite())</code>.</li>
+    <li><b>Spatial index:</b> add <code>CREATE SPATIAL INDEX</code> with <code>migrationBuilder.Sql(...)</code> in a migration (create it in SQL; don't rely on <code>HasIndex</code> for spatial indexes).</li>
+    <li><b>Nearest places query:</b> <code>IsWithinDistance</code> + <code>OrderBy(Distance)</code> + <code>Take(10)</code> (core trick 1). Validate lat −90..90, lon −180..180, radius capped at 50 km.</li>
+    <li><b>Driver updates:</b> <code>GeoAddAsync("drivers:{city}", lon, lat, driverId)</code> plus <code>StringSetAsync($"hb:{driverId}", 1, TimeSpan.FromSeconds(15))</code>.</li>
+    <li><b>Nearby drivers:</b> <code>GeoSearchAsync(key, lon, lat, new GeoSearchCircle(3, GeoUnit.Kilometers), count: 20, order: Order.Ascending, options: GeoRadiusOptions.WithDistance)</code>, then drop members with no heartbeat (core trick 2).</li>
+    <li><b>Cleanup:</b> <code>BackgroundService</code> removes stale members with <code>GeoRemoveAsync</code> every 30 s.</li>
+    <li><b>Live tracking:</b> after a match, stream the driver's position to the rider through a SignalR group (Azure SignalR Service to scale).</li>
+    <li><b>Cache place results:</b> <code>HybridCache</code> keyed by rounded lat/lon + filters, 5-minute expiry (places rarely change).</li>
+    <li><b>Deploy &amp; protect privacy:</b> Container Apps autoscaling on HTTP load; round coordinates in logs and traces; OpenTelemetry for write rate and search latency.</li>
+  </ol>
+  <p><b>Core trick 1: nearest ATMs with EF Core + NetTopologySuite</b></p>
+<pre class="code"><code style="background:none;padding:0">builder.Services.AddDbContext&lt;PlacesDb&gt;(o =&gt;
+    o.UseSqlServer(cs, sql =&gt; sql.UseNetTopologySuite()));
+
+// Nearest 10 ATMs within 2 km that accept deposits
+var here = new Point(lon, lat) { SRID = 4326 };            // x = longitude, y = latitude!
+var atms = await db.Atms
+    .Where(a =&gt; a.AcceptsDeposits &amp;&amp; a.Location.IsWithinDistance(here, 2_000))  // metres on geography
+    .OrderBy(a =&gt; a.Location.Distance(here))
+    .Take(10)
+    .Select(a =&gt; new { a.Id, a.Name, Metres = a.Location.Distance(here) })
+    .ToListAsync(ct);</code></pre>
+  <p><b>Core trick 2: moving drivers with Redis GEO + heartbeat</b></p>
+<pre class="code"><code style="background:none;padding:0">// Driver app, every ~4 s
+await db.GeoAddAsync("drivers:syd", lon, lat, driverId);
+await db.StringSetAsync($"hb:{driverId}", 1, TimeSpan.FromSeconds(15));      // "still online"
+
+// Rider: 20 closest drivers within 3 km, nearest first
+var near = await db.GeoSearchAsync("drivers:syd", lon, lat,
+    new GeoSearchCircle(3, GeoUnit.Kilometers),
+    count: 20, order: Order.Ascending, options: GeoRadiusOptions.WithDistance);
+
+var alive = await db.StringGetAsync(near.Select(n =&gt; (RedisKey)$"hb:{n.Member}").ToArray());
+var result = near.Zip(alive)
+    .Where(x =&gt; x.Second.HasValue)                                           // skip stale drivers
+    .Select(x =&gt; new { id = x.First.Member.ToString(), km = x.First.Distance })
+    .Take(5);</code></pre>
+
+  <h3>Testing scenarios</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Type</th><th>Scenario</th><th>Expected result</th><th>How to test (.NET)</th></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>3 seeded ATMs, 2 within 2 km</td><td>The 2 near ones, nearest first, with distances</td><td><code>WebApplicationFactory</code> + Testcontainers MsSql (sample below)</td></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>Filter "accepts deposits"</td><td>Only matching ATMs</td><td>Integration test</td></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>Driver reports, rider searches</td><td>Driver found with correct distance (&plusmn; 1%)</td><td>Testcontainers Redis</td></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>Driver moves closer</td><td>New position and order on the next search</td><td>Two updates, then search</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>lat = 91 or lon = 181</td><td>400 with ProblemDetails</td><td><code>[Theory]</code> with bad coordinates</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Radius 500 km</td><td>400 (max 50 km)</td><td><code>[Theory]</code></td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Nothing within the radius</td><td>200 with an empty list (not 404)</td><td>Search in the ocean</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Driver stops sending updates</td><td>Hidden once the heartbeat expires</td><td>Configure TTL = 1 s in the test, wait 1.5 s (Redis time can't be faked)</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>Latitude/longitude swapped in code</td><td>Test fails loudly</td><td>Use asymmetric real points (Sydney: lat −33.87, lon 151.21)</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>Point exactly on the radius</td><td>Included (documented rule)</td><td>Seed a point at a computed 2,000 m</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>Near the 180° meridian (e.g. Fiji) or a city shard border</td><td>Neighbours on the other side found</td><td>Seed both sides; query both shard keys</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>1,000 drivers at one airport</td><td>Max 20 returned, fast</td><td>Bulk <code>GeoAddAsync</code>, assert count and latency</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>50,000 updates/s</td><td>Redis CPU &lt; 70%, search p99 &lt; 50 ms</td><td>k6 or NBomber (commercial licence) driving the update endpoint</td></tr>
+  </table></div>
+  <p><b>Sample test: real distances, real order</b> (SQL Server container supports <code>geography</code>)</p>
+<pre class="code"><code style="background:none;padding:0">[Fact]
+public async Task Nearest_atms_are_sorted_by_real_distance()
+{
+    var ct = TestContext.Current.CancellationToken;
+    await factory.SeedAtmsAsync(
+        ("Town Hall",     151.2070, -33.8731),       // ~0.3 km from the user
+        ("Circular Quay", 151.2108, -33.8615),       // ~1.6 km
+        ("Parramatta",    151.0036, -33.8150));      // ~20 km: outside the radius
+
+    var client = factory.CreateClient();
+    var atms = await client.GetFromJsonAsync&lt;AtmDto[]&gt;(
+        "/atms/near?lat=-33.8757&amp;lon=151.2069&amp;radiusM=2000", ct);
+
+    Assert.Equal(new[] { "Town Hall", "Circular Quay" }, atms!.Select(a =&gt; a.Name));
+    Assert.True(atms[0].Metres &lt; atms[1].Metres);
+}</code></pre>
+
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> The .NET stack for this use case</div>
+  <table>
+    <tr><th>Component</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Places</b></td><td><code>Microsoft.EntityFrameworkCore.SqlServer.NetTopologySuite</code></td><td><code>Point</code>, <code>IsWithinDistance</code>, <code>Distance</code> (metres on <code>geography</code>)</td></tr>
+    <tr><td><b>Places (PostGIS)</b></td><td><code>Npgsql.EntityFrameworkCore.PostgreSQL.NetTopologySuite</code></td><td>Same LINQ, PostGIS underneath</td></tr>
+    <tr><td><b>Moving objects</b></td><td><code>StackExchange.Redis</code> <code>GeoAddAsync</code>, <code>GeoSearchAsync</code></td><td>GEOSEARCH needs Redis 6.2+</td></tr>
+    <tr><td><b>Live tracking</b></td><td><span class="pill builtin">built-in</span> SignalR; <code>Microsoft.Azure.SignalR</code></td><td>One group per trip</td></tr>
+    <tr><td><b>Managed alternative</b></td><td>Azure Maps (REST / <code>Azure.Maps.Search</code>)</td><td>Geocoding addresses to coordinates</td></tr>
+  </table>
+  <p class="warn">NetTopologySuite uses (x, y) = (longitude, latitude). <code>new Point(lat, lon)</code> is the most common proximity bug, and it silently returns wrong results.</p>
+</div>
+  <div class="remember"><ul>
+    <li>Static places: spatial index in SQL/PostGIS. Moving objects: Redis GEO in memory.</li>
+    <li>GEO members don't expire; pair them with a heartbeat key and a cleanup job.</li>
+    <li>Shard by region, and query neighbours near borders.</li>
+    <li>Test with real, asymmetric coordinates to catch lat/lon swaps.</li>
+  </ul></div>
+  <div class="post">
+    <p>"Find the nearest ATM" and "find the nearest driver" sound the same. They are not. 📍</p>
+    <p>🏦 ATMs barely move: SQL geography + a spatial index + EF Core NetTopologySuite</p>
+    <p>🚗 Drivers move every 4 s: Redis GEOADD / GEOSEARCH in memory</p>
+    <p>💓 Add a heartbeat key with a TTL, or ghosts stay on the map</p>
+    <p>🗺️ Shard by city; check the neighbour shard near borders</p>
+    <p>🐛 #1 bug: Point(lat, lon) instead of Point(lon, lat)</p>
+    <p>Same question, two very different write patterns, two stores.</p>
+    <p>#SystemDesign #DotNet #Geospatial #Redis #Architecture</p>
+  </div>
+</section>
+
+<!-- FILE UPLOAD -->
+<section class="concept" id="file-upload">
+  <h2><span class="num">20.5</span> Large file upload &amp; processing (chunked, resumable, scanned) <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Let clients upload big files straight to blob storage in chunks they can resume, keep the bytes away from your API servers, and process a file only after a malware scan says it is clean.</p>
+
+  <h3>Problem statement</h3>
+  <p>Customers upload loan documents, statements, photos and videos, some of them several GB, often from a phone on a weak network. A single HTTP POST through the API ties up servers, fails at 90% and starts again from zero, and lets untrusted files reach back-office systems.</p>
+  <div class="cols2">
+    <div class="box blue"><h4>Functional</h4><ul>
+      <li>Upload files up to 5 GB with a progress bar</li>
+      <li>Resume after a network drop without starting over</li>
+      <li>Check type and size; scan for malware</li>
+      <li>Process clean files (OCR, thumbnails), then notify the user</li>
+      <li>Delete abandoned uploads automatically</li>
+    </ul></div>
+    <div class="box green"><h4>Non-functional</h4><ul>
+      <li><b>Volume:</b> 200k uploads/day, average 10 MB &asymp; <b>2 TB/day</b>; ~20 uploads/s at peak</li>
+      <li><b>Resume:</b> a drop loses at most one 8 MiB block</li>
+      <li><b>Speed:</b> 95% of files scanned and processed within 5 minutes</li>
+      <li><b>Availability:</b> 99.9%; zone-redundant storage</li>
+      <li><b>Security:</b> nothing is opened before a clean scan</li>
+    </ul></div>
+  </div>
+  <p><b>Constraints &amp; assumptions:</b> Azure Blob Storage; browser and mobile clients; files are untrusted until scanned; managed identities everywhere (no storage keys in code); retention rules apply to stored documents.</p>
+
+  <h3>Solution</h3>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Direct-to-blob upload, scan, then process","actors":[{"t":"Client","c":"blue"},{"t":"Upload API","c":"purple"},{"t":"Blob Storage","c":"teal"},{"t":"Defender scan","c":"red"},{"t":"Processor","c":"green"}],"colW":165,"rowH":42,"stepMs":950,
+ "steps":[
+  {"from":0,"to":1,"t":"POST /uploads","sub":"name, size, type","c":"blue"},
+  {"from":1,"to":0,"t":"id + write-only SAS (1 h)","dash":true,"c":"purple"},
+  {"from":0,"to":2,"t":"Put Block 1..N (8 MiB)","sub":"parallel, retry failed blocks only","c":"blue"},
+  {"note":"Network drops? Resume from the last saved block","over":[0,2],"c":"amber"},
+  {"from":0,"to":2,"t":"Put Block List (commit)","c":"blue"},
+  {"from":2,"to":3,"t":"on-upload malware scan","c":"teal"},
+  {"from":3,"to":4,"t":"Event Grid: scan result","c":"red"},
+  {"from":4,"to":2,"t":"clean: copy to 'clean', then OCR","c":"green"},
+  {"note":"Malicious: quarantine or delete, raise an alert","over":[2,4],"c":"red"},
+  {"from":4,"to":0,"t":"notify: file ready","dash":true,"c":"green"}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>Key decision</th><th>Trade-off</th></tr>
+    <tr><td><b>Direct to blob with a short, write-only SAS.</b> The API never touches the bytes.</td><td>Scales without app servers; you must validate size and type after upload and keep the SAS tight (one blob, 1 h, no read).</td></tr>
+    <tr><td><b>Block blobs as resumable chunks:</b> Put Block, then Put Block List.</td><td>Free resume (uncommitted blocks are kept for up to a week); the client must track block IDs.</td></tr>
+    <tr><td><b>tus protocol (tusdotnet) instead</b> when you need a standard resumable protocol, ready clients (tus-js-client, Uppy) or non-Azure storage.</td><td>Mature and open, but the bytes flow through your servers.</td></tr>
+    <tr><td><b>Scan before use:</b> Defender for Storage on-upload scanning + Event Grid; only "No threats found" files move to the clean container.</td><td>Per-GB cost and a short delay; blob index tags alone aren't tamper-proof, so act on events.</td></tr>
+    <tr><td><b>Event-driven processing</b> with retries and a dead-letter queue.</td><td>The UX is async: show "scanning..." and notify when ready.</td></tr>
+  </table></div>
+
+  <h3>Steps to implement in .NET 10</h3>
+  <ol>
+    <li><b>Storage:</b> containers <code>incoming</code> (untrusted) and <code>clean</code>. Enable Defender for Storage on-upload malware scanning and send results to an Event Grid custom topic. Add a lifecycle rule that deletes old blobs in <code>incoming</code>.</li>
+    <li><b>Packages:</b> <code>Azure.Storage.Blobs</code>, <code>Azure.Identity</code> (<code>DefaultAzureCredential</code> / managed identity), <code>Microsoft.Extensions.Azure</code> (<code>AddAzureClients</code>).</li>
+    <li><b>Start an upload:</b> validate name, declared size (&le; 5 GB) and allowed types; save an <code>Upload</code> row as Pending; return a <b>user delegation SAS</b> for one blob with Create + Write only, valid 1 hour (core trick 1).</li>
+    <li><b>Client upload:</b> browsers use <code>@azure/storage-blob</code>; .NET clients (MAUI, desktop, workers) use <code>BlockBlobClient.StageBlockAsync</code> per 8 MiB block and <code>CommitBlockListAsync</code> at the end, saving progress after each block (core trick 2).</li>
+    <li><b>Alternative:</b> <code>tusdotnet</code> with <code>app.MapTus("/files", ...)</code> and the community Azure store <code>Xtensible.TusDotNet.Azure</code>; raise Kestrel's <code>MaxRequestBodySize</code> (default ~30 MB) for the tus route.</li>
+    <li><b>Scan result handler:</b> Azure Functions isolated worker with <code>Microsoft.Azure.Functions.Worker.Extensions.EventGrid</code> (<code>[EventGridTrigger]</code>). Read <code>scanResultType</code>: clean &rarr; server-side copy to <code>clean</code> (<code>StartCopyFromUriAsync</code>) and mark Ready; malicious &rarr; delete or quarantine and alert; not scanned &rarr; keep blocked for review.</li>
+    <li><b>Validate content:</b> check the real size and the file's magic bytes (a renamed <code>.exe</code> is not a PDF) before processing.</li>
+    <li><b>Process:</b> send a Service Bus message (<code>Azure.Messaging.ServiceBus</code>) per clean file; the worker does OCR (Azure AI Document Intelligence) or thumbnails, idempotent by upload id, with a dead-letter queue.</li>
+    <li><b>Notify &amp; status:</b> <code>GET /uploads/{id}</code> plus a SignalR or push notification when Ready or Rejected.</li>
+    <li><b>Clean up &amp; observe:</b> a nightly job expires Pending uploads older than 24 h; alerts on "Malicious" results and dead-letter count; OpenTelemetry across API, Function and worker.</li>
+  </ol>
+  <p><b>Core trick 1: a write-only, one-blob, 1-hour user delegation SAS</b></p>
+<pre class="code"><code style="background:none;padding:0">app.MapPost("/uploads", async (NewUpload req, BlobServiceClient blobs, TimeProvider clock, UploadsDb db) =&gt;
+{
+    if (req.Size is &lt;= 0 or &gt; 5L * 1024 * 1024 * 1024) return Results.BadRequest("Max 5 GB");
+    if (!AllowedTypes.Contains(req.ContentType)) return Results.BadRequest("File type not allowed");
+
+    var id = Guid.CreateVersion7();
+    var blob = blobs.GetBlobContainerClient("incoming").GetBlobClient(id.ToString());
+    var now = clock.GetUtcNow();
+    UserDelegationKey key = await blobs.GetUserDelegationKeyAsync(now.AddMinutes(-5), now.AddHours(1));
+
+    var sas = new BlobSasBuilder
+    {
+        BlobContainerName = "incoming", BlobName = blob.Name, Resource = "b",
+        StartsOn = now.AddMinutes(-5), ExpiresOn = now.AddHours(1)
+    };
+    sas.SetPermissions(BlobSasPermissions.Create | BlobSasPermissions.Write);    // no read, no list
+
+    var url = new BlobUriBuilder(blob.Uri) { Sas = sas.ToSasQueryParameters(key, blobs.AccountName) }.ToUri();
+    db.Uploads.Add(new Upload(id, req.FileName, req.Size, UploadStatus.Pending));
+    await db.SaveChangesAsync();
+    return Results.Ok(new { id, uploadUrl = url });
+});</code></pre>
+  <p><b>Core trick 2: resumable upload in 8 MiB blocks (.NET client)</b></p>
+<pre class="code"><code style="background:none;padding:0">var blob = new BlockBlobClient(uploadUrl);                       // SAS URL from the API
+const int BlockSize = 8 * 1024 * 1024;
+var ids = Enumerable.Range(0, progress.BlocksSent).Select(BlockId).ToList();
+file.Position = (long)progress.BlocksSent * BlockSize;           // resume: skip blocks already sent
+var buffer = new byte[BlockSize];
+
+int n;
+while ((n = await file.ReadAtLeastAsync(buffer, BlockSize, throwOnEndOfStream: false)) &gt; 0)
+{
+    var id = BlockId(ids.Count);
+    await blob.StageBlockAsync(id, new MemoryStream(buffer, 0, n));   // SDK retries transient errors
+    ids.Add(id);
+    await progress.SaveAsync(ids.Count);                         // remember after every block
+}
+await blob.CommitBlockListAsync(ids);                            // the blob appears only now
+
+static string BlockId(int i) =&gt; Convert.ToBase64String(BitConverter.GetBytes(i));  // same length</code></pre>
+
+  <h3>Testing scenarios</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Type</th><th>Scenario</th><th>Expected result</th><th>How to test (.NET)</th></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>Upload a small PDF, commit, clean scan event</td><td>Status Ready; file in <code>clean</code></td><td>Testcontainers Azurite; post a sample Event Grid event to the handler</td></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>Upload drops at 45%, then resumes</td><td>Final file's SHA-256 equals the original</td><td>Azurite + a "flaky" stream that throws mid-way (sample below)</td></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>SAS lets the client write its blob</td><td>201 on Put Block / Put Block List</td><td>Integration test with the returned URL</td></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>Processing finished</td><td>User notified once; status endpoint shows Ready</td><td>Test SignalR client or fake notifier</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Declared size 6 GB, or type <code>application/x-msdownload</code></td><td>400; no SAS issued</td><td><code>[Theory]</code> on <code>POST /uploads</code></td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>EICAR test file uploaded</td><td>Malicious &rarr; quarantined, never processed, alert raised</td><td>In a real Azure test account with Defender on (Azurite doesn't scan); locally, a "Malicious" sample event</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Use the SAS to read or list, or after it expired</td><td>403</td><td>Call download/list with the SAS; build a SAS with <code>ExpiresOn</code> in the past</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td><code>.exe</code> renamed to <code>.pdf</code></td><td>Rejected by the magic-byte check</td><td>Unit test the validator with real file headers</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>0-byte file; exactly 5 GB</td><td>400; accepted (boundary is inclusive)</td><td><code>[Theory]</code> on the validator (no real 5 GB upload needed)</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>Commit lists a block that was never uploaded</td><td>Commit fails (InvalidBlockList); blob unchanged</td><td>Azurite integration test</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>Event Grid delivers the scan result twice</td><td>Copied and processed once</td><td>Invoke the handler twice with the same event</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>Scan result "Not scanned" or timed out</td><td>File stays blocked; flagged for review/retry</td><td>Sample event with <code>scanResultType = "Not Scanned"</code></td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>Upload abandoned for 24 h</td><td>Pending row expired; blob removed by lifecycle rule</td><td><code>FakeTimeProvider.Advance(TimeSpan.FromHours(24))</code> on the cleanup job</td></tr>
+  </table></div>
+  <p><b>Sample test: a resumed upload gives the identical file</b> (<code>Testcontainers.Azurite</code>)</p>
+<pre class="code"><code style="background:none;padding:0">public sealed class UploadTests : IAsyncLifetime
+{
+    private readonly AzuriteContainer _azurite =
+        new AzuriteBuilder("mcr.microsoft.com/azure-storage/azurite:3.37.0").Build();
+    public async ValueTask InitializeAsync() =&gt; await _azurite.StartAsync();
+    public ValueTask DisposeAsync() =&gt; _azurite.DisposeAsync();
+
+    [Fact]
+    public async Task Resumed_upload_produces_the_identical_file()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var container = new BlobContainerClient(_azurite.GetConnectionString(), "incoming");
+        await container.CreateIfNotExistsAsync(cancellationToken: ct);
+        var blob = container.GetBlockBlobClient("big.bin");
+        var data = RandomNumberGenerator.GetBytes(20 * 1024 * 1024);          // 20 MiB = 3 blocks
+
+        var uploader = new ResumableUploader(blob, blockSize: 8 * 1024 * 1024);  // code under test
+        await Assert.ThrowsAsync&lt;IOException&gt;(() =&gt;
+            uploader.UploadAsync(new FlakyStream(data, failAfterBytes: 9_000_000), ct));
+        await uploader.UploadAsync(new MemoryStream(data), ct);               // resume
+
+        var stored = (await blob.DownloadContentAsync(ct)).Value.Content.ToArray();
+        Assert.Equal(SHA256.HashData(data), SHA256.HashData(stored));
+    }
+}</code></pre>
+
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> The .NET stack for this use case</div>
+  <table>
+    <tr><th>Component</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Storage + SAS</b></td><td><code>Azure.Storage.Blobs</code> (<code>BlockBlobClient</code>, <code>BlobSasBuilder</code>)</td><td>User delegation SAS via <code>Azure.Identity</code></td></tr>
+    <tr><td><b>Resumable (tus)</b></td><td><code>tusdotnet</code>; Azure store <code>Xtensible.TusDotNet.Azure</code> (community)</td><td>MIT; bytes pass through your app</td></tr>
+    <tr><td><b>Malware scan</b></td><td>Defender for Storage on-upload scanning (Azure feature, no package)</td><td>Results via Event Grid, index tags, Log Analytics</td></tr>
+    <tr><td><b>Scan handler</b></td><td><code>Microsoft.Azure.Functions.Worker.Extensions.EventGrid</code></td><td>Isolated worker; copy clean files server-side</td></tr>
+    <tr><td><b>Processing</b></td><td><code>Azure.Messaging.ServiceBus</code></td><td>Retries + dead-letter queue</td></tr>
+    <tr><td><b>Tests</b></td><td><code>Testcontainers.Azurite</code>, <code>FakeTimeProvider</code></td><td>Azurite emulates storage but does not scan</td></tr>
+  </table>
+  <p class="warn">Defender scanning has a maximum file size, a per-account throughput limit and a scan timeout. Check the current limits for your file sizes, and treat "Not scanned" as "not safe".</p>
+</div>
+  <div class="remember"><ul>
+    <li>Keep bytes off your API: hand out a short, write-only, one-blob SAS.</li>
+    <li>Block blobs give you resumable uploads for free: stage blocks, commit the list.</li>
+    <li>Untrusted until scanned: act on the Event Grid scan result, then move to a clean container.</li>
+    <li>Make every step idempotent; events and messages can arrive twice.</li>
+  </ul></div>
+  <div class="post">
+    <p>A 3 GB upload fails at 90% on a train. Your user starts again from zero. Again. 📤</p>
+    <p>🔑 API hands out a 1-hour, write-only SAS for ONE blob; bytes never touch your servers</p>
+    <p>🧱 Upload 8 MiB blocks, commit the list at the end; a drop costs one block, not the file</p>
+    <p>🛡️ Defender for Storage scans on upload; Event Grid tells you the result</p>
+    <p>✅ Only "No threats found" files move to the clean container for processing</p>
+    <p>🔁 Every handler is idempotent; events can arrive twice</p>
+    <p>Resumable, scalable and safe: three properties, one design.</p>
+    <p>#Azure #DotNet #SystemDesign #CloudSecurity #Architecture</p>
+  </div>
+</section>
+<!-- DISTRIBUTED JOB SCHEDULER -->
+<section class="concept" id="scheduler">
+  <h2><span class="num">20.6</span> Distributed job scheduler <span class="tag-added">Added</span></h2>
+  <p class="oneliner">"Design a service that runs thousands of scheduled jobs (cron and one-off) across several nodes, on time, and never with a double effect." The hard parts: only one node fires each job, and nothing is lost when a node dies.</p>
+
+  <h3>Problem statement</h3>
+  <p>A bank runs thousands of scheduled tasks: monthly statements, direct-debit files, reminder emails, data exports. Today they're Task Scheduler entries on one VM. If that VM dies, jobs silently don't run, and nobody can see what ran when.</p>
+  <div class="cols2">
+    <div>
+      <h4>Functional</h4>
+      <ul>
+        <li>Register jobs by API: cron, one-off at a time, or a fixed interval</li>
+        <li>Run on any healthy node; retry failures with backoff</li>
+        <li>Pause, resume and "run now"; full run history and status</li>
+        <li>Schedules in a named time zone (Australia/Sydney, with daylight saving)</li>
+      </ul>
+    </div>
+    <div>
+      <h4>Non-functional</h4>
+      <ul>
+        <li>50,000 job definitions; peak 2,000 firings a minute (on the hour)</li>
+        <li>Fire within 5 s of the due time (p99)</li>
+        <li>A dead node's jobs picked up by another node within 30 s</li>
+        <li>Each firing has its business effect once; 99.9% available; 90 days of history</li>
+      </ul>
+    </div>
+  </div>
+  <p><b>Constraints &amp; assumptions:</b></p>
+  <ul>
+    <li>Jobs are short (under 15 minutes). Long work is handed to a queue.</li>
+    <li>Azure SQL is available; the app runs as containers (AKS or Container Apps).</li>
+    <li>Delivery is <b>at-least-once</b>. Exactly-once firing isn't realistic, so jobs must be idempotent.</li>
+  </ul>
+
+  <h3>Solution</h3>
+<figure class="viz" data-viz="lanes"><script type="application/json">
+{"title":"Clustered scheduler: a node dies, another node recovers its job","max":10,"labelW":120,"axis":"time (seconds)",
+ "rows":[
+  {"label":"Node A","blocks":[{"s":0,"e":2.5,"t":"statements","c":"blue"},{"s":2.5,"e":3,"t":"X","c":"red"}]},
+  {"label":"Node B","blocks":[{"s":0.5,"e":2,"t":"reminders","c":"green"},{"s":5.3,"e":8.8,"t":"statements (recovered)","c":"amber"}]},
+  {"label":"Node C","blocks":[{"s":1,"e":3.2,"t":"export","c":"purple"},{"s":6,"e":7.6,"t":"reports","c":"teal"}]},
+  {"label":"DB locks","blocks":[{"s":0,"e":0.4,"t":"A","c":"slate"},{"s":0.5,"e":0.9,"t":"B","c":"slate"},{"s":1,"e":1.4,"t":"C","c":"slate"},{"s":5,"e":5.4,"t":"B","c":"red"},{"s":6,"e":6.4,"t":"C","c":"slate"}]}
+ ],
+ "markers":[{"at":2.5,"t":"Node A crashes","c":"red"},{"at":5,"t":"B recovers","c":"amber"}],
+ "spans":[{"s":2.5,"e":5,"t":"check-in timeout","c":"amber"}],
+ "ticks":[{"at":0,"t":"0"},{"at":2,"t":"2"},{"at":4,"t":"4"},{"at":6,"t":"6"},{"at":8,"t":"8"},{"at":10,"t":"10"}]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>Decision</th><th>Choice</th><th>Trade-off</th></tr>
+    <tr><td><b>Engine</b></td><td>Quartz.NET 4 with a clustered SQL job store. A DB row lock lets exactly one node take each firing</td><td>No extra infrastructure, but the DB is the limit at very high firing rates (split into several named schedulers)</td></tr>
+    <tr><td><b>Delivery</b></td><td>At-least-once + an idempotency key (job name + scheduled fire time)</td><td>Simple and safe, but every job must check the key</td></tr>
+    <tr><td><b>Where work runs</b></td><td>The job only enqueues a message; workers do the heavy work</td><td>Scheduler stays light and fast; one more hop to monitor</td></tr>
+    <tr><td><b>Time</b></td><td>Store UTC; cron in a named time zone; <code>TimeProvider</code> in code</td><td>Testable, but DST gaps and misfires need an explicit policy</td></tr>
+    <tr><td><b>Alternatives</b></td><td>Functions timer trigger for a few fixed jobs; Hangfire for background jobs with a dashboard</td><td>Less to run, but less control at 50k jobs (Hangfire Pro is commercial)</td></tr>
+  </table></div>
+
+  <h3>Steps to implement in .NET 10</h3>
+  <ol>
+    <li>Create a Worker Service (<code>dotnet new worker</code>) and add <code>Quartz</code> 4.x plus <code>Microsoft.Data.SqlClient</code>. From 4.0, DI and hosting live in the core package; <code>Quartz.Extensions.Hosting</code> is now an empty forwarding package.</li>
+    <li>Create the Quartz tables in Azure SQL from the scripts in the Quartz repo, run as a migration step in the pipeline.</li>
+    <li>Configure <code>AddQuartz</code> with <code>UsePersistentStore(s =&gt; { s.UseSqlServer(...); s.UseClustering(); })</code>. Every node uses the same <code>InstanceName</code> and a unique instance id (<code>GenerateInstanceId = true</code>).</li>
+    <li>Write each job as an <code>IJob</code> with <code>[DisallowConcurrentExecution]</code>. Build a run key from <code>ScheduledFireTimeUtc</code> and insert it into a <code>JobRuns</code> table with a unique index.</li>
+    <li>Hand long work to <code>Azure.Messaging.ServiceBus</code> with <code>MessageId</code> = run key, so duplicate detection drops repeats.</li>
+    <li>Add an admin API (minimal APIs + Entra ID roles) that calls <code>IScheduler</code>: <code>ScheduleJob</code>, <code>PauseJob</code>, <code>TriggerJob</code>.</li>
+    <li>Wire OpenTelemetry (Quartz 4 emits spans and metrics) and health checks; alert on misfires and failed runs.</li>
+    <li>Deploy 3+ replicas. Set <code>WaitForJobsToComplete</code> and <code>HostOptions.ShutdownTimeout</code> so a rolling deploy drains running jobs.</li>
+  </ol>
+<pre class="code"><code>builder.AddQuartz(q =&gt;
+{
+    q.ConfigureScheduler(o =&gt; { o.InstanceName = "bank-jobs"; o.GenerateInstanceId = true; });
+    q.UsePersistentStore(store =&gt;
+    {
+        store.UseSqlServer(builder.Configuration.GetConnectionString("Quartz")!);
+        store.UseClustering();                      // DB row locks: one node per firing
+    });
+    q.ScheduleJob&lt;StatementJob&gt;(t =&gt; t
+        .WithIdentity("monthly-statements")
+        .WithCronSchedule("0 0 2 1 * ?", c =&gt; c.InTimeZone(
+            TimeZoneInfo.FindSystemTimeZoneById("Australia/Sydney"))));
+});
+builder.AddQuartzHostedService(o =&gt; o.WaitForJobsToComplete = true);</code></pre>
+<pre class="code"><code>[DisallowConcurrentExecution]
+public sealed class StatementJob(JobRunStore runs, ServiceBusSender sender, TimeProvider clock) : IJob
+{
+    public async ValueTask Execute(IJobExecutionContext context, CancellationToken ct = default)
+    {
+        // A retried or recovered firing has the same key, so the effect happens once
+        string runKey = $"{context.JobDetail.Key}:{context.ScheduledFireTimeUtc:O}";
+        if (!await runs.TryStartAsync(runKey, clock.GetUtcNow(), ct)) return;   // unique index on RunKey
+
+        await sender.SendMessageAsync(new ServiceBusMessage(runKey) { MessageId = runKey }, ct);
+        await runs.CompleteAsync(runKey, clock.GetUtcNow(), ct);
+    }
+}</code></pre>
+
+  <h3>Testing scenarios</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Type</th><th>Scenario</th><th>Expected result</th><th>How to test (.NET)</th></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>Monthly cron at 02:00 Sydney time</td><td>Next fire time is 02:00 local on the 1st, stored as UTC</td><td>xUnit v3: <code>CronExpression</code> with the Sydney time zone, assert <code>GetNextValidTimeAfter</code></td></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>One-off job scheduled by API for +2 minutes</td><td>Fires within 5 s of due; history row Completed</td><td><code>WebApplicationFactory</code> + <code>Testcontainers.MsSql</code></td></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>"Run now" from the admin API</td><td>Runs at once; audit row records who triggered it</td><td><code>WebApplicationFactory</code> with a test auth handler</td></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>3 nodes, 1,000 jobs due in the same minute</td><td>Each fires once; work spreads across nodes</td><td>Three hosts in one test against <code>Testcontainers.MsSql</code>; count <code>JobRuns</code></td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Job's downstream call fails</td><td>Retried with backoff, then Failed + alert</td><td>Polly chaos <code>AddChaosFault</code> in the job's <code>HttpClient</code> pipeline</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Database unreachable for 30 s</td><td>Nodes retry; no duplicate firings; they catch up after</td><td>Testcontainers: <code>PauseAsync</code> / <code>UnpauseAsync</code> the SQL container</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Invalid cron expression sent to the API</td><td>400 Problem Details; nothing stored</td><td><code>WebApplicationFactory</code></td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>User without the Scheduler role calls "run now"</td><td>403; job not triggered</td><td><code>WebApplicationFactory</code> with a test auth handler</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>Node dies in the middle of a job</td><td>Another node recovers it after the check-in timeout; run key stops a double effect</td><td>Stop one host without draining; assert one completed run</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>DST start (first Sunday in October): 02:30 doesn't exist in Sydney</td><td>Job fires once per the misfire policy, not skipped silently</td><td><code>CronExpression</code> across the DST date; <code>FakeTimeProvider</code> for the job's own logic</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>The same firing is executed twice</td><td>Second run is a no-op</td><td>Unit test: call <code>Execute</code> twice with the same fire time (sample below)</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>Whole scheduler down for 2 hours</td><td>Missed firings run once (or are skipped) per policy, not 120 times</td><td>Stop all hosts, move past several due times, restart; count runs</td></tr>
+  </table></div>
+<pre class="code"><code>public class StatementJobTests
+{
+    [Fact]
+    public async Task Same_firing_twice_sends_one_message()
+    {
+        var clock = new FakeTimeProvider(new DateTimeOffset(2026, 11, 1, 2, 0, 0, TimeSpan.FromHours(11)));
+        var runs = new InMemoryJobRunStore();               // unique RunKey, like the SQL index
+        var sender = new FakeServiceBusSender();             // subclass of ServiceBusSender that records messages
+        var job = new StatementJob(runs, sender, clock);
+        var context = TestContexts.ForFiring("monthly-statements", clock.GetUtcNow());   // your helper
+
+        await job.Execute(context, TestContext.Current.CancellationToken);
+        await job.Execute(context, TestContext.Current.CancellationToken);   // retry or recovery
+
+        Assert.Single(sender.Sent);
+    }
+}</code></pre>
+
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> The .NET stack for this design</div>
+  <table>
+    <tr><th>Component</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Scheduler</b></td><td><code>Quartz</code> 4.x (clustered ADO.NET job store)</td><td>4.x targets <code>net10.0</code>; DI, hosting and OpenTelemetry built in</td></tr>
+    <tr><td><b>Simpler options</b></td><td>Functions timer trigger (<code>Microsoft.Azure.Functions.Worker.Extensions.Timer</code>); <code>Hangfire.Core</code> <span class="pill lic">check licence</span></td><td>Timer triggers run as a singleton. Hangfire core is LGPL; Hangfire Pro is commercial</td></tr>
+    <tr><td><b>Leader election</b></td><td><code>DistributedLock.Azure</code> (blob lease) or <code>DistributedLock.SqlServer</code></td><td>For your own "tick" loop when you don't want Quartz</td></tr>
+    <tr><td><b>Hand-off</b></td><td><code>Azure.Messaging.ServiceBus</code></td><td>Duplicate detection on <code>MessageId</code> = run key</td></tr>
+    <tr><td><b>Time</b></td><td><span class="pill builtin">built-in</span> <code>TimeProvider</code>, <code>PeriodicTimer</code>; <code>Microsoft.Extensions.TimeProvider.Testing</code></td><td><code>FakeTimeProvider</code> moves time in tests</td></tr>
+  </table>
+  <p class="warn">Quartz 4.0 needs a database schema migration from 3.x, and daylight-saving firing behaviour changed. Read the migration guide before upgrading a live cluster.</p>
+</div>
+
+  <div class="remember"><ul>
+    <li>Exactly-once firing is a myth. Use at-least-once firing + idempotent jobs.</li>
+    <li>Clustered Quartz uses DB row locks: same instance name on every node, a unique instance id per node.</li>
+    <li>The scheduler fires; a queue and workers do the heavy work.</li>
+    <li>Store UTC, schedule in a named time zone, and test DST and misfires.</li>
+  </ul></div>
+  <div class="post">
+    <p>"Run this job every night at 2 am" sounds easy. Until you have 3 servers. ⏰</p>
+    <p>🔒 Only one node may fire each job: clustered Quartz uses a DB row lock</p>
+    <p>💀 A node dies mid-job? Another one recovers it after a check-in timeout</p>
+    <p>🔁 That means a job can run twice, so make it idempotent (job + fire time = key)</p>
+    <p>📨 The scheduler only enqueues; workers do the heavy lifting</p>
+    <p>🌏 Daylight saving: 2:30 am doesn't exist one Sunday in October. Test it.</p>
+    <p>At-least-once + idempotency beats chasing exactly-once. How do you schedule jobs today?</p>
+    <p>#SystemDesign #DotNet #Quartz #Architecture #InterviewPrep</p>
+  </div>
+</section>
+
+<!-- WEB CRAWLER -->
+<section class="concept" id="crawler">
+  <h2><span class="num">20.7</span> Web crawler <span class="tag-added">Added</span></h2>
+  <p class="oneliner">"Design a crawler that fetches a billion public pages a month, politely, without fetching the same page twice." A giant queue (the frontier) plus three rules: obey robots.txt, limit each host, remember what you've seen.</p>
+
+  <h3>Problem statement</h3>
+  <p>A search or knowledge product needs fresh copies of public web pages. The crawler starts from seed URLs, follows links, and keeps pages up to date, without overloading any website or getting stuck in endless link loops.</p>
+  <div class="cols2">
+    <div>
+      <h4>Functional</h4>
+      <ul>
+        <li>Start from seeds; fetch HTML; extract links and text</li>
+        <li>Follow links within allowed domains; obey robots.txt and Crawl-delay</li>
+        <li>Recrawl pages that change; skip unchanged ones</li>
+        <li>Store raw HTML and extracted text for indexing</li>
+      </ul>
+    </div>
+    <div>
+      <h4>Non-functional</h4>
+      <ul>
+        <li>1B pages/month ≈ <b>400 pages/s</b> average, 1,000/s peak</li>
+        <li>Default 1 request/s per host</li>
+        <li>100 KB average page ≈ <b>100 TB/month</b> raw (≈25 TB compressed)</li>
+        <li>Seen set of 10B URLs: a Bloom filter at 1% false positives ≈ <b>12 GB</b></li>
+      </ul>
+    </div>
+  </div>
+  <p><b>Constraints &amp; assumptions:</b></p>
+  <ul>
+    <li>Public pages only, no logins. Identify the bot with a User-Agent and a contact URL.</li>
+    <li>robots.txt follows RFC 9309. Cache it per host for up to 24 hours.</li>
+    <li>No JavaScript rendering in v1 (a headless browser only for an allow-list of sites).</li>
+  </ul>
+
+  <h3>Solution</h3>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"One URL through the crawler","actors":[{"t":"Frontier","c":"blue"},{"t":"Fetcher","c":"purple"},{"t":"Website","c":"slate"},{"t":"Parser","c":"teal"},{"t":"Seen set","c":"red"}],"colW":165,"rowH":42,"stepMs":950,
+ "steps":[
+  {"note":"Per-host queue + token bucket: 1 request/s per host","over":[0,2],"c":"amber"},
+  {"from":0,"to":1,"t":"next URL for host","c":"blue"},
+  {"from":1,"to":2,"t":"robots.txt (cached 24 h)","dash":true,"c":"slate"},
+  {"from":1,"to":2,"t":"GET /page + If-None-Match","c":"purple"},
+  {"from":2,"to":1,"t":"200 text/html","dash":true,"c":"green"},
+  {"from":1,"to":3,"t":"HTML + headers","c":"purple"},
+  {"from":3,"to":4,"t":"BF.EXISTS for 40 links","c":"teal"},
+  {"from":4,"to":3,"t":"12 new, 28 already seen","dash":true,"c":"red"},
+  {"from":3,"to":0,"t":"enqueue 12 new URLs","c":"green"},
+  {"note":"304 Not Modified? Skip parsing, schedule the next recrawl later","over":[0,4],"c":"teal"}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>Decision</th><th>Choice</th><th>Trade-off</th></tr>
+    <tr><td><b>Frontier</b></td><td>Kafka topic keyed by host, so one worker owns each host; per-host <code>Channel&lt;T&gt;</code> queues inside the worker</td><td>Politeness stays local and simple; very big hosts make partitions uneven</td></tr>
+    <tr><td><b>Politeness</b></td><td><code>PartitionedRateLimiter</code> keyed by host (token bucket 1/s, or the site's Crawl-delay)</td><td>Safe for websites; big sites take longer to crawl</td></tr>
+    <tr><td><b>Seen URLs</b></td><td>Normalise the URL, then a Redis Bloom filter</td><td>12 GB instead of hundreds of GB; ~1% of new URLs are wrongly skipped</td></tr>
+    <tr><td><b>Duplicate content</b></td><td>SHA-256 of normalised text for exact copies; SimHash for near copies</td><td>Saves storage and index noise; extra CPU per page</td></tr>
+    <tr><td><b>Freshness</b></td><td>Adaptive recrawl interval per page + conditional GET (ETag / Last-Modified)</td><td>Hot pages stay fresh; needs a per-URL metadata store</td></tr>
+  </table></div>
+
+  <h3>Steps to implement in .NET 10</h3>
+  <ol>
+    <li>Create a Worker Service. Register a named <code>HttpClient</code> with <code>IHttpClientFactory</code>, <code>AddStandardResilienceHandler()</code> (<code>Microsoft.Extensions.Http.Resilience</code>), automatic decompression, a 10 s timeout and a User-Agent with a contact URL.</li>
+    <li>Build the frontier: a Kafka topic <code>urls</code> keyed by host (<code>Confluent.Kafka</code>); inside each worker, bounded <code>System.Threading.Channels</code> per host.</li>
+    <li>robots.txt: fetch once per host, cache with <code>HybridCache</code>, and parse with <code>TurnerSoftware.RobotsExclusionTools</code> (or a small RFC 9309 parser of your own).</li>
+    <li>Politeness: a <code>PartitionedRateLimiter&lt;Uri&gt;</code> keyed by host, plus a cap of 1–2 concurrent requests per host.</li>
+    <li>Parse with <code>AngleSharp</code>: <code>a[href]</code> links, canonical link, meta robots (<code>noindex</code>, <code>nofollow</code>) and body text. Resolve relative links with <code>new Uri(baseUri, href)</code> and normalise them.</li>
+    <li>Seen set: <code>StackExchange.Redis</code> sending <code>BF.ADD</code> / <code>BF.EXISTS</code> (Redis 8 includes Bloom filters; on managed Redis, check your tier supports them).</li>
+    <li>Store compressed HTML in Blob Storage (<code>Azure.Storage.Blobs</code>) keyed by URL hash, and per-URL metadata (ETag, last crawl, content hash, next due) in Cosmos DB or Table Storage.</li>
+    <li>Emit OpenTelemetry metrics (pages/s, errors per host, queue depth). Run N workers on AKS with KEDA scaling on Kafka consumer lag.</li>
+  </ol>
+<pre class="code"><code>// One token bucket per host: 1 request per second, the rest wait in a queue
+PartitionedRateLimiter&lt;Uri&gt; perHost = PartitionedRateLimiter.Create&lt;Uri, string&gt;(uri =&gt;
+    RateLimitPartition.GetTokenBucketLimiter(uri.Host, _ =&gt; new TokenBucketRateLimiterOptions
+    {
+        TokenLimit = 1, TokensPerPeriod = 1, ReplenishmentPeriod = TimeSpan.FromSeconds(1),
+        QueueLimit = 1_000, QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+        AutoReplenishment = true
+    }));
+
+async Task CrawlAsync(Uri url, HttpClient http, CancellationToken ct)
+{
+    using RateLimitLease lease = await perHost.AcquireAsync(url, 1, ct);
+    if (!lease.IsAcquired) { await frontier.RequeueLaterAsync(url, ct); return; }
+
+    using var response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+    if (!response.IsSuccessStatusCode || response.Content.Headers.ContentType?.MediaType != "text/html") return;
+
+    var doc = await new HtmlParser().ParseDocumentAsync(await response.Content.ReadAsStreamAsync(ct), ct);
+    foreach (var href in doc.QuerySelectorAll("a[href]").Select(a =&gt; a.GetAttribute("href")))
+        if (Uri.TryCreate(url, href, out var link) &amp;&amp; link.Scheme is "http" or "https")
+            await frontier.OfferAsync(Normalise(link), ct);      // Bloom filter check inside
+}</code></pre>
+
+  <h3>Testing scenarios</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Type</th><th>Scenario</th><th>Expected result</th><th>How to test (.NET)</th></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>Page with 10 links on an allowed host</td><td>Page stored; 10 new URLs offered to the frontier</td><td>xUnit v3 + <code>WireMock.Net</code> fake site; in-memory frontier</td></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>robots.txt disallows <code>/private</code></td><td><code>/private/*</code> is never requested</td><td><code>WireMock.Net</code> request log (sample below)</td></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>Site sets <code>Crawl-delay: 2</code></td><td>Requests to that host are at least 2 s apart</td><td><code>WireMock.Net</code> log timestamps over a short crawl</td></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>Recrawl of an unchanged page</td><td>304 Not Modified; no parse, no new blob</td><td><code>WireMock.Net</code> returns 304 when <code>If-None-Match</code> matches</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Host returns 429 / 503 with Retry-After</td><td>That host pauses; URL retried later; other hosts carry on</td><td><code>WireMock.Net</code> faults; assert other hosts' requests continue</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Server accepts the connection but never answers</td><td>Times out after 10 s; the host slot is freed</td><td><code>WireMock.Net</code> <code>WithDelay</code>; resilience timeout</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Link to a 500 MB PDF</td><td>Skipped from the Content-Type / Content-Length headers, body not downloaded</td><td><code>WireMock.Net</code> + byte counter on the handler</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Broken HTML, <code>javascript:</code> and <code>mailto:</code> links</td><td>Parser doesn't crash; invalid links dropped</td><td>xUnit theory over HTML fixture files with <code>AngleSharp</code></td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>Spider trap: endless calendar "next month" links, session ids in URLs</td><td>Max depth and max URLs per host stop it; normaliser strips session params</td><td>Unit tests on <code>Normalise</code> + a generated infinite site in <code>WireMock.Net</code></td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>Same page via http/https, trailing slash, <code>utm_</code> params, canonical tag</td><td>Stored once</td><td>Unit tests on URL normalisation + content hash</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>Redirect loop A → B → A</td><td>Stops after 5 redirects; URL marked as error</td><td><code>WireMock.Net</code> redirect responses</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>Bloom filter false positives</td><td>Measured rate stays near 1%; sitemaps help recover missed URLs</td><td><code>Testcontainers.Redis</code> with a Redis 8 image; add 1M URLs, probe 1M new ones</td></tr>
+  </table></div>
+<pre class="code"><code>[Fact]
+public async Task Disallowed_paths_are_never_fetched()
+{
+    using var site = WireMockServer.Start();
+    site.Given(Request.Create().WithPath("/robots.txt"))
+        .RespondWith(Response.Create().WithBody("User-agent: *\nDisallow: /private"));
+    site.Given(Request.Create().WithPath("/"))
+        .RespondWith(Response.Create().WithHeader("Content-Type", "text/html")
+            .WithBody("&lt;a href='/private/a'&gt;x&lt;/a&gt; &lt;a href='/public/b'&gt;y&lt;/a&gt;"));
+    site.Given(Request.Create().WithPath("/public/b")).RespondWith(Response.Create().WithStatusCode(200));
+
+    var crawler = TestCrawler.Create();                      // real pipeline, in-memory frontier
+    await crawler.RunAsync(new Uri(site.Url! + "/"), maxPages: 10, TestContext.Current.CancellationToken);
+
+    Assert.DoesNotContain(site.LogEntries, e =&gt; e.RequestMessage.Path.StartsWith("/private"));
+    Assert.Contains(site.LogEntries, e =&gt; e.RequestMessage.Path == "/public/b");
+}</code></pre>
+
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> The .NET stack for this design</div>
+  <table>
+    <tr><th>Component</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>HTTP</b></td><td><span class="pill builtin">built-in</span> <code>IHttpClientFactory</code> + <code>Microsoft.Extensions.Http.Resilience</code></td><td>Timeouts, retries with jitter, circuit breaker per host</td></tr>
+    <tr><td><b>Frontier</b></td><td><span class="pill builtin">built-in</span> <code>System.Threading.Channels</code> + <code>Confluent.Kafka</code></td><td>Kafka key = host, so one worker owns each host</td></tr>
+    <tr><td><b>Politeness</b></td><td><span class="pill builtin">built-in</span> <code>System.Threading.RateLimiting</code>; <code>TurnerSoftware.RobotsExclusionTools</code></td><td>The robots.txt library is small and last released in 2022; a tiny own parser is also fine</td></tr>
+    <tr><td><b>HTML parsing</b></td><td><code>AngleSharp</code></td><td>Standards-based HTML5 parser with CSS selectors</td></tr>
+    <tr><td><b>Seen set</b></td><td><code>StackExchange.Redis</code> (<code>BF.ADD</code>, <code>BF.EXISTS</code>)</td><td>Bloom filters are built into Redis 8</td></tr>
+    <tr><td><b>Storage</b></td><td><code>Azure.Storage.Blobs</code> + <code>Microsoft.Azure.Cosmos</code></td><td>Raw pages in blobs; per-URL metadata in Cosmos DB</td></tr>
+  </table>
+</div>
+
+  <div class="remember"><ul>
+    <li>Do the maths: 1B pages/month ≈ 400 pages/s and ≈ 100 TB of raw HTML.</li>
+    <li>Politeness is per host: shard the frontier by host and rate-limit each host.</li>
+    <li>Normalise URLs before the Bloom filter, and hash content to catch copies under different URLs.</li>
+    <li>Defend against spider traps with depth limits and per-host URL caps.</li>
+  </ul></div>
+  <div class="post">
+    <p>A web crawler is just a loop: fetch, parse, enqueue. At 400 pages a second, the loop is the easy part. 🕷️</p>
+    <p>🤝 Be polite: one request per second per host, and obey robots.txt</p>
+    <p>🗂️ Shard the queue by host, so one worker owns each website</p>
+    <p>🧠 Remember 10B URLs in about 12 GB with a Bloom filter</p>
+    <p>🪤 Spider traps (endless calendars, session ids) need depth and URL caps</p>
+    <p>♻️ Conditional GET (ETag) means unchanged pages cost almost nothing</p>
+    <p>Which part would you deep-dive in an interview?</p>
+    <p>#SystemDesign #DotNet #WebCrawler #Architecture #InterviewPrep</p>
+  </div>
+</section>
+
+<!-- REAL-TIME FRAUD DETECTION -->
+<section class="concept" id="fraud">
+  <h2><span class="num">20.8</span> Real-time fraud detection <span class="tag-added">Added</span></h2>
+  <p class="oneliner">"Score every payment for fraud in under 100 ms, block the obvious ones, and send the doubtful ones to analysts." A fast inline decision, backed by a payment stream that keeps the features fresh.</p>
+
+  <h3>Problem statement</h3>
+  <p>A bank processes card and real-time account-to-account payments. Real-time payments can't be pulled back once they settle, so the fraud decision must happen <i>before</i> the money moves, without making checkout feel slow.</p>
+  <div class="cols2">
+    <div>
+      <h4>Functional</h4>
+      <ul>
+        <li>Score each payment: approve, step-up (extra check), decline, or approve + review</li>
+        <li>Rules (velocity, new payee, impossible travel, known mule accounts) + an ML model</li>
+        <li>Analysts work cases; their outcomes become training labels</li>
+        <li>Change rules and thresholds without a deploy</li>
+      </ul>
+    </div>
+    <div>
+      <h4>Non-functional</h4>
+      <ul>
+        <li>Decision p99 <b>under 100 ms</b>; 3,000 payments/s at peak (500 average)</li>
+        <li>99.99% available; a safe fallback if scoring fails</li>
+        <li>Every decision audited with rule and model versions</li>
+        <li>Few false declines: a wrong decline costs a customer</li>
+      </ul>
+    </div>
+  </div>
+  <p><b>Constraints &amp; assumptions:</b></p>
+  <ul>
+    <li>PCI DSS: the fraud store holds card tokens, never full card numbers.</li>
+    <li>The model is trained offline (ML.NET, or Python exported to ONNX) and served in .NET.</li>
+    <li>The payment switch calls the fraud service synchronously; everything else can be async.</li>
+  </ul>
+
+  <h3>Solution</h3>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Inline decision, stream in the background","actors":[{"t":"Payment switch","c":"blue"},{"t":"Fraud API","c":"purple"},{"t":"Redis features","c":"red"},{"t":"Model","c":"teal"},{"t":"Event stream","c":"amber"}],"colW":165,"rowH":48,"stepMs":950,
+ "steps":[
+  {"from":0,"to":1,"t":"Score(payment) over gRPC","c":"blue"},
+  {"from":1,"to":2,"t":"INCR velocity + read profile","sub":"about 2 ms","c":"purple"},
+  {"from":2,"to":1,"t":"6 payments in 10 min, new device","dash":true,"c":"red"},
+  {"from":1,"to":1,"t":"hard rules first","c":"amber"},
+  {"from":1,"to":3,"t":"Predict(features)","sub":"in-process, about 1 ms","c":"purple"},
+  {"from":3,"to":1,"t":"score 0.93","dash":true,"c":"red"},
+  {"from":1,"to":0,"t":"DECLINE + reason codes","c":"red"},
+  {"note":"Under 100 ms end to end","over":[0,3],"c":"green"},
+  {"from":1,"to":4,"t":"decision event (async)","dash":true,"c":"amber"},
+  {"from":4,"to":2,"t":"stream job updates long-window features","dash":true,"c":"slate"},
+  {"note":"Score 0.60 to 0.90: approve now, open a case for an analyst","over":[1,4],"c":"teal"}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>Decision</th><th>Choice</th><th>Trade-off</th></tr>
+    <tr><td><b>Inline vs stream</b></td><td>Synchronous gRPC decision; a stream consumer computes long-window features and cases</td><td>Latency stays bounded; stream features can lag a few seconds (hot counters are updated inline)</td></tr>
+    <tr><td><b>Rules + model</b></td><td>Hard rules override (sanctions, known mule); model score bands map to actions</td><td>Explainable and safe; two things to tune and govern</td></tr>
+    <tr><td><b>Features</b></td><td>Redis: <code>INCR</code> + expiry for fixed windows, sorted sets for sliding windows</td><td>Sub-millisecond reads; memory cost, so every key needs a TTL</td></tr>
+    <tr><td><b>Model serving</b></td><td>In-process: ML.NET <code>PredictionEnginePool</code> or ONNX Runtime, hot-reloaded</td><td>About 1 ms, no network hop; the model must fit in memory</td></tr>
+    <tr><td><b>Failure mode</b></td><td>80 ms budget, then a rules-only fallback decision</td><td>Payments keep flowing in an outage; a little more fraud risk while degraded</td></tr>
+  </table></div>
+
+  <h3>Steps to implement in .NET 10</h3>
+  <ol>
+    <li>Create an ASP.NET Core gRPC service (<code>Grpc.AspNetCore</code>) with a <code>Score(PaymentRequest)</code> contract agreed with the payment switch.</li>
+    <li>Features with <code>StackExchange.Redis</code>: velocity counters via <code>StringIncrementAsync</code> + <code>KeyExpireAsync</code> in one transaction; sliding windows via <code>SortedSetAddAsync</code>, <code>SortedSetRemoveRangeByScoreAsync</code>, <code>SortedSetLengthAsync</code>.</li>
+    <li>Rules as plain C# classes, with thresholds in <code>IOptionsMonitor&lt;FraudRules&gt;</code> fed by Azure App Configuration, so changes apply without a deploy.</li>
+    <li>Train offline (ML.NET with <code>Microsoft.ML.LightGbm</code>, or Python to ONNX). Serve with <code>Microsoft.Extensions.ML</code>: <code>AddPredictionEnginePool&lt;TxnFeatures, FraudScore&gt;().FromFile("fraud", path, watchForChanges: true)</code>, or <code>Microsoft.ML.OnnxRuntime</code>.</li>
+    <li>Publish every decision to Event Hubs (<code>Azure.Messaging.EventHubs</code>) or Kafka, partition key = card token. An <code>EventProcessorClient</code> consumer updates long-window features and opens cases.</li>
+    <li>Case management: review-band decisions create a case; the analyst's outcome (fraud / genuine) is stored as a label for retraining.</li>
+    <li>Wrap scoring in a <code>Microsoft.Extensions.Resilience</code> pipeline: 80 ms timeout + fallback to rules-only. Record latency histograms, decision mix and model version with OpenTelemetry.</li>
+    <li>Deploy across zones (min 3 replicas, zone-redundant Redis). Run a new model in <b>shadow mode</b> (score, don't act) before switching it on.</li>
+  </ol>
+<pre class="code"><code>public sealed class FraudScorer(
+    IDatabase redis, PredictionEnginePool&lt;TxnFeatures, FraudScore&gt; model, RuleSet rules)
+{
+    public async Task&lt;Decision&gt; ScoreAsync(Payment p)
+    {
+        string key = $"vel:{p.CardToken}:10m";
+        ITransaction tx = redis.CreateTransaction();
+        Task&lt;long&gt; count10m = tx.StringIncrementAsync(key);
+        _ = tx.KeyExpireAsync(key, TimeSpan.FromMinutes(10), ExpireWhen.HasNoExpiry);
+        await tx.ExecuteAsync();
+
+        var f = new TxnFeatures { Amount = (float)p.Amount, Count10m = await count10m,
+                                  NewPayee = p.IsNewPayee, MerchantRisk = p.MerchantRisk };
+
+        if (rules.HardBlock(p, f) is { } reason) return Decision.Decline(reason);   // e.g. known mule account
+
+        float score = model.Predict("fraud", f).Probability;
+        return score switch
+        {
+            &gt;= 0.90f =&gt; Decision.Decline("model"),
+            &gt;= 0.60f =&gt; Decision.ApproveAndReview(score),     // async case for an analyst
+            _        =&gt; Decision.Approve(score)
+        };
+    }
+}</code></pre>
+
+  <h3>Testing scenarios</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Type</th><th>Scenario</th><th>Expected result</th><th>How to test (.NET)</th></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>Normal payment from a known device</td><td>Approve in under 100 ms</td><td><code>WebApplicationFactory</code> + gRPC client + <code>Testcontainers.Redis</code></td></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>6th payment on one card within 10 minutes</td><td>Velocity rule steps the payment up</td><td><code>Testcontainers.Redis</code> (sample below)</td></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>Score in the review band</td><td>Approved; decision event published; case created</td><td><code>Testcontainers.Kafka</code>: consume the topic and assert the event</td></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>New model file deployed</td><td>Pool reloads without a restart; decisions carry the new model version</td><td>Integration test replaces the file watched by <code>FromFile(..., watchForChanges: true)</code></td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Redis unreachable</td><td>Rules-only fallback within the budget; alert raised</td><td>Pause the Redis container, or Polly chaos <code>AddChaosFault</code></td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Corrupt model file</td><td>Previous model stays loaded; error logged</td><td>Unit/integration test with a broken zip</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Malformed request (negative amount, missing token)</td><td>gRPC <code>InvalidArgument</code>; nothing stored</td><td><code>WebApplicationFactory</code> + gRPC client</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>The same event delivered twice from the stream</td><td>Long-window features not double counted (dedupe by payment id)</td><td><code>Testcontainers.Kafka</code>: publish twice, assert one increment</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>Burst across a fixed-window boundary (5 at 10:09, 5 at 10:11)</td><td>Sliding-window rule still catches 10 in 10 minutes</td><td>Sorted-set timestamps from <code>TimeProvider</code>; <code>FakeTimeProvider</code> moves time</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>Card used in Sydney, then London 30 minutes later</td><td>Impossible-travel rule flags it</td><td>xUnit theory with location fixtures</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>Sale-day peak of 3,000 payments/s</td><td>p99 under 100 ms, no timeouts</td><td>k6 or Azure Load Testing; or <code>NBomber</code> <span class="pill lic">commercial licence</span></td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>Score exactly 0.60 or 0.90</td><td>Falls in the documented band (bounds inclusive)</td><td>xUnit <code>[Theory]</code> with boundary values</td></tr>
+  </table></div>
+<pre class="code"><code>public sealed class VelocityTests : IAsyncLifetime
+{
+    private readonly RedisContainer _redis = new RedisBuilder().WithImage("redis:8").Build();
+    public async ValueTask InitializeAsync() =&gt; await _redis.StartAsync();
+    public async ValueTask DisposeAsync() =&gt; await _redis.DisposeAsync();
+
+    [Fact]
+    public async Task Sixth_payment_in_ten_minutes_is_stepped_up()
+    {
+        var mux = await ConnectionMultiplexer.ConnectAsync(_redis.GetConnectionString());
+        var scorer = TestScorers.RulesOnly(mux.GetDatabase());     // real Redis, stub model
+        var card = $"tok_{Guid.NewGuid():N}";
+
+        Decision last = null!;
+        for (int i = 0; i &lt; 6; i++)
+            last = await scorer.ScoreAsync(TestPayments.For(card, amount: 49.95m));
+
+        Assert.Equal(Outcome.StepUp, last.Outcome);
+    }
+}</code></pre>
+
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> The .NET stack for this design</div>
+  <table>
+    <tr><th>Component</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Decision API</b></td><td><code>Grpc.AspNetCore</code></td><td>Binary, HTTP/2, low overhead for the payment switch</td></tr>
+    <tr><td><b>Features</b></td><td><code>StackExchange.Redis</code></td><td>Counters with TTL; sorted sets for sliding windows</td></tr>
+    <tr><td><b>Model</b></td><td><code>Microsoft.Extensions.ML</code> (<code>PredictionEnginePool</code>) + <code>Microsoft.ML.LightGbm</code>; or <code>Microsoft.ML.OnnxRuntime</code></td><td>Thread-safe pooled engines; hot reload from file or URI</td></tr>
+    <tr><td><b>Stream</b></td><td><code>Azure.Messaging.EventHubs.Processor</code> or <code>Confluent.Kafka</code></td><td>Partition by card token to keep one card's events in order</td></tr>
+    <tr><td><b>Fallback</b></td><td><code>Microsoft.Extensions.Resilience</code></td><td>Timeout + fallback strategy around scoring</td></tr>
+  </table>
+  <p class="warn">Watch for training-serving skew: compute features with the same code (or the same definitions) offline and online, or the model sees different numbers in production.</p>
+</div>
+
+  <div class="remember"><ul>
+    <li>Real-time payments can't be recalled, so decide before the money moves.</li>
+    <li>Keep the inline path tiny: Redis features + in-process model + rules, under 100 ms.</li>
+    <li>Hard rules override the model; score bands map to approve / review / step-up / decline.</li>
+    <li>Plan the fallback: a rules-only decision beats blocking every payment.</li>
+  </ul></div>
+  <div class="post">
+    <p>You have 100 milliseconds to decide if a payment is fraud. Go. ⏱️</p>
+    <p>⚡ Inline: Redis velocity counters + an in-process model, about 3 ms of work</p>
+    <p>🚫 Hard rules first: known mule accounts never reach the model</p>
+    <p>🎚️ Score bands: approve, step-up, review, decline</p>
+    <p>🌊 The payment stream updates long-window features and analyst cases in the background</p>
+    <p>🛟 Scoring down? Fall back to rules. Never block every payment.</p>
+    <p>Real-time payments can't be pulled back. That's why this has to be fast and right.</p>
+    <p>#FraudDetection #Payments #SystemDesign #DotNet #Banking</p>
+  </div>
+</section>
+
+<!-- CUSTOMER ONBOARDING (KYC) WORKFLOW -->
+<section class="concept" id="onboarding">
+  <h2><span class="num">20.9</span> Customer onboarding (KYC) workflow <span class="tag-added">Added</span></h2>
+  <p class="oneliner">"Design digital onboarding: verify a new customer's identity, screen them, ask a human when needed, open the account, and prove every step later." A long-running workflow that may take three minutes or three weeks.</p>
+
+  <h3>Problem statement</h3>
+  <p>Customers open an account in the app. Under Australia's AML/CTF Act (reformed obligations from 31 March 2026), a bank must complete initial customer due diligence before it provides the service, and keep the records for 7 years after the relationship ends. Most applicants should be done in minutes; a few need an analyst.</p>
+  <div class="cols2">
+    <div>
+      <h4>Functional</h4>
+      <ul>
+        <li>Capture details, an ID document photo and a selfie</li>
+        <li>Extract document fields; verify the document with the issuer (e.g. the government Document Verification Service, via a gateway or identity provider)</li>
+        <li>Liveness and face match; sanctions and PEP screening; risk rating</li>
+        <li>Auto-approve low risk; analyst review for medium and high risk</li>
+        <li>Open the account and issue a card; the customer can resume later</li>
+      </ul>
+    </div>
+    <div>
+      <h4>Non-functional</h4>
+      <ul>
+        <li>80% of applicants auto-decided in <b>under 3 minutes</b></li>
+        <li>10,000 applications a day; peak 50 starts a minute</li>
+        <li>Workflows survive restarts and can wait up to 30 days</li>
+        <li>Every step in an append-only audit trail, kept 7 years after the relationship ends</li>
+        <li>PII encrypted; documents stored in an Australian region</li>
+      </ul>
+    </div>
+  </div>
+  <p><b>Constraints &amp; assumptions:</b></p>
+  <ul>
+    <li>Identity, liveness and screening are external vendor APIs with rate limits and outages.</li>
+    <li>Analysts work business hours; every decision must be explainable.</li>
+    <li>You record what you verified (document type, number, result), not necessarily a copy of the document.</li>
+  </ul>
+
+  <h3>Solution</h3>
+<figure class="viz" data-viz="journey"><script type="application/json">
+{"title":"One application through the onboarding workflow","stepMs":1200,
+ "steps":[
+  {"icon":"📝","t":"Customer submits details, ID photo and selfie","d":"Application saved; a workflow instance starts with id = applicationId","c":"blue"},
+  {"icon":"🔎","t":"Extract and verify the document","d":"OCR the fields, then check them with the issuer (DVS) or an identity provider","c":"purple"},
+  {"icon":"🤳","t":"Liveness and face match","d":"Vendor call, retried with backoff if the vendor is down","c":"purple"},
+  {"icon":"🚩","t":"Sanctions / PEP screening and risk rating","d":"Low risk: auto-approve. Medium or high: human review","c":"amber"},
+  {"icon":"👩‍💼","t":"Analyst reviews (waits up to 5 days)","d":"The workflow sleeps on an external event; reminder on day 3","tag":"human step","c":"amber","indent":1},
+  {"icon":"🏦","t":"Open account, then issue card","d":"If the card step fails: compensate by closing the account","tag":"11 Saga","href":"11-architecture-patterns.html#saga","c":"green"},
+  {"icon":"📜","t":"Audit entry written at every step","d":"Append-only; who, what, when, why, rule and model versions","c":"slate"}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>Decision</th><th>Choice</th><th>Trade-off</th></tr>
+    <tr><td><b>Workflow engine</b></td><td>Durable Functions / Durable Task SDK on the Durable Task Scheduler (Temporal is a good alternative)</td><td>State, timers and retries survive restarts; orchestrator code must be deterministic (no <code>DateTime.Now</code>, no I/O)</td></tr>
+    <tr><td><b>Human step</b></td><td>Wait for an external event, racing a durable timer</td><td>Waits for days at no cost; you must design reminders and expiry</td></tr>
+    <tr><td><b>Side effects</b></td><td>Saga with compensations (close account if card issue fails)</td><td>No distributed transaction; compensations must be idempotent</td></tr>
+    <tr><td><b>Audit</b></td><td>Separate append-only store (Azure SQL ledger table or an event store), not the workflow history</td><td>Tamper-evident and queryable for 7 years; one more write per step</td></tr>
+    <tr><td><b>Vendors</b></td><td>Adapters behind interfaces, idempotency keys, standard resilience</td><td>Safe retries and swappable vendors; more code up front</td></tr>
+  </table></div>
+
+  <h3>Steps to implement in .NET 10</h3>
+  <ol>
+    <li>Create an isolated-worker Azure Functions app with <code>Microsoft.Azure.Functions.Worker.Extensions.DurableTask</code>, backed by the Durable Task Scheduler. (In containers, use <code>Microsoft.DurableTask.Worker.AzureManaged</code> instead.)</li>
+    <li>API: <code>POST /applications</code> saves the application, uploads images to private Blob Storage (Australian region), and calls <code>ScheduleNewOrchestrationInstanceAsync</code> with instance id = application id.</li>
+    <li>Activities: extract fields with <code>Azure.AI.DocumentIntelligence</code> (<code>prebuilt-idDocument</code> covers passports and US licences; use a custom model or your identity provider for Australian licences); verify, screen and rate risk through typed <code>HttpClient</code>s with <code>AddStandardResilienceHandler()</code>.</li>
+    <li>Orchestrator: chain the activities with <code>TaskOptions.FromRetryPolicy</code>; for review, race <code>WaitForExternalEvent&lt;ReviewDecision&gt;</code> against <code>CreateTimer</code>.</li>
+    <li>Analyst UI/API calls <code>RaiseEventAsync(instanceId, "ReviewDecision", decision)</code>, protected by an Entra ID app role; require a second approver for high risk.</li>
+    <li>Saga: <code>OpenAccount</code> then <code>IssueCard</code>; on failure, run <code>CloseAccount</code> in the <code>catch</code>. Each activity is idempotent (key = application id + step).</li>
+    <li>Audit: every activity appends to an Azure SQL table created with <code>LEDGER = ON (APPEND_ONLY = ON)</code>. Never update or delete rows.</li>
+    <li>Deploy; show stuck instances on a dashboard (custom status); purge old workflow history once the audit trail holds what you need.</li>
+  </ol>
+<pre class="code"><code>public sealed class KycOrchestrator : TaskOrchestrator&lt;Application, KycOutcome&gt;
+{
+    public override async Task&lt;KycOutcome&gt; RunAsync(TaskOrchestrationContext ctx, Application app)
+    {
+        var retry = TaskOptions.FromRetryPolicy(new RetryPolicy(5, TimeSpan.FromSeconds(10), backoffCoefficient: 2));
+        IdResult id = await ctx.CallActivityAsync&lt;IdResult&gt;("VerifyIdentity", app, retry);
+        Risk risk   = await ctx.CallActivityAsync&lt;Risk&gt;("ScreenAndRate", new ScreenInput(app, id), retry);
+        if (risk.Level != RiskLevel.Low)
+        {
+            using var cts = new CancellationTokenSource();
+            Task timeout = ctx.CreateTimer(ctx.CurrentUtcDateTime.AddDays(5), cts.Token);
+            Task&lt;ReviewDecision&gt; review = ctx.WaitForExternalEvent&lt;ReviewDecision&gt;("ReviewDecision");
+            if (await Task.WhenAny(review, timeout) == timeout) return KycOutcome.Expired();
+            cts.Cancel();   if (!review.Result.Approved) return KycOutcome.Declined(review.Result.Reason);
+        }
+        string accountId = await ctx.CallActivityAsync&lt;string&gt;("OpenAccount", app, retry);
+        try { await ctx.CallActivityAsync("IssueCard", accountId, retry); }
+        catch (TaskFailedException)
+        {
+            await ctx.CallActivityAsync("CloseAccount", accountId, retry);      // compensate
+            return KycOutcome.Failed("card");
+        }
+        return KycOutcome.Approved(accountId);
+    }
+}</code></pre>
+
+  <h3>Testing scenarios</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Type</th><th>Scenario</th><th>Expected result</th><th>How to test (.NET)</th></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>Low-risk applicant, every check passes</td><td>Approved and account opened without a human; audit has an entry per step</td><td><code>DurableTaskTestHost</code> with fake activities</td></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>Medium risk; analyst approves on day 2</td><td>Workflow waits, then completes Approved</td><td><code>DurableTaskTestHost</code> + <code>RaiseEventAsync</code> (sample below)</td></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>Customer closes the app and resumes later</td><td>Same instance continues; no second workflow</td><td><code>WebApplicationFactory</code>: second POST returns current status</td></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>Passport photo processed</td><td>Name, date of birth, number and expiry extracted with good confidence</td><td>Contract test against Document Intelligence with synthetic sample passports</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Document expired or details don't match the issuer</td><td>Declined with a reason the customer can fix</td><td>Fake verify activity returns a mismatch</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Sanctions match</td><td>Workflow stops and escalates to financial crime; no account; no wording that could tip off the customer</td><td><code>DurableTaskTestHost</code> + assert the customer message template</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Identity vendor returns 503 for 10 minutes</td><td>Activity retries with backoff, then the workflow continues</td><td><code>WireMock.Net</code> vendor stub, or Polly chaos <code>AddChaosFault</code></td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>User without the analyst role tries to approve</td><td>403; no event raised</td><td><code>WebApplicationFactory</code> with a test auth handler</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>Analyst never responds</td><td>Expires after 5 days; customer told to restart</td><td>Moq a <code>TaskOrchestrationContext</code> whose timer wins; or Temporal's <code>WorkflowEnvironment.StartTimeSkippingAsync</code> if you chose Temporal</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>Card issue fails after the account was opened</td><td><code>CloseAccount</code> runs once; audit shows both steps</td><td><code>DurableTaskTestHost</code> with a failing <code>IssueCard</code> fake</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>Analyst double-clicks Approve (event raised twice)</td><td>Second event is ignored; one account</td><td><code>DurableTaskTestHost</code>: raise the event twice</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>New code deployed while 2,000 workflows are mid-flight</td><td>In-flight instances keep running correctly</td><td>Orchestration versioning; run old and new side by side in a staging slot</td></tr>
+  </table></div>
+<pre class="code"><code>[Fact]
+public async Task Medium_risk_waits_for_analyst_then_opens_account()
+{
+    await using var host = await DurableTaskTestHost.StartAsync(tasks =&gt;
+    {
+        tasks.AddOrchestrator&lt;KycOrchestrator&gt;();
+        tasks.AddActivityFunc&lt;Application, IdResult&gt;("VerifyIdentity", (_, app) =&gt; IdResult.Verified(app.Name));
+        tasks.AddActivityFunc&lt;ScreenInput, Risk&gt;("ScreenAndRate", (_, _) =&gt; new Risk(RiskLevel.Medium));
+        tasks.AddActivityFunc&lt;Application, string&gt;("OpenAccount", (_, _) =&gt; "ACC-001");
+        tasks.AddActivityFunc&lt;string, bool&gt;("IssueCard", (_, _) =&gt; true);
+    });
+
+    string id = await host.Client.ScheduleNewOrchestrationInstanceAsync(nameof(KycOrchestrator), TestApps.Medium());
+    await host.Client.RaiseEventAsync(id, "ReviewDecision", new ReviewDecision(Approved: true, Reason: null));
+
+    var result = await host.Client.WaitForInstanceCompletionAsync(id, getInputsAndOutputs: true);
+    Assert.Equal(OrchestrationRuntimeStatus.Completed, result.RuntimeStatus);
+    Assert.Equal("ACC-001", result.ReadOutputAs&lt;KycOutcome&gt;()!.AccountId);
+}</code></pre>
+
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> The .NET stack for this design</div>
+  <table>
+    <tr><th>Component</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Workflow</b></td><td><code>Microsoft.Azure.Functions.Worker.Extensions.DurableTask</code> or <code>Microsoft.DurableTask.Worker.AzureManaged</code>; alternative <code>Temporalio</code></td><td>Timers, external events, retries and sagas as plain C#</td></tr>
+    <tr><td><b>ID documents</b></td><td><code>Azure.AI.DocumentIntelligence</code> (<code>prebuilt-idDocument</code>)</td><td>Passports worldwide and US licences; other IDs need a custom model or provider</td></tr>
+    <tr><td><b>Vendor calls</b></td><td><span class="pill builtin">built-in</span> <code>IHttpClientFactory</code> + <code>Microsoft.Extensions.Http.Resilience</code></td><td>Typed clients per vendor; idempotency key header</td></tr>
+    <tr><td><b>Audit trail</b></td><td>EF Core 10 / <code>Microsoft.Data.SqlClient</code> on an Azure SQL append-only ledger table</td><td>Database-verified tamper evidence</td></tr>
+    <tr><td><b>Testing</b></td><td><code>Microsoft.DurableTask.InProcessTestHost</code> <span class="pill preview">preview</span>; <code>Temporalio.Testing</code> (inside <code>Temporalio</code>)</td><td>In-memory engine; Temporal's test server can skip time</td></tr>
+  </table>
+  <p class="warn">Tipping off: if you report a suspicious matter, the customer must not be told. Keep decline messages neutral and route screening hits to the financial crime team.</p>
+</div>
+
+  <div class="remember"><ul>
+    <li>Long-running + human steps = a durable workflow, not a status column and a cron job.</li>
+    <li>Human approval is an external event racing a timer; design the reminder and the expiry.</li>
+    <li>Use compensations for side effects you can't roll back, and make them idempotent.</li>
+    <li>Audit lives in its own append-only store, kept 7 years after the relationship ends.</li>
+  </ul></div>
+  <div class="post">
+    <p>Opening a bank account takes 3 minutes for most people and 3 weeks for a few. Your design has to handle both. 🏦</p>
+    <p>🔎 Verify the document with the issuer, then liveness and face match</p>
+    <p>🚩 Screen for sanctions and PEPs, then rate the risk</p>
+    <p>👩‍💼 Medium risk? The workflow sleeps until an analyst decides, or 5 days pass</p>
+    <p>↩️ Card failed after the account opened? Compensate: close the account</p>
+    <p>📜 Every step in an append-only audit trail, kept for 7 years</p>
+    <p>Durable workflows turn "weeks of waiting" into a few lines of C#.</p>
+    <p>#KYC #Banking #DurableFunctions #DotNet #SystemDesign</p>
+  </div>
+</section>
+
+<!-- ENTERPRISE RAG ASSISTANT -->
+<section class="concept" id="rag-assistant">
+  <h2><span class="num">20.10</span> Enterprise RAG assistant <span class="tag-added">Added</span></h2>
+  <p class="oneliner">"Let staff ask questions over policies, procedures and wikis, get grounded answers with citations, and never see a document they aren't allowed to open." RAG at enterprise scale: the hard parts are permissions, freshness and proving quality.</p>
+
+  <h3>Problem statement</h3>
+  <p>A company has 2 million documents across SharePoint, Confluence and file shares, and 20,000 staff. People waste time hunting for the right policy. The assistant must answer from these documents only, show its sources, and respect each document's permissions.</p>
+  <div class="cols2">
+    <div>
+      <h4>Functional</h4>
+      <ul>
+        <li>Ingest new, changed and deleted documents, and permission changes</li>
+        <li>Chunk, enrich and embed; hybrid retrieval trimmed to the user's groups</li>
+        <li>Answers with clickable citations; "I don't know" when nothing fits</li>
+        <li>Thumbs up/down feedback; an evaluation dashboard for the owners</li>
+      </ul>
+    </div>
+    <div>
+      <h4>Non-functional</h4>
+      <ul>
+        <li>2M docs ≈ 20M chunks; at 1,536 dimensions × 4 bytes ≈ <b>120 GB</b> of vectors (before quantisation)</li>
+        <li>Peak 20 questions/s; first token under 2 s; p95 full answer under 8 s</li>
+        <li>Permission removals reflected within 15 minutes; content changes within 1 hour</li>
+        <li>Groundedness at least 4/5 on the golden set; data stays in region</li>
+      </ul>
+    </div>
+  </div>
+  <p><b>Constraints &amp; assumptions:</b></p>
+  <ul>
+    <li>Models run in an Azure region you approve; staff sign in with Microsoft Entra ID.</li>
+    <li>Documents can contain prompt-injection text; treat retrieved text as data, never as instructions.</li>
+    <li>Restricted-label content is excluded at ingestion (see <a href="07-data-governance-privacy.html#classification">7.2</a>).</li>
+  </ul>
+
+  <h3>Solution</h3>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"A question, trimmed to what this user may read","actors":[{"t":"User","c":"blue"},{"t":"RAG API","c":"purple"},{"t":"AI Search","c":"teal"},{"t":"LLM","c":"green"},{"t":"Safety","c":"amber"}],"colW":165,"rowH":46,"stepMs":950,
+ "steps":[
+  {"from":0,"to":1,"t":"question + Entra token","c":"blue"},
+  {"from":1,"to":1,"t":"read the user's groups","c":"purple"},
+  {"from":1,"to":2,"t":"hybrid + semantic, filter group_ids","sub":"security trimming","c":"purple"},
+  {"from":2,"to":1,"t":"top 8 chunks this user may see","dash":true,"c":"teal"},
+  {"from":1,"to":4,"t":"Prompt Shields: question + chunks","c":"amber"},
+  {"from":1,"to":3,"t":"grounded prompt, numbered sources","c":"purple"},
+  {"from":3,"to":1,"t":"answer citing [1] and [3]","dash":true,"c":"green"},
+  {"from":1,"to":1,"t":"check every citation exists","c":"purple"},
+  {"from":1,"to":0,"t":"answer + source links","c":"green"},
+  {"note":"No good chunks? Answer 'I don't know'. Never guess.","over":[0,3],"c":"red"}
+ ]}
+</script></figure>
+<figure class="viz" data-viz="steps"><script type="application/json">
+{"title":"Ingestion pipeline (runs on every change)","stepMs":900,
+ "items":[
+  {"k":"Detect","t":"Change feeds from each source: new, changed, deleted, and permission changes","c":"blue"},
+  {"k":"Extract","t":"Document Intelligence layout model turns PDFs and Office files into Markdown with headings and tables","c":"purple"},
+  {"k":"Chunk","t":"Split by headings, about 500 tokens, small overlap","c":"purple","indent":1},
+  {"k":"Enrich","t":"Add title, heading path, URL, last modified, sensitivity label and allowed group ids","c":"purple","indent":1},
+  {"k":"Embed","t":"Embedding model through IEmbeddingGenerator","c":"teal"},
+  {"k":"Upsert","t":"MergeOrUpload chunks; delete chunks of removed documents","c":"green"},
+  {"k":"Evaluate","t":"Nightly golden-set run catches quality drops","c":"amber"}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>Decision</th><th>Choice</th><th>Trade-off</th></tr>
+    <tr><td><b>Permissions</b></td><td>Store allowed group ids on every chunk; filter with <code>search.in</code> on every query (native ACL support in AI Search is in preview)</td><td>Unauthorised text never reaches the model; you must sync permission changes quickly</td></tr>
+    <tr><td><b>Retrieval</b></td><td>Hybrid (keywords + vectors) + semantic ranker (<a href="14-rag-genai.html#hybrid">14.10</a>)</td><td>Finds codes and acronyms; adds a few hundred ms and cost</td></tr>
+    <tr><td><b>Chunking</b></td><td>Structure-aware, with metadata (<a href="14-rag-genai.html#chunking">14.5</a>)</td><td>Better citations and filters; more ingestion work</td></tr>
+    <tr><td><b>Citations</b></td><td>Model must cite source numbers; the API checks each one was retrieved</td><td>Trustworthy answers; sometimes a refusal or a retry</td></tr>
+    <tr><td><b>Quality</b></td><td>Golden-set evals in CI + online feedback (<a href="14-rag-genai.html#eval">14.14</a>); content safety on input and output</td><td>Catches regressions from model, prompt or chunking changes; LLM-judge cost</td></tr>
+  </table></div>
+
+  <h3>Steps to implement in .NET 10</h3>
+  <ol>
+    <li>Create an ASP.NET Core API with Entra ID auth (<code>Microsoft.Identity.Web</code>). Register <code>IChatClient</code> and <code>IEmbeddingGenerator</code> from <code>Microsoft.Extensions.AI</code>, using <code>Azure.AI.OpenAI</code> + <code>Microsoft.Extensions.AI.OpenAI</code> (<code>AsIChatClient()</code>).</li>
+    <li>Design the Azure AI Search index (<code>Azure.Search.Documents</code>): <code>content</code>, <code>contentVector</code> (HNSW), <code>title</code>, <code>url</code>, <code>headingPath</code>, <code>lastModified</code>, and <code>group_ids</code> as a filterable, non-retrievable string collection; add a semantic configuration and a vectorizer.</li>
+    <li>Build the ingestion worker: source change feeds (e.g. Microsoft Graph delta for SharePoint); <code>Azure.AI.DocumentIntelligence</code> layout to Markdown; chunk with <code>Microsoft.Extensions.DataIngestion</code> <span class="pill preview">preview</span> or your own splitter; embed; <code>MergeOrUpload</code> and delete.</li>
+    <li>Query path: read the user's group ids from the token (use Microsoft Graph when the token has too many groups), build the <code>search.in</code> filter, run hybrid + semantic search.</li>
+    <li>Prompt: system rules ("answer only from the sources, cite [n], say you don't know"), numbered sources; stream with <code>GetStreamingResponseAsync</code>; validate citations before showing them.</li>
+    <li>Guardrails: <code>Azure.AI.ContentSafety</code> on output, Prompt Shields (REST) on the question and documents, per-user rate limits (<code>Microsoft.AspNetCore.RateLimiting</code>), no prompts or PII in logs.</li>
+    <li>Evaluation: a golden Q&amp;A set run as xUnit tests with <code>Microsoft.Extensions.AI.Evaluation.Quality</code>, cached and reported with <code>Microsoft.Extensions.AI.Evaluation.Reporting</code>; fail the PR if scores drop.</li>
+    <li>Deploy with private endpoints for Search and the model; trace tokens, latency and "I don't know" rate with OpenTelemetry; review low-rated answers weekly.</li>
+  </ol>
+<pre class="code"><code>app.MapPost("/ask", async (AskRequest req, ClaimsPrincipal user, SearchClient search,
+                           IChatClient chat, CancellationToken ct) =&gt;
+{
+    string groups = string.Join(",", user.FindAll("groups").Select(c =&gt; c.Value));   // Graph on overage
+    var options = new SearchOptions
+    {
+        Size = 8,
+        Filter = $"group_ids/any(g: search.in(g, '{groups}', ','))",            // security trimming
+        QueryType = SearchQueryType.Semantic,
+        SemanticSearch = new() { SemanticConfigurationName = "default" },
+        VectorSearch = new() { Queries = { new VectorizableTextQuery(req.Question)
+            { KNearestNeighborsCount = 50, Fields = { "contentVector" } } } }
+    };
+    var hits = new List&lt;Chunk&gt;();
+    await foreach (var r in (await search.SearchAsync&lt;Chunk&gt;(req.Question, options, ct)).Value.GetResultsAsync())
+        hits.Add(r.Document);
+    if (hits.Count == 0) return Results.Ok(Answer.DontKnow);
+    string sources = string.Join("\n", hits.Select((h, i) =&gt; $"[{i + 1}] {h.Title}: {h.Content}"));
+    ChatResponse reply = await chat.GetResponseAsync(
+        [new(ChatRole.System, Prompts.GroundedAnswer),
+         new(ChatRole.User, $"Sources:\n{sources}\n\nQuestion: {req.Question}")],
+        cancellationToken: ct);
+    return Results.Ok(Answer.WithValidatedCitations(reply.Text, hits));   // drop or retry unknown [n]
+});</code></pre>
+
+  <h3>Testing scenarios</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Type</th><th>Scenario</th><th>Expected result</th><th>How to test (.NET)</th></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>Question answered by a policy the user can read</td><td>Grounded answer with the right citation</td><td><code>Microsoft.Extensions.AI.Evaluation.Quality</code> <code>GroundednessEvaluator</code> on the golden set (sample below)</td></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>Policy updated in SharePoint</td><td>New answer within 1 hour; old chunks gone</td><td>Integration test: ingestion worker against a dedicated test search index</td></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>Query with a code ("form KYC-07")</td><td>Exact document in the top 3</td><td><code>RetrievalEvaluator</code> or a hit-rate@k check over labelled queries</td></tr>
+    <tr><td style="white-space:nowrap">✅ Positive</td><td>Streaming answer</td><td>First token under 2 s</td><td><code>WebApplicationFactory</code> with a fake streaming <code>IChatClient</code>; k6 in staging for real latency</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>User asks about a document they can't access (HR salary bands)</td><td>No text from it is retrieved; answer is "I don't know"</td><td>Two test users in different groups against the test index; assert retrieved chunk ids</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>A document says "ignore previous instructions and..."</td><td>Flagged by Prompt Shields; answer unaffected</td><td>Red-team set with <code>Microsoft.Extensions.AI.Evaluation.Safety</code> <span class="pill preview">preview</span> (indirect attack)</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Model endpoint returns 429 or times out</td><td>Retry with backoff, then a friendly error; no half answer</td><td>Fake <code>IChatClient</code> that throws; Polly chaos strategies</td></tr>
+    <tr><td style="white-space:nowrap">❌ Negative</td><td>Abusive or harmful question</td><td>Blocked with a polite message</td><td><code>Azure.AI.ContentSafety</code> test set; safety evaluators</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>Nothing relevant in the index</td><td>"I don't know" + who to contact; no invented answer</td><td>Unanswerable questions in the golden set; assert refusal</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>User in hundreds of groups (token group overage)</td><td>Groups fetched from Graph; filter still works</td><td>Unit test with an overage claim and a fake Graph client</td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>Model cites [9] when only 8 sources were sent</td><td>Citation removed or answer regenerated</td><td>Unit test on <code>Answer.WithValidatedCitations</code></td></tr>
+    <tr><td style="white-space:nowrap">⚠️ Edge</td><td>A user loses access to a document</td><td>Not retrievable after the next permission sync (within 15 minutes)</td><td>Integration: change the ACL, run sync, query as that user</td></tr>
+  </table></div>
+<pre class="code"><code>[Theory]
+[MemberData(nameof(GoldenSet.Questions), MemberType = typeof(GoldenSet))]
+public async Task Answers_are_grounded_in_retrieved_sources(string question)
+{
+    var (answer, sources, judge) = await RagTestHarness.AskAsync(question);   // real pipeline, test index
+
+    IEvaluator evaluator = new GroundednessEvaluator();
+    EvaluationResult result = await evaluator.EvaluateAsync(
+        [new ChatMessage(ChatRole.User, question)], answer,
+        new ChatConfiguration(judge),
+        additionalContext: [new GroundednessEvaluatorContext(sources)]);
+
+    NumericMetric groundedness = result.Get&lt;NumericMetric&gt;(GroundednessEvaluator.GroundednessMetricName);
+    Assert.True(groundedness.Value &gt;= 4, $"Groundedness {groundedness.Value} for: {question}");
+}</code></pre>
+
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> The .NET stack for this design</div>
+  <table>
+    <tr><th>Component</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Models</b></td><td><code>Microsoft.Extensions.AI</code> + <code>Azure.AI.OpenAI</code> / <code>Microsoft.Extensions.AI.OpenAI</code></td><td><code>IChatClient</code> and <code>IEmbeddingGenerator</code>; swap providers without code changes</td></tr>
+    <tr><td><b>Retrieval</b></td><td><code>Azure.Search.Documents</code>; or <code>Microsoft.Extensions.VectorData.Abstractions</code> + <code>CommunityToolkit.VectorData.AzureAISearch</code></td><td>Hybrid, semantic ranker and OData security filters. The old <code>Microsoft.SemanticKernel.Connectors.*</code> vector packages are deprecated</td></tr>
+    <tr><td><b>Ingestion</b></td><td><code>Microsoft.Extensions.DataIngestion</code> <span class="pill preview">preview</span> + <code>Azure.AI.DocumentIntelligence</code></td><td>Readers, chunkers, enrichers and a vector store writer</td></tr>
+    <tr><td><b>Guardrails</b></td><td><code>Azure.AI.ContentSafety</code></td><td>Harm categories and blocklists; Prompt Shields over REST</td></tr>
+    <tr><td><b>Evaluation</b></td><td><code>Microsoft.Extensions.AI.Evaluation.Quality</code>, <code>.Reporting</code>; <code>.Safety</code> <span class="pill preview">preview</span></td><td>Groundedness, relevance, retrieval; cached runs and HTML reports in CI</td></tr>
+    <tr><td><b>Identity</b></td><td><code>Microsoft.Identity.Web</code></td><td>Validated token; group claims or a Graph lookup</td></tr>
+  </table>
+  <p class="warn">Never let the model decide who may see what. Trim results in the search query, from the validated token, before any text reaches the prompt.</p>
+</div>
+
+  <div class="remember"><ul>
+    <li>Security trimming happens at retrieval, from the user's token, never in the prompt.</li>
+    <li>Ingestion must handle deletes and permission changes, not just new documents.</li>
+    <li>Hybrid + semantic ranking + structure-aware chunks give the best retrieval baseline.</li>
+    <li>Prove quality with a golden set in CI, and validate every citation.</li>
+  </ul></div>
+  <div class="post">
+    <p>The hardest part of an enterprise RAG assistant isn't the LLM. It's permissions. 🔐</p>
+    <p>👥 Store allowed group ids on every chunk and filter every query by the user's groups</p>
+    <p>🔄 Sync deletes and permission changes, not just new documents</p>
+    <p>🔎 Hybrid search + semantic ranker: codes and meaning both matter</p>
+    <p>📎 Make the model cite sources, then check every citation was really retrieved</p>
+    <p>📊 Golden-set evals in CI catch quality drops before users do</p>
+    <p>If the assistant can see it, assume the user can too. Trim before you prompt.</p>
+    <p>#RAG #GenAI #DotNet #EnterpriseAI #SystemDesign</p>
+  </div>
+</section>
+
+<div class="qa-wrap">
+  <h2>⚡ Quick-fire Q&amp;A</h2>
+  <details class="qa"><summary>Flash sale: how do you guarantee you never oversell?</summary><p>Make "check stock and take stock" one atomic operation: a Redis Lua script, or SQL <code>UPDATE ... SET Stock = Stock - @qty WHERE Stock &gt;= @qty</code> and check the rows affected. Add idempotency keys so retries don't buy twice, and prove it with a parallel test (<code>Task.WhenAll</code>) against a real Redis or SQL container.</p></details>
+  <details class="qa"><summary>Booking: how do temporary holds expire without a timer per seat?</summary><p>Store an expiry time on the hold and treat any hold with <code>HoldExpiresAt &lt;= now</code> as free in every query (lazy expiry). A periodic sweeper only tidies up and pushes "free again" events. In Redis, <code>SET key value NX PX 600000</code> gives the same thing in one command. Test it with <code>FakeTimeProvider.Advance</code>.</p></details>
+  <details class="qa"><summary>Autocomplete: why not run <code>LIKE 'abc%'</code> on the database?</summary><p>At thousands of requests per second it is too slow and it can't rank by popularity cheaply. Precompute the top 10 per prefix (Redis sorted sets or a trie) from search logs, cache short prefixes at the edge, and debounce on the client. Use Azure AI Search suggesters if you need typo tolerance.</p></details>
+  <details class="qa"><summary>Proximity: why use two different stores for ATMs and drivers?</summary><p>ATMs rarely change and need rich filters, so a SQL/PostGIS spatial index fits. Drivers move every few seconds (tens of thousands of writes per second), so an in-memory Redis GEO index fits, with a heartbeat TTL to hide drivers who went offline.</p></details>
+  <details class="qa"><summary>File upload: how do you make a 5 GB upload resumable and safe?</summary><p>Give the client a short, write-only SAS for one blob, upload 8 MiB blocks (Put Block) and commit the list at the end (Put Block List), so a drop only re-sends one block. Scan with Defender for Storage, react to the Event Grid result, and process only files marked "No threats found".</p></details>
+  <details class="qa"><summary>Job scheduler: how do you stop two nodes running the same job?</summary><p>Let one shared store decide. Clustered Quartz.NET takes a database row lock when it acquires a trigger, so only one node fires each firing. Because a crashed node's job is recovered and may run again, also make every job idempotent with a key such as job name + scheduled fire time.</p></details>
+  <details class="qa"><summary>Web crawler: how do you stay polite and avoid re-fetching pages?</summary><p>Shard the frontier by host so one worker owns each site, and rate-limit per host (about 1 request/s, or the site's Crawl-delay) after checking robots.txt. Normalise URLs and check a Bloom filter before enqueueing, and use conditional GET (ETag / Last-Modified) on recrawls.</p></details>
+  <details class="qa"><summary>Fraud detection: how do you decide in under 100 ms?</summary><p>Keep the inline path tiny: read and update velocity counters in Redis, run hard rules, then score with an in-process model (ML.NET or ONNX Runtime). Publish the decision to a stream and do everything else (long-window features, cases, retraining labels) asynchronously. If scoring times out, fall back to rules only.</p></details>
+  <details class="qa"><summary>KYC onboarding: how do you model a human approval that can take days?</summary><p>Use a durable workflow (Durable Functions / Durable Task, or Temporal). The orchestrator waits for an external "ReviewDecision" event racing a durable timer, so it costs nothing while it waits and expires cleanly. Side effects like opening an account use saga compensations, and every step writes to an append-only audit store.</p></details>
+  <details class="qa"><summary>Enterprise RAG: how do you stop the assistant leaking documents?</summary><p>Trim at retrieval. Store the allowed group ids on every chunk, read the user's groups from their validated Entra token, and filter every search with them (e.g. <code>search.in</code> in Azure AI Search). Unauthorised text never reaches the prompt, and permission changes are synced into the index quickly.</p></details>
+</div>
+
+<div class="pager"><a href="19-design-case-studies.html">← 19 · Design Case Studies</a><a class="next" href="21-cloud-cheat-sheet.html">21 · Cloud Cheat Sheet →</a></div>
+</main>
+<footer>Tech Concepts Prep · Section 20</footer>
+<script src="assets/menu-data.js"></script>
+<script src="assets/menu.js"></script>
+<script src="assets/app.js"></script>
+<script src="assets/viz.js"></script>
+</body>
+</html>

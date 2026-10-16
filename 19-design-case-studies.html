@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<nav class="top"><a href="18-system-design-playbook.html">← Playbook</a><span class="here">19 · Design Case Studies</span><a href="index.html">🏠 Roadmap</a></nav>
+<nav class="top"><a href="18-system-design-playbook.html">← Playbook</a><span class="here">19 · Design Case Studies</span><a href="20-dotnet-system-design-use-cases.html">Next: .NET Use Cases →</a></nav>
 <main>
 
 <header class="hero">
@@ -715,7 +715,7 @@ processor.ProcessMessageAsync += async args =&gt;
     <tr><td><b>API</b></td><td><span class="pill builtin">built-in</span> minimal APIs, <code>AddProblemDetails()</code></td><td>Return RFC 9457 errors like "insufficient funds"</td></tr>
     <tr><td><b>Ledger store</b></td><td>EF Core 10 (<code>Microsoft.EntityFrameworkCore.SqlServer</code>): <code>ExecuteUpdateAsync</code>, explicit transactions, row versions</td><td>Azure SQL / SQL Server 2022+ ledger tables for tamper evidence</td></tr>
     <tr><td><b>Outbox + events</b></td><td><code>WolverineFx</code> (EF Core outbox) + <code>Azure.Messaging.ServiceBus</code></td><td>Or a small relay <code>BackgroundService</code> of your own</td></tr>
-    <tr><td><b>Reconciliation</b></td><td><code>Quartz.Extensions.Hosting</code>, <code>CsvHelper</code></td><td>Nightly job: parse settlement files, match, raise breaks</td></tr>
+    <tr><td><b>Reconciliation</b></td><td><code>Quartz</code> (4.x; DI and hosting built in), <code>CsvHelper</code></td><td>Nightly job: parse settlement files, match, raise breaks</td></tr>
     <tr><td><b>Audit and tracing</b></td><td>OpenTelemetry; <code>Microsoft.Extensions.Compliance.Redaction</code></td><td>Trace ID on every transaction; no account numbers in logs</td></tr>
   </table>
 <pre class="code"><code>await using var tx = await db.Database.BeginTransactionAsync(ct);
@@ -765,9 +765,11 @@ return Results.Created($"/transfers/{txId}", txId);</code></pre>
   <details class="qa"><summary>Ledger: why store a balance if you can sum the entries?</summary><p>Summing is slow for busy accounts and makes the overdraw check expensive. Store the balance, update it in the same transaction as the entries, and run a nightly check that it still equals the sum.</p></details>
 </div>
 
-<div class="pager"><a href="18-system-design-playbook.html">← 18 · System Design Playbook</a><a class="next" href="index.html">🏠 Back to Roadmap</a></div>
+<div class="pager"><a href="18-system-design-playbook.html">← 18 · System Design Playbook</a><a class="next" href="20-dotnet-system-design-use-cases.html">20 · Top 10 .NET Use Cases →</a></div>
 </main>
 <footer>Tech Concepts Prep · Section 19</footer>
+<script src="assets/menu-data.js"></script>
+<script src="assets/menu.js"></script>
 <script src="assets/app.js"></script>
 <script src="assets/viz.js"></script>
 </body>

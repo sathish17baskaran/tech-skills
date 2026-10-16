@@ -83,7 +83,7 @@
     <tr><td><b>Near-real-time</b></td><td><code>Azure.Messaging.ServiceBus</code>, <code>Azure.Messaging.EventHubs.Processor</code>, <code>Azure.Messaging.EventGrid</code>, <code>Confluent.Kafka</code></td><td>Queues, topics, event streams and push events through a broker</td></tr>
     <tr><td><b>CDC</b></td><td><code>Microsoft.Azure.Cosmos</code> change feed processor</td><td>React to every insert or update in Cosmos DB. For SQL Server, use Debezium or Fabric mirroring outside .NET</td></tr>
     <tr><td><b>Micro-batch</b></td><td><span class="pill builtin">built-in</span> <code>BackgroundService</code> + <code>PeriodicTimer</code></td><td>Wake every 1&ndash;5 minutes and process what has arrived since the last checkpoint</td></tr>
-    <tr><td><b>Batch</b></td><td><code>Quartz.Extensions.Hosting</code>, <code>Hangfire.Core</code> <span class="pill lic">check licence</span>, Azure Functions timer trigger</td><td>Cron-style scheduling. Hangfire core is LGPL; Hangfire Pro (batches, extra features) is commercial</td></tr>
+    <tr><td><b>Batch</b></td><td><code>Quartz</code> (4.x; DI and hosting built in), <code>Hangfire.Core</code> <span class="pill lic">check licence</span>, Azure Functions timer trigger</td><td>Cron-style scheduling. Hangfire core is LGPL; Hangfire Pro (batches, extra features) is commercial</td></tr>
   </table>
 </div>
   <div class="post">
@@ -505,7 +505,7 @@ public sealed class OutboxRelay(IServiceScopeFactory scopes, ServiceBusSender se
     <tr><td><b>Validate</b></td><td><span class="pill builtin">built-in</span> <code>SHA256.HashDataAsync(stream)</code>; <code>CsvHelper</code></td><td>Checksums, then stream records one by one to check schema and control totals</td></tr>
     <tr><td><b>Big files</b></td><td><span class="pill builtin">built-in</span> <code>System.IO.Pipelines</code></td><td>Parse huge fixed-width or custom files with low memory use</td></tr>
     <tr><td><b>Load</b></td><td><code>SqlBulkCopy</code> (<code>Microsoft.Data.SqlClient</code>); EF Core <code>ExecuteUpdateAsync</code></td><td>Bulk insert in chunks, then set-based updates. Record the last chunk in a checkpoint table</td></tr>
-    <tr><td><b>Schedule</b></td><td><code>Quartz.Extensions.Hosting</code>, <code>Hangfire.Core</code> <span class="pill lic">check licence</span>, Functions timer trigger</td><td>Cron triggers with persistence and retries (Hangfire Pro is commercial)</td></tr>
+    <tr><td><b>Schedule</b></td><td><code>Quartz</code> (4.x; DI and hosting built in), <code>Hangfire.Core</code> <span class="pill lic">check licence</span>, Functions timer trigger</td><td>Cron triggers with persistence and retries (Hangfire Pro is commercial)</td></tr>
   </table>
 <pre class="code"><code>using var sftp = new SftpClient(host, "svc-batch", new PrivateKeyFile(keyPath));
 sftp.Connect();
@@ -537,6 +537,8 @@ foreach (var file in sftp.ListDirectory("/inbound").Where(f =&gt; f.Name.EndsWit
 <div class="pager"><a href="09-apim.html">← 09 · API Management</a><a class="next" href="11-architecture-patterns.html">11 · Architecture Patterns →</a></div>
 </main>
 <footer>Tech Concepts Prep · Section 10</footer>
+<script src="assets/menu-data.js"></script>
+<script src="assets/menu.js"></script>
 <script src="assets/app.js"></script>
 <script src="assets/viz.js"></script>
 </body>
