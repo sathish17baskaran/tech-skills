@@ -1,0 +1,12 @@
+# Render Blueprint: publishes this folder as a static site (no build step).
+services:
+  - type: web
+    name: tech-skills
+    runtime: static
+    branch: main
+    buildCommand: "true"
+    staticPublishPath: .
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: sameorigin
