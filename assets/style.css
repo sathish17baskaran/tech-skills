@@ -419,3 +419,18 @@ main { padding-top: 16px; }
   .bq-why { grid-template-columns: 1fr; }
   .star > div { grid-template-columns: 30px 1fr; gap: 8px; padding: 8px; font-size: 14px; }
 }
+/* Menu: context groups (e.g. "APIs & integration") around the page entries */
+.side-ctx { margin: 0 0 4px; }
+.side-ctx { border-bottom: 1px solid var(--line); padding-bottom: 2px; }
+.side-ctx:last-child { border-bottom: 0; }
+.side-ctx > summary { list-style: none; display: flex; align-items: center; gap: 8px; padding: 8px 8px 5px; border-radius: 8px; cursor: pointer;
+  font-size: 11px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: #64748b; }
+.side-ctx > summary::-webkit-details-marker { display: none; }
+.side-ctx > summary:hover { color: var(--ink); background: var(--slate-bg); }
+.side-ctx > summary::after { content: ""; margin-left: auto; flex: none; width: 6px; height: 6px; border-right: 2px solid #cbd5e1; border-bottom: 2px solid #cbd5e1;
+  transform: rotate(-45deg); transition: transform .15s; }
+.side-ctx[open] > summary::after { transform: rotate(45deg); }
+.side-ctx-n { flex: none; background: var(--slate-bg); color: #64748b; border-radius: 999px; padding: 1px 7px; font-size: 10.5px; letter-spacing: 0; }
+.side-ctx.has-current > summary { color: var(--blue); }
+.side-ctx.has-current .side-ctx-n { background: var(--blue-bg); color: var(--blue); }
+.side-ctx-body { padding-bottom: 4px; }
