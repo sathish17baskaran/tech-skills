@@ -47,7 +47,7 @@
   var activeLinks = {};
   data.forEach(function (p) {
     var g = el('details', 'side-grp');
-    if (p.f === here) { g.open = true; g.classList.add('current'); }
+    if (p.f === here) { g.open = true; g.classList.add('current'); document.body.classList.add('in-menu'); }
     var sum = el('summary');
     var a = el('a', 'side-page');
     a.href = p.f;

@@ -353,3 +353,37 @@ figure.viz, .svgwrap { overflow-x: auto; }
 .viz-svg, .svgwrap svg { min-width: var(--minw, 0); }
 figure.viz.scrollx::after, .svgwrap.scrollx::after { content: "\2190  swipe or scroll to see the whole diagram  \2192"; display: block;
   position: sticky; left: 0; text-align: center; font-size: 11.5px; color: var(--muted); margin-top: 6px; }
+/* ================= Slim header (overrides the original hero and top bar) ================= */
+nav.top { min-height: 40px; padding: 4px 16px 4px 56px; font-size: 13px; gap: 10px; }
+nav.top a { padding: 4px 8px; border-radius: 7px; }
+nav.top a:hover { background: var(--blue-bg); }
+nav.top .here { font-size: 12.5px; }
+.side-toggle { top: 5px; width: 32px; height: 30px; }
+main { padding-top: 16px; }
+.hero { position: relative; background: #fff; color: var(--ink); border: 1px solid var(--line); border-radius: 12px;
+  padding: 12px 18px 12px 22px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(15,23,42,.04); overflow: hidden; }
+.hero::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: linear-gradient(180deg, #2563eb, #7c3aed); }
+.hero .kicker { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .1em; color: var(--purple); opacity: 1;
+  background: var(--purple-bg); border-radius: 999px; padding: 1px 8px; }
+.hero h1 { font-size: 22px; line-height: 1.25; margin: 4px 0 2px; color: #0f172a; }
+.hero p { font-size: 14px; line-height: 1.5; color: #475569; opacity: 1; margin: 0 0 8px; max-width: 900px; }
+.hero p:last-of-type { margin-bottom: 8px; }
+.hero a { color: var(--blue); }
+.toc { gap: 5px; }
+.toc a { background: var(--slate-bg); color: #334155; border: 1px solid var(--line); font-size: 12px; padding: 2px 9px; line-height: 1.5; }
+.toc a:hover { background: var(--blue-bg); color: var(--blue); border-color: #bfdbfe; }
+.toc a.added { border-style: dashed; border-color: #cbd5e1; }
+.legend { font-size: 11.5px; opacity: 1; color: var(--muted); margin-top: 6px; }
+/* the left menu already lists every topic: hide the duplicate chips while it is open beside the page */
+@media (min-width: 1100px) { body.side-open.in-menu .hero .toc { display: none; } body.side-open.in-menu .hero p:last-of-type { margin-bottom: 0; } }
+@media (max-width: 760px) {
+  nav.top { padding: 4px 8px 4px 50px; }
+  main { padding-top: 10px; }
+  .hero { padding: 10px 12px 10px 16px; margin-bottom: 12px; border-radius: 10px; }
+  .hero h1 { font-size: 19px; }
+  .hero p { font-size: 13.5px; }
+  .toc { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 2px; }
+  .toc::-webkit-scrollbar { display: none; }
+  .toc a { flex: none; white-space: nowrap; }
+}
+@media print { .hero { box-shadow: none; } .hero .toc { display: none; } }
