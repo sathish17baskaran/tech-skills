@@ -3,19 +3,20 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>11 · DevOps, Deployment &amp; Observability | Tech Concepts Prep</title>
+<title>13 · DevOps, Deployment &amp; Observability | Tech Concepts Prep</title>
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<nav class="top"><a href="10-security-iam.html">← Security</a><span class="here">11 · DevOps, Deployment &amp; Observability</span><a href="12-rag-genai.html">Next: RAG &amp; GenAI →</a></nav>
+<nav class="top"><a href="12-security-iam.html">← Security &amp; IAM</a><span class="here">13 · DevOps, Deployment &amp; Observability</span><a href="14-rag-genai.html">Next: RAG &amp; GenAI →</a></nav>
 <main>
 
 <header class="hero">
-  <div class="kicker">Section 11</div>
+  <div class="kicker">Section 13</div>
   <h1>DevOps, deployment strategies &amp; observability</h1>
   <p>Getting code from a laptop to production safely and often, and knowing what it's doing once it's there through logging, metrics, tracing and alerting.</p>
   <div class="toc">
     <a href="#cicd" class="added">CI/CD</a>
+    <a href="#testing" class="added">Testing strategy</a>
     <a href="#deploy">Deployment strategies</a>
     <a href="#flags" class="added">Feature flags</a>
     <a href="#iac" class="added">IaC &amp; GitOps</a>
@@ -30,7 +31,7 @@
 
 <!-- CICD -->
 <section class="concept" id="cicd">
-  <h2><span class="num">11.1</span> CI/CD pipelines <span class="tag-added">Added</span></h2>
+  <h2><span class="num">13.1</span> CI/CD pipelines <span class="tag-added">Added</span></h2>
   <p class="oneliner"><b>CI</b>: merge often, and build and test automatically. <b>CD</b>: every change that passes is releasable (delivery) or released automatically (deployment).</p>
   <div class="flow">
     <div class="n">Commit / PR</div><div class="ar">→</div>
@@ -68,9 +69,159 @@ dotnet publish src/Orders.Api -c Release /t:PublishContainer \
 </div>
   </section>
 
+<!-- TESTING -->
+<section class="concept" id="testing">
+  <h2><span class="num">13.2</span> Testing strategy <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Many fast, cheap tests at the bottom, a few slow, realistic ones at the top, and some checks that only make sense in production.</p>
+<div class="svgwrap">
+<svg viewBox="0 0 880 330" width="880" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, sans-serif" role="img" aria-label="Test pyramid, built from the bottom up: many unit tests at the base, then integration tests, then contract tests, and a handful of end-to-end tests at the top. Higher layers are slower, costlier and more realistic.">
+  <defs><marker id="tp-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker></defs>
+  <text x="20" y="22" font-size="14" font-weight="800" fill="#1e293b">Test pyramid</text>
+  <line x1="40" y1="305" x2="40" y2="75" stroke="#475569" stroke-width="2" marker-end="url(#tp-ah)"/>
+  <text x="26" y="190" transform="rotate(-90 26 190)" text-anchor="middle" font-size="12" font-weight="700" fill="#475569">slower · costlier · more realistic</text>
+  <g>
+    <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.06;0.9;1" dur="7s" repeatCount="indefinite"/>
+    <polygon points="109.7,252 490.3,252 538.3,308 61.7,308" fill="#d1fae5" stroke="#059669" stroke-width="2"/>
+    <text x="300" y="285" text-anchor="middle" font-size="14" font-weight="800" fill="#047857">Unit</text>
+    <line x1="516" y1="280" x2="552" y2="280" stroke="#059669" stroke-width="1.5" stroke-dasharray="4 3"/>
+    <text x="560" y="276" font-size="13" font-weight="700" fill="#047857">Unit: thousands, milliseconds each</text>
+    <text x="560" y="294" font-size="12" fill="#475569">pure logic, no I/O, run on every save</text>
+  </g>
+  <g>
+    <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.12;0.18;0.9;1" dur="7s" repeatCount="indefinite"/>
+    <polygon points="161.1,192 438.9,192 486.9,248 113.1,248" fill="#ccfbf1" stroke="#0f766e" stroke-width="2"/>
+    <text x="300" y="225" text-anchor="middle" font-size="14" font-weight="800" fill="#0f766e">Integration</text>
+    <line x1="465" y1="220" x2="552" y2="220" stroke="#0f766e" stroke-width="1.5" stroke-dasharray="4 3"/>
+    <text x="560" y="216" font-size="13" font-weight="700" fill="#0f766e">Integration: real DB, broker, HTTP pipeline</text>
+    <text x="560" y="234" font-size="12" fill="#475569">throwaway containers, seconds each</text>
+  </g>
+  <g>
+    <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.22;0.28;0.9;1" dur="7s" repeatCount="indefinite"/>
+    <polygon points="212.6,132 387.4,132 435.4,188 164.6,188" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+    <text x="300" y="165" text-anchor="middle" font-size="14" font-weight="800" fill="#6d28d9">Contract</text>
+    <line x1="413" y1="160" x2="552" y2="160" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="4 3"/>
+    <text x="560" y="156" font-size="13" font-weight="700" fill="#6d28d9">Contract: the API shape each consumer needs</text>
+    <text x="560" y="174" font-size="12" fill="#475569">consumer-driven (Pact), no shared environment</text>
+  </g>
+  <g>
+    <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.32;0.38;0.9;1" dur="7s" repeatCount="indefinite"/>
+    <polygon points="264,72 336,72 384,128 216,128" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+    <text x="300" y="105" text-anchor="middle" font-size="14" font-weight="800" fill="#b91c1c">E2E</text>
+    <line x1="362" y1="100" x2="552" y2="100" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="4 3"/>
+    <text x="560" y="96" font-size="13" font-weight="700" fill="#b91c1c">E2E: a handful of critical journeys</text>
+    <text x="560" y="114" font-size="12" fill="#475569">real browser + deployed stack: slow, can be flaky</text>
+  </g>
+</svg>
+</div>
+  <div class="cols2">
+    <div class="box green"><h4>🔺 Test pyramid</h4><p>Lots of unit tests, fewer integration tests, very few end-to-end tests. Fast feedback, cheap to run.</p></div>
+    <div class="box purple"><h4>🏆 Testing trophy</h4><p>Kent C. Dodds' version: static analysis at the base, some unit tests, the <b>most</b> integration tests, a few E2E. Integration tests give the most confidence per minute.</p></div>
+  </div>
+  <p class="tip">Both shapes say the same thing: buy the most confidence for the least test time. The anti-pattern is the "ice-cream cone": mostly manual and E2E tests.</p>
+  <h3>Contract testing (consumer-driven)</h3>
+  <div class="flow">
+    <div class="n">Consumer test<small>"I call GET /accounts/42 and need id + balance"</small></div><div class="ar">→</div>
+    <div class="n p">Pact file<small>the contract</small></div><div class="ar">→</div>
+    <div class="n a">Pact Broker<small>shares contracts and results</small></div><div class="ar">→</div>
+    <div class="n t">Provider verification<small>in the provider's CI</small></div><div class="ar">→</div>
+    <div class="n g">can-i-deploy ✓</div>
+  </div>
+  <ul>
+    <li>Each consumer states what it actually uses. The provider proves it still meets every contract before it deploys.</li>
+    <li>It replaces most slow, flaky cross-team E2E tests between microservices.</li>
+  </ul>
+  <h3>Performance testing: four different questions</h3>
+<figure class="viz" data-viz="lanes"><script type="application/json">
+{"title":"Load shape over time for each test type","max":20,"labelW":80,"width":760,"rowH":44,"axis":"time →","dur":5000,
+ "rows":[
+  {"label":"Load","blocks":[{"s":0,"e":3,"h":0.4,"c":"blue"},{"s":3,"e":17,"h":0.85,"t":"expected peak","c":"blue"},{"s":17,"e":20,"h":0.4,"c":"blue"}]},
+  {"label":"Stress","blocks":[{"s":0,"e":5,"h":0.3,"c":"amber"},{"s":5,"e":10,"h":0.5,"c":"amber"},{"s":10,"e":15,"h":0.7,"c":"amber"},{"s":15,"e":20,"h":1,"t":"breaks?","c":"red"}]},
+  {"label":"Spike","blocks":[{"s":0,"e":8,"h":0.3,"c":"purple"},{"s":8,"e":10,"h":1,"t":"spike","c":"red"},{"s":10,"e":20,"h":0.3,"c":"purple"}]},
+  {"label":"Soak","blocks":[{"s":0,"e":20,"h":0.85,"t":"steady load for hours","c":"teal"}]}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>Type</th><th>Question it answers</th><th>Banking example</th></tr>
+    <tr><td><b>Load</b></td><td>Do we meet our SLOs at the expected peak?</td><td>Lunchtime card traffic</td></tr>
+    <tr><td><b>Stress</b></td><td>Where does it break, how does it fail, and does it recover?</td><td>2× the busiest day on record</td></tr>
+    <tr><td><b>Spike</b></td><td>Can we survive a sudden surge? Does autoscaling react fast enough?</td><td>Payday at midnight, a viral sale</td></tr>
+    <tr><td><b>Soak</b> (endurance)</td><td>Does it degrade over hours? Memory leaks, connection pools, full disks</td><td>A 12-hour run before a major release</td></tr>
+  </table></div>
+  <h3>Chaos engineering</h3>
+  <div class="grid">
+    <div class="box blue"><h4>🧪 Hypothesis first</h4><p>"If one zone fails, p99 latency stays under 500 ms and no payment is lost." Then inject the failure and measure.</p></div>
+    <div class="box amber"><h4>💥 Small blast radius</h4><p>Start with one instance, in staging, or 1% of traffic. Always have an abort switch.</p></div>
+    <div class="box purple"><h4>🎮 Game days</h4><p>Planned team exercises that break things on purpose, and practise the incident response too.</p></div>
+    <div class="box teal"><h4>🛠️ Tools</h4><p>Azure Chaos Studio, Chaos Mesh (Kubernetes), AWS Fault Injection Service, Gremlin. In code: Polly chaos strategies.</p></div>
+  </div>
+  <div class="cols2">
+    <div class="box"><h4>🧬 Test data management</h4><ul><li><b>Synthetic</b> data generated to look real (fake names, valid account formats)</li><li><b>Masked</b> production copies: irreversible masking of personal data</li><li>Never raw production customer data in test (privacy law)</li><li>Each test creates and cleans up its own data</li></ul></div>
+    <div class="box"><h4>⬅️ Shift left · Shift right ➡️</h4><ul><li><b>Left</b>: unit tests, analyzers and contract tests on every PR, ephemeral test environments</li><li><b>Right</b>: synthetic monitoring (scripted journeys every few minutes in prod)</li><li><b>Right</b>: automated canary analysis (compare canary vs baseline metrics, roll back on regression)</li></ul></div>
+  </div>
+  <div class="remember"><ul>
+    <li>Aim for fast feedback and real confidence, not a coverage percentage.</li>
+    <li>For microservices, contract tests replace most cross-team E2E tests.</li>
+    <li>Performance-test against your SLOs, with production-like data volumes.</li>
+    <li>Chaos without a hypothesis and an abort button is just an outage.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Need</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Frameworks &amp; assertions</b></td><td><code>xunit.v3</code>, <code>NUnit</code>, <code>MSTest</code> on Microsoft.Testing.Platform; plain <code>Assert</code> or <code>Shouldly</code></td><td><code>FluentAssertions</code> v8+ needs a <span class="pill lic">commercial licence</span> for commercial use</td></tr>
+    <tr><td><b>Integration tests</b></td><td><code>Microsoft.AspNetCore.Mvc.Testing</code> (<code>WebApplicationFactory</code>) + <code>Testcontainers.PostgreSql</code> / <code>.MsSql</code> / <code>.Redis</code></td><td>Run the real HTTP pipeline in memory against real databases in throwaway Docker containers</td></tr>
+    <tr><td><b>Contract tests</b></td><td><code>PactNet</code> (v5, Pact specification v4)</td><td>Consumer tests write the pact file. The provider verifies it in its own pipeline</td></tr>
+    <tr><td><b>Test data &amp; snapshots</b></td><td><code>Bogus</code>; <code>Verify</code> (<code>Verify.XunitV3</code>, <code>Verify.NUnit</code>, <code>Verify.MSTest</code>)</td><td>Realistic fake data, and snapshot tests that compare a whole response with an approved file</td></tr>
+    <tr><td><b>Load tests</b></td><td><code>NBomber</code> <span class="pill lic">commercial licence</span>; or k6, Azure Load Testing</td><td>NBomber is free only for personal and academic use. k6 scripts are JavaScript</td></tr>
+    <tr><td><b>Chaos in code</b></td><td><code>Polly.Core</code> chaos strategies: <code>AddChaosFault</code>, <code>AddChaosLatency</code>, <code>AddChaosOutcome</code>, <code>AddChaosBehavior</code></td><td>Inject faults and delays into a resilience pipeline to prove your retries and timeouts work</td></tr>
+  </table>
+<pre class="code"><code>// xUnit v3: the real API in memory + a real Postgres in Docker
+public sealed class PaymentsApiTests : IAsyncLifetime
+{
+    private readonly PostgreSqlContainer _db = new PostgreSqlBuilder("postgres:17").Build();
+    private WebApplicationFactory&lt;Program&gt; _factory = null!;
+
+    public async ValueTask InitializeAsync()
+    {
+        await _db.StartAsync();
+        _factory = new WebApplicationFactory&lt;Program&gt;().WithWebHostBuilder(b =&gt;
+            b.UseSetting("ConnectionStrings:Payments", _db.GetConnectionString()));
+    }
+
+    [Fact]
+    public async Task Create_payment_returns_201()
+    {
+        var client = _factory.CreateClient();
+        var response = await client.PostAsJsonAsync("/payments",
+            new { FromAccount = "123", ToAccount = "456", Amount = 50m },
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await _factory.DisposeAsync();
+        await _db.DisposeAsync();
+    }
+}</code></pre>
+  <p class="warn">Testcontainers needs Docker on the build agent. Polly chaos strategies are enabled as soon as you add them: drive <code>Enabled</code> / <code>EnabledGenerator</code> from config so they can never fire in production by accident.</p>
+</div>
+  <div class="post">
+    <p>Tests should buy confidence, not a coverage percentage 🧪</p>
+    <p>🔺 Many fast unit tests, fewer integration tests, a handful of E2E.</p>
+    <p>🤝 Contract tests (Pact) instead of fragile cross-team E2E suites.</p>
+    <p>🏋️ Load, stress, spike and soak tests answer four different questions.</p>
+    <p>🐒 Chaos engineering: start with a hypothesis and a small blast radius.</p>
+    <p>🔭 Shift right too: synthetic monitoring and canary analysis in production.</p>
+    <p>What's the slowest test in your pipeline, and has it ever caught a bug?</p>
+    <p>#Testing #DevOps #QualityEngineering #SRE</p>
+  </div>
+</section>
+
 <!-- DEPLOYMENT -->
 <section class="concept" id="deploy">
-  <h2><span class="num">11.2</span> Deployment strategies</h2>
+  <h2><span class="num">13.3</span> Deployment strategies</h2>
   <p class="oneliner">Ways to release a new version that trade off <b>downtime, risk, cost and rollback speed</b>.</p>
   <div class="grid wide">
     <div class="box red"><h4>1. Recreate (big bang)</h4>
@@ -172,7 +323,7 @@ dotnet publish src/Orders.Api -c Release /t:PublishContainer \
 
 <!-- FLAGS -->
 <section class="concept" id="flags">
-  <h2><span class="num">11.3</span> Feature flags (toggles) <span class="tag-added">Added</span></h2>
+  <h2><span class="num">13.4</span> Feature flags (toggles) <span class="tag-added">Added</span></h2>
   <p class="oneliner">Ship code turned off, then turn it on for chosen users without redeploying. <b>Deploy ≠ release.</b></p>
   <div class="grid">
     <div class="box"><h4>Release toggle</h4><p>Hide unfinished features. Enables trunk-based development.</p></div>
@@ -206,7 +357,7 @@ app.MapGet("/checkout", async (IFeatureManager features) =&gt;
 
 <!-- IAC -->
 <section class="concept" id="iac">
-  <h2><span class="num">11.4</span> Infrastructure as Code &amp; GitOps <span class="tag-added">Added</span></h2>
+  <h2><span class="num">13.5</span> Infrastructure as Code &amp; GitOps <span class="tag-added">Added</span></h2>
   <p class="oneliner">Define infrastructure in versioned code files. The tool makes reality match the code.</p>
   <div class="flow"><div class="n">Code (Bicep / Terraform)</div><div class="ar">→</div><div class="n p">PR + plan / what-if</div><div class="ar">→</div><div class="n a">Approve</div><div class="ar">→</div><div class="n g">Apply → cloud matches code</div></div>
   <ul>
@@ -239,7 +390,7 @@ builder.Build().Run();
 
 <!-- K8S -->
 <section class="concept" id="k8s">
-  <h2><span class="num">11.5</span> Containers &amp; Kubernetes <span class="tag-added">Added</span></h2>
+  <h2><span class="num">13.6</span> Containers &amp; Kubernetes <span class="tag-added">Added</span></h2>
   <p class="oneliner">A container packages an app with its dependencies. Kubernetes runs many containers across many machines: it schedules, heals, scales and connects them.</p>
   <h3>VM vs container</h3>
 <div class="svgwrap">
@@ -473,7 +624,7 @@ app.MapHealthChecks("/health/ready", new() { Predicate = r =&gt; r.Tags.Contains
 
 <!-- OBSERVABILITY -->
 <section class="concept" id="observability">
-  <h2><span class="num">11.6</span> Observability <span class="tag-added">Added</span></h2>
+  <h2><span class="num">13.7</span> Observability <span class="tag-added">Added</span></h2>
   <p class="oneliner"><b>Monitoring</b> tells you <i>that</i> something is wrong. <b>Observability</b> lets you ask <i>why</i>, from the telemetry the system emits.</p>
   <div class="grid">
     <div class="box blue"><h4>📜 Logs</h4><p>Timestamped events. Make them <b>structured</b> (JSON) and include a correlation ID. Never log secrets or PII.</p></div>
@@ -532,7 +683,7 @@ activity?.SetTag("order.channel", "web");</code></pre>
 
 <!-- LOGGING -->
 <section class="concept" id="logging">
-  <h2><span class="num">11.7</span> Logging <span class="tag-added">Added</span></h2>
+  <h2><span class="num">13.8</span> Logging <span class="tag-added">Added</span></h2>
   <p class="oneliner">A log is a timestamped record of something that happened. Logs explain <b>why</b> something went wrong, and they're only useful if you can search and correlate them.</p>
   <div class="flow">
     <div class="n">App / API / Function<small>emits structured logs</small></div><div class="ar">→</div>
@@ -610,7 +761,7 @@ using (logger.BeginScope(new Dictionary&lt;string, object&gt; { ["CorrelationId"
 
 <!-- METRICS -->
 <section class="concept" id="metrics">
-  <h2><span class="num">11.8</span> Metrics <span class="tag-added">Added</span></h2>
+  <h2><span class="num">13.9</span> Metrics <span class="tag-added">Added</span></h2>
   <p class="oneliner">Metrics are numbers measured over time. They're cheap to store, fast to query, and ideal for dashboards, trends and alerts. They tell you <b>that</b> something is wrong.</p>
 
   <h3>Metric types</h3>
@@ -684,7 +835,7 @@ using (logger.BeginScope(new Dictionary&lt;string, object&gt; { ["CorrelationId"
 
 <!-- ALERTING -->
 <section class="concept" id="alerting">
-  <h2><span class="num">11.9</span> Alerting <span class="tag-added">Added</span></h2>
+  <h2><span class="num">13.10</span> Alerting <span class="tag-added">Added</span></h2>
   <p class="oneliner">An alert should page a human only when something <b>needs action now</b>. Every page should be urgent, actionable and tied to user impact.</p>
   <div class="flow">
     <div class="n">Metrics / logs / traces</div><div class="ar">→</div>
@@ -770,7 +921,7 @@ using (logger.BeginScope(new Dictionary&lt;string, object&gt; { ["CorrelationId"
 
 <!-- INCIDENT -->
 <section class="concept" id="incident">
-  <h2><span class="num">11.10</span> Incident management <span class="tag-added">Added</span></h2>
+  <h2><span class="num">13.11</span> Incident management <span class="tag-added">Added</span></h2>
   <p class="oneliner">How a team detects, responds to and learns from production incidents.</p>
   <div class="flow"><div class="n r">Detect<small>alert</small></div><div class="ar">→</div><div class="n a">Triage<small>severity P1–P4</small></div><div class="ar">→</div><div class="n p">Mitigate<small>rollback, failover, runbook</small></div><div class="ar">→</div><div class="n g">Resolve</div><div class="ar">→</div><div class="n">Blameless post-incident review<small>actions</small></div></div>
   <ul><li><b>MTTD</b> (time to detect), <b>MTTR</b> (time to restore), <b>MTBF</b> (time between failures).</li><li>Mitigate first (restore service), find the root cause second.</li></ul>
@@ -789,15 +940,17 @@ using (logger.BeginScope(new Dictionary&lt;string, object&gt; { ["CorrelationId"
   <h2>⚡ Quick-fire Q&amp;A</h2>
   <details class="qa"><summary>Blue-green vs canary?</summary><p>Blue-green switches all traffic at once between two full environments, with instant rollback and double cost. Canary shifts traffic gradually and validates on real users with a smaller blast radius, but needs strong monitoring.</p></details>
   <details class="qa"><summary>How do you deploy a DB schema change with zero downtime?</summary><p>Expand/contract: add the new column or table (backward compatible), deploy code that writes both, backfill, switch reads, then remove the old structure in a later release.</p></details>
+  <details class="qa"><summary>Test pyramid vs testing trophy?</summary><p>The pyramid says: many unit tests, fewer integration tests, very few E2E. The trophy (Kent C. Dodds) adds static analysis at the base and puts the most weight on integration tests, because they give the most confidence per minute. Both reject the "ice-cream cone" of mostly manual and E2E tests.</p></details>
+  <details class="qa"><summary>What is consumer-driven contract testing?</summary><p>Each consumer writes a test that records exactly what it needs from a provider API (a pact). The provider runs those pacts in its own pipeline and can only deploy if every consumer's contract still passes. It catches breaking API changes without a shared, flaky end-to-end environment.</p></details>
   <details class="qa"><summary>Logs vs metrics vs traces?</summary><p>Metrics tell you something is wrong (error rate is up). Traces show where (which hop is slow). Logs explain why (the exception details).</p></details>
   <details class="qa"><summary>What should you alert on?</summary><p>User-facing symptoms: error rate, latency against the SLO (burn rate), failed synthetic journeys, missing heartbeats, and business KPIs dropping. Show causes like CPU or memory on dashboards, and ticket them rather than paging.</p></details>
   <details class="qa"><summary>Why are high-cardinality metric labels a problem?</summary><p>Each unique label combination is a separate time series. Labels like userId or paymentId create millions of series, which blow up memory, cost and query time. Put those IDs in logs and traces instead.</p></details>
   <details class="qa"><summary>How do you reduce alert fatigue?</summary><p>Page only on actionable symptoms, add duration windows, use multi-window burn-rate alerts, group and deduplicate, attach runbooks, and delete or downgrade alerts nobody acts on.</p></details>
 </div>
 
-<div class="pager"><a href="10-security-iam.html">← 10 · Security &amp; IAM</a><a class="next" href="12-rag-genai.html">12 · RAG &amp; GenAI →</a></div>
+<div class="pager"><a href="12-security-iam.html">← 12 · Security &amp; IAM</a><a class="next" href="14-rag-genai.html">14 · RAG &amp; GenAI →</a></div>
 </main>
-<footer>Tech Concepts Prep · Section 11</footer>
+<footer>Tech Concepts Prep · Section 13</footer>
 <script src="assets/app.js"></script>
 <script src="assets/viz.js"></script>
 </body>

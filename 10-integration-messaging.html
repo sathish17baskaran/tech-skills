@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>08 · Integration &amp; Messaging | Tech Concepts Prep</title>
+<title>10 · Integration &amp; Messaging | Tech Concepts Prep</title>
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<nav class="top"><a href="07-apim.html">← APIM</a><span class="here">08 · Integration &amp; Messaging</span><a href="09-architecture-patterns.html">Next: Architecture Patterns →</a></nav>
+<nav class="top"><a href="09-apim.html">← APIM</a><span class="here">10 · Integration &amp; Messaging</span><a href="11-architecture-patterns.html">Next: Architecture Patterns →</a></nav>
 <main>
 
 <header class="hero">
-  <div class="kicker">Section 08</div>
+  <div class="kicker">Section 10</div>
   <h1>Integration &amp; messaging</h1>
   <p>How systems talk to each other: real-time, near-real-time or batch; queues or events; orchestration or choreography; and the patterns that keep messages from getting lost, duplicated or stuck.</p>
   <div class="toc">
@@ -19,6 +19,7 @@
     <a href="#styles" class="added">Integration styles &amp; approaches</a>
     <a href="#queue-event">Queue vs Event-driven</a>
     <a href="#guarantees" class="added">Delivery guarantees</a>
+    <a href="#backpressure" class="added">Back-pressure &amp; flow control</a>
     <a href="#eip" class="added">Messaging patterns (EIP)</a>
     <a href="#orch" class="added">Orchestration vs Choreography</a>
     <a href="#batch" class="added">Batch &amp; file integration</a>
@@ -27,7 +28,7 @@
 
 <!-- TYPES -->
 <section class="concept" id="types">
-  <h2><span class="num">8.1</span> Types of integration: real-time, near-real-time &amp; batch</h2>
+  <h2><span class="num">10.1</span> Types of integration: real-time, near-real-time &amp; batch</h2>
   <p class="oneliner">Choose by <b>how fresh</b> the data must be and <b>how much</b> of it there is.</p>
 <div class="svgwrap">
 <svg viewBox="0 0 880 222" width="880" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, sans-serif" role="img" aria-label="Freshness spectrum: real-time (milliseconds to 2 seconds, sync API call, check balance now), near real-time (seconds to minutes, events, CDC, streaming, micro-batch, send fraud alert or update CRM), batch (hours to daily, scheduled files or ETL, end-of-day statements)">
@@ -97,7 +98,7 @@
 
 <!-- STYLES -->
 <section class="concept" id="styles">
-  <h2><span class="num">8.2</span> Integration styles &amp; architecture approaches <span class="tag-added">Added</span></h2>
+  <h2><span class="num">10.2</span> Integration styles &amp; architecture approaches <span class="tag-added">Added</span></h2>
   <p class="oneliner">Hohpe &amp; Woolf's four styles (file transfer, shared DB, RPC, messaging), and how enterprises organise integration at scale.</p>
   <div class="grid">
     <div class="box"><h4>📁 File transfer</h4><p>Systems exchange files. Simple, batch, loosely coupled.</p></div>
@@ -134,7 +135,7 @@
 
 <!-- QUEUE VS EVENT -->
 <section class="concept" id="queue-event">
-  <h2><span class="num">8.3</span> Queue vs Event-driven (pub/sub &amp; streaming)</h2>
+  <h2><span class="num">10.3</span> Queue vs Event-driven (pub/sub &amp; streaming)</h2>
   <p class="oneliner">A <b>queue</b> delivers each message (usually a command, "do this") to <b>one</b> consumer. An <b>event</b> ("this happened") goes to <b>every</b> interested subscriber.</p>
   <div class="cols2">
     <div class="flow"><div class="cap">Queue: point-to-point</div><div class="n">Producer</div><div class="ar">→</div><div class="n a">Queue<small>▓▓▓</small></div><div class="ar">→</div>
@@ -206,7 +207,7 @@ while (!ct.IsCancellationRequested)
 
 <!-- GUARANTEES -->
 <section class="concept" id="guarantees">
-  <h2><span class="num">8.4</span> Delivery guarantees &amp; ordering <span class="tag-added">Added</span></h2>
+  <h2><span class="num">10.4</span> Delivery guarantees &amp; ordering <span class="tag-added">Added</span></h2>
   <p class="oneliner">The three delivery guarantees, the ordering options, and what happens to messages that keep failing.</p>
   <div class="grid">
     <div class="box red"><h4>At-most-once</h4><p>Fire and forget. May lose messages, never duplicates. Fine for metrics.</p></div>
@@ -258,9 +259,98 @@ await processor.StartProcessingAsync();</code></pre>
 </div>
   </section>
 
+<!-- BACKPRESSURE -->
+<section class="concept" id="backpressure">
+  <h2><span class="num">10.5</span> Back-pressure &amp; flow control <span class="tag-added">Added</span></h2>
+  <p class="oneliner">When a consumer can't keep up, it <b>pushes back</b> on the producer. Work slows down, or is shed on purpose, instead of piling up until something falls over.</p>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Bounded buffer: the producer is slowed when the buffer is full","interval":2400,
+ "frames":[
+  {"label":"Steady","caption":"Producer and consumer run at the same pace. The buffer soaks up small bumps.","rows":[
+   [{"t":"Producer","sub":"10 msg/s","c":"green","w":96},{"k":"arrow","g":"→"},{"t":"✉","c":"amber"},{"t":"✉","c":"amber"},{"t":"·","c":"off"},{"t":"·","c":"off"},{"t":"·","c":"off"},{"t":"·","c":"off"},{"k":"arrow","g":"→"},{"t":"Consumer","sub":"10 msg/s","c":"blue","w":96}]]},
+  {"label":"Burst","caption":"A burst arrives. The buffer fills up, but nothing is lost yet.","rows":[
+   [{"t":"Producer","sub":"50 msg/s","c":"amber","w":96},{"k":"arrow","g":"→"},{"t":"✉","c":"amber"},{"t":"✉","c":"amber"},{"t":"✉","c":"amber"},{"t":"✉","c":"amber"},{"t":"·","c":"off"},{"t":"·","c":"off"},{"k":"arrow","g":"→"},{"t":"Consumer","sub":"10 msg/s","c":"blue","w":96}]]},
+  {"label":"Full","caption":"Buffer full = <b>back-pressure</b>. The producer's write waits (or gets a 429), so it slows to the consumer's pace.","ms":3200,"rows":[
+   [{"t":"Producer","sub":"waiting ✋","c":"red","w":96},{"k":"arrow","g":"⇠","t":"push back"},{"t":"✉","c":"red"},{"t":"✉","c":"red"},{"t":"✉","c":"red"},{"t":"✉","c":"red"},{"t":"✉","c":"red"},{"t":"✉","c":"red"},{"k":"arrow","g":"→"},{"t":"Consumer","sub":"10 msg/s","c":"blue","w":96}]]},
+  {"label":"Scale out","caption":"Lag triggers autoscaling (e.g. KEDA). Two consumers drain the buffer faster.","rows":[
+   [{"t":"Producer","sub":"20 msg/s","c":"amber","w":96},{"k":"arrow","g":"→"},{"t":"✉","c":"amber"},{"t":"✉","c":"amber"},{"t":"✉","c":"amber"},{"t":"·","c":"off"},{"t":"·","c":"off"},{"t":"·","c":"off"},{"k":"arrow","g":"→"},{"t":"Consumer ×2","sub":"20 msg/s","c":"green","w":96}]]},
+  {"label":"Unbounded ✗","caption":"Without a bound, the queue just grows: memory runs out, or messages are hours old when they're processed.","ms":3200,"rows":[
+   [{"t":"Producer","sub":"50 msg/s","c":"amber","w":96},{"k":"arrow","g":"→"},{"t":"✉ ✉ ✉ ✉ ✉ ✉ ✉ ✉ ✉ …","sub":"queue keeps growing","c":"red"},{"k":"arrow","g":"→"},{"t":"Consumer","sub":"10 msg/s","c":"blue","w":96}]]}
+ ]}
+</script></figure>
+  <h3>Strategies</h3>
+  <div class="grid">
+    <div class="box blue"><h4>🪣 Buffer, with a bound</h4><p>A queue soaks up bursts. Always set a maximum size or age, then decide what happens when it's full.</p></div>
+    <div class="box amber"><h4>🚦 Throttle the producer</h4><p>Rate limit at the edge. Return <b>429</b> or <b>503</b> with <code>Retry-After</code>. Callers back off with jitter.</p></div>
+    <div class="box red"><h4>🗑️ Drop / shed load</h4><p>Drop the oldest or newest items, sample, or reject low-priority work first. Fine for telemetry. Never for payments.</p></div>
+    <div class="box green"><h4>📥 Pull, don't push</h4><p>The consumer asks for the next batch when it's ready (Kafka poll, prefetch count). It sets its own pace.</p></div>
+    <div class="box purple"><h4>🎟️ Credit-based flow</h4><p>The receiver grants "credits" for how much it can take: AMQP link credit, TCP and HTTP/2 flow-control windows, Reactive Streams <code>request(n)</code>.</p></div>
+    <div class="box teal"><h4>📈 Scale the consumers</h4><p>Add competing consumers when lag grows. KEDA scales pods on queue length or Kafka lag, even down to zero.</p></div>
+  </div>
+  <div class="cols2">
+    <div class="box green"><h4>✅ Queue-based load levelling</h4><ul><li>A bounded queue between a spiky producer and a steady consumer</li><li>The consumer runs at a safe, fixed rate</li><li>Alerts and autoscaling on lag</li></ul></div>
+    <div class="box red"><h4>❌ Unbounded queue</h4><ul><li>Hides the problem until memory or storage runs out</li><li>Latency grows silently: messages are hours old</li><li>Fails later and bigger</li></ul></div>
+  </div>
+  <ul>
+    <li><b>Consumer lag</b> is the key signal: Kafka offset lag, Service Bus active message count, and the <b>age of the oldest message</b>.</li>
+    <li><b>429 Too Many Requests</b> = this caller is over its limit. <b>503 Service Unavailable</b> = the server is overloaded. Both can carry <code>Retry-After</code>.</li>
+    <li>Back-pressure must travel end to end. If the API keeps saying <code>202 Accepted</code> while the queue explodes, you've only moved the problem.</li>
+  </ul>
+  <div class="remember"><ul>
+    <li>Every buffer needs a bound and a "when full" rule: <b>block</b>, <b>drop</b> or <b>reject</b>.</li>
+    <li>Choose per message type: block or reject for payments (never drop), drop or sample for metrics and logs.</li>
+    <li>Alert and autoscale on the <b>age</b> of the oldest message, not just the count.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Need</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Bounded in-process queue</b></td><td><span class="pill builtin">built-in</span> <code>System.Threading.Channels</code>: <code>Channel.CreateBounded</code></td><td><code>BoundedChannelFullMode.Wait</code> makes the writer wait (back-pressure). <code>DropOldest</code> / <code>DropNewest</code> / <code>DropWrite</code> shed load instead</td></tr>
+    <tr><td><b>Pipelines of steps</b></td><td><span class="pill builtin">built-in</span> TPL Dataflow (<code>System.Threading.Tasks.Dataflow</code>)</td><td>Set <code>BoundedCapacity</code> on each block, and use <code>SendAsync</code> so the sender waits when the block is full</td></tr>
+    <tr><td><b>Byte streams</b></td><td><span class="pill builtin">built-in</span> <code>System.IO.Pipelines</code></td><td><code>PipeOptions</code> <code>pauseWriterThreshold</code> / <code>resumeWriterThreshold</code>: the writer's <code>FlushAsync</code> waits until the reader catches up</td></tr>
+    <tr><td><b>Service Bus consumers</b></td><td><code>Azure.Messaging.ServiceBus</code>: <code>MaxConcurrentCalls</code>, <code>PrefetchCount</code></td><td>Cap in-flight work per instance. The broker holds the rest safely (pull-based)</td></tr>
+    <tr><td><b>Kafka consumers</b></td><td><code>Confluent.Kafka</code>: <code>consumer.Pause(partitions)</code> / <code>Resume(partitions)</code></td><td>Stop fetching while a downstream system is slow. Keep calling <code>Consume</code> so you stay in the group</td></tr>
+    <tr><td><b>HTTP edge</b></td><td><span class="pill builtin">built-in</span> <code>Microsoft.AspNetCore.RateLimiting</code> (<code>AddRateLimiter</code>)</td><td>Concurrency, token bucket or per-client limits. Return 429 and set <code>Retry-After</code> in <code>OnRejected</code>. The old <code>UseConcurrencyLimiter</code> middleware is obsolete</td></tr>
+  </table>
+<pre class="code"><code>// Bounded channel: when 100 items are waiting, the producer has to wait
+var channel = Channel.CreateBounded&lt;Payment&gt;(new BoundedChannelOptions(100)
+{
+    FullMode = BoundedChannelFullMode.Wait,   // back-pressure, nothing is dropped
+    SingleWriter = true
+});
+
+// Producer: WriteAsync only completes when there is room
+async Task ProduceAsync(IAsyncEnumerable&lt;Payment&gt; incoming, CancellationToken ct)
+{
+    await foreach (var p in incoming.WithCancellation(ct))
+        await channel.Writer.WriteAsync(p, ct);  // slows to the consumers' pace
+    channel.Writer.Complete();
+}
+
+// Consumers: 4 workers drain the channel at their own pace
+var workers = Enumerable.Range(0, 4).Select(_ =&gt; Task.Run(async () =&gt;
+{
+    await foreach (var p in channel.Reader.ReadAllAsync(ct))
+        await ProcessAsync(p, ct);
+}));
+await Task.WhenAll(workers);</code></pre>
+  <p class="warn">A channel lives in memory, so it's lost on restart. Use it to protect one process. Business messages that must survive belong in a durable broker (Service Bus, Kafka).</p>
+</div>
+  <div class="post">
+    <p>A queue doesn't fix a slow consumer. It just delays the outage 🧯</p>
+    <p>🪣 Bound every buffer. "Unbounded" means it fails later, and bigger.</p>
+    <p>🚦 Push back: block the writer, or return 429/503 with Retry-After.</p>
+    <p>🗑️ Shed what's cheap to lose (telemetry). Never shed payments.</p>
+    <p>📥 Let consumers pull at their own pace (prefetch, credits).</p>
+    <p>📈 Watch consumer lag and the age of the oldest message, and autoscale on them.</p>
+    <p>Back-pressure isn't a failure. It's your system being honest about its capacity.</p>
+    <p>#SystemDesign #EventDriven #Resilience #Integration</p>
+  </div>
+</section>
+
 <!-- EIP -->
 <section class="concept" id="eip">
-  <h2><span class="num">8.5</span> Messaging &amp; Enterprise Integration Patterns <span class="tag-added">Added</span></h2>
+  <h2><span class="num">10.6</span> Messaging &amp; Enterprise Integration Patterns <span class="tag-added">Added</span></h2>
   <p class="oneliner">A shared vocabulary for designing message flows (from <i>Enterprise Integration Patterns</i>, Hohpe &amp; Woolf).</p>
   <div class="grid">
     <div class="box"><h4>Competing consumers</h4><p>Many workers read one queue to scale processing.</p></div>
@@ -337,7 +427,7 @@ public sealed class OutboxRelay(IServiceScopeFactory scopes, ServiceBusSender se
 
 <!-- ORCH VS CHOREO -->
 <section class="concept" id="orch">
-  <h2><span class="num">8.6</span> Orchestration vs Choreography <span class="tag-added">Added</span></h2>
+  <h2><span class="num">10.7</span> Orchestration vs Choreography <span class="tag-added">Added</span></h2>
   <p class="oneliner"><b>Orchestration</b>: a conductor tells each service what to do. <b>Choreography</b>: each service reacts to events on its own, like dancers who know the routine.</p>
   <div class="cols2">
     <div class="flow v"><div class="cap">Orchestration</div>
@@ -391,7 +481,7 @@ public sealed class OutboxRelay(IServiceScopeFactory scopes, ServiceBusSender se
 
 <!-- BATCH -->
 <section class="concept" id="batch">
-  <h2><span class="num">8.7</span> Batch &amp; file integration done right <span class="tag-added">Added</span></h2>
+  <h2><span class="num">10.8</span> Batch &amp; file integration done right <span class="tag-added">Added</span></h2>
   <p class="oneliner">Controls that make file and batch integrations reliable, auditable and safe to rerun.</p>
   <div class="flow">
     <div class="n">Source extract</div><div class="ar">→</div><div class="n t">SFTP / MFT<small>PGP-encrypted</small></div><div class="ar">→</div>
@@ -440,11 +530,13 @@ foreach (var file in sftp.ListDirectory("/inbound").Where(f =&gt; f.Name.EndsWit
   <details class="qa"><summary>Service Bus or Event Hubs?</summary><p>Service Bus for enterprise messaging (commands, transactions, sessions, DLQ, ordered workflows). Event Hubs for high-throughput event streaming and telemetry with replay.</p></details>
   <details class="qa"><summary>How do you guarantee an event is published when the DB commits?</summary><p>Transactional outbox, or CDC on the outbox table. Never "write the DB, then publish" as two separate steps.</p></details>
   <details class="qa"><summary>How do you handle duplicates with at-least-once delivery?</summary><p>Idempotent consumers: deduplicate by message ID or business key, use upserts, and use version checks.</p></details>
+  <details class="qa"><summary>What is back-pressure, and how do you apply it?</summary><p>The consumer signals that it is full, so the producer slows down instead of overwhelming it. Use bounded queues with a clear "when full" rule (block, drop or reject), rate limits that return 429/503 with Retry-After, pull-based or credit-based consumption, and autoscaling on consumer lag.</p></details>
+  <details class="qa"><summary>Why is an unbounded queue dangerous?</summary><p>It hides overload. The queue grows until memory or storage runs out, and latency climbs silently because messages wait for hours. A bound turns a hidden, late failure into an early, visible signal you can act on.</p></details>
 </div>
 
-<div class="pager"><a href="07-apim.html">← 07 · APIM</a><a class="next" href="09-architecture-patterns.html">09 · Architecture Patterns →</a></div>
+<div class="pager"><a href="09-apim.html">← 09 · API Management</a><a class="next" href="11-architecture-patterns.html">11 · Architecture Patterns →</a></div>
 </main>
-<footer>Tech Concepts Prep · Section 08</footer>
+<footer>Tech Concepts Prep · Section 10</footer>
 <script src="assets/app.js"></script>
 <script src="assets/viz.js"></script>
 </body>

@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>13 · Agentic AI | Tech Concepts Prep</title>
+<title>15 · Agentic AI | Tech Concepts Prep</title>
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<nav class="top"><a href="12-rag-genai.html">← RAG</a><span class="here">13 · Agentic AI</span><a href="14-architecture-documents.html">Next: Architecture Docs →</a></nav>
+<nav class="top"><a href="14-rag-genai.html">← RAG &amp; GenAI</a><span class="here">15 · Agentic AI</span><a href="16-banking-payments.html">Next: Banking &amp; Payments →</a></nav>
 <main>
 
 <header class="hero">
-  <div class="kicker">Section 13</div>
+  <div class="kicker">Section 15</div>
   <h1>Agentic AI: from chatbots to autonomous agents</h1>
   <p>LLMs that plan, use tools, remember and act in a loop toward a goal, plus the protocols (MCP, A2A), patterns and guardrails that make them safe in an enterprise.</p>
   <div class="toc">
@@ -29,7 +29,7 @@
 
 <!-- WHAT -->
 <section class="concept" id="what">
-  <h2><span class="num">13.1</span> What is Agentic AI?</h2>
+  <h2><span class="num">15.1</span> What is Agentic AI?</h2>
   <p class="oneliner">An <b>AI agent</b> is an LLM that <b>decides its own next steps</b>. It reasons, calls tools, observes the results and repeats until the goal is met.</p>
   <div class="flow">
     <div class="n s">Chatbot<small>answers from memory</small></div><div class="ar">→</div>
@@ -77,7 +77,7 @@ Console.WriteLine(await agent.RunAsync("I lost my card in Bali", session));</cod
 
 <!-- WORKFLOWS VS AGENTS -->
 <section class="concept" id="workflows">
-  <h2><span class="num">13.2</span> Workflows vs Agents (and the 5 workflow patterns) <span class="tag-added">Added</span></h2>
+  <h2><span class="num">15.2</span> Workflows vs Agents (and the 5 workflow patterns) <span class="tag-added">Added</span></h2>
   <p class="oneliner"><b>Workflows</b>: LLMs and tools follow paths <i>you</i> coded. <b>Agents</b>: the LLM decides the path. Use the simplest option that works.</p>
   <div class="grid wide">
     <div class="box"><h4>1. Prompt chaining</h4><div class="flow" style="padding:8px;margin:6px 0"><div class="n">LLM 1</div><div class="ar">→</div><div class="n s">check</div><div class="ar">→</div><div class="n">LLM 2</div></div><p>Fixed sequence, e.g. draft → review → translate.</p></div>
@@ -115,7 +115,7 @@ string reply = c.Route switch
 
 <!-- LOOP -->
 <section class="concept" id="loop">
-  <h2><span class="num">13.3</span> The agent loop (ReAct) <span class="tag-added">Added</span></h2>
+  <h2><span class="num">15.3</span> The agent loop (ReAct) <span class="tag-added">Added</span></h2>
   <p class="oneliner"><b>ReAct</b> = <b>Re</b>ason + <b>Act</b>. Think, act with a tool, observe the result, repeat.</p>
 <figure class="viz" data-viz="steps"><script type="application/json">
 {"title":"A ReAct run, step by step","stepMs":1100,
@@ -157,7 +157,7 @@ ChatResponse r = await chat.GetResponseAsync(goal,
 
 <!-- TOOLS -->
 <section class="concept" id="tools">
-  <h2><span class="num">13.4</span> Tools &amp; function calling <span class="tag-added">Added</span></h2>
+  <h2><span class="num">15.4</span> Tools &amp; function calling <span class="tag-added">Added</span></h2>
   <p class="oneliner">You describe tools with a name, a description and a JSON schema. The LLM replies with a structured <b>tool call</b>. <b>Your code</b> runs it and sends the result back.</p>
 <figure class="viz" data-viz="seq"><script type="application/json">
 {"title":"Function calling: the LLM asks, your app executes","actors":[{"t":"User / App","c":"blue"},{"t":"LLM","c":"purple"},{"t":"FX API","c":"teal"}],"colW":240,"rowH":50,"stepMs":1000,
@@ -203,7 +203,7 @@ ChatResponse reply = await chat.GetResponseAsync("Is my card ending 4821 blocked
 
 <!-- MEMORY -->
 <section class="concept" id="memory">
-  <h2><span class="num">13.5</span> Memory &amp; planning <span class="tag-added">Added</span></h2>
+  <h2><span class="num">15.5</span> Memory &amp; planning <span class="tag-added">Added</span></h2>
   <p class="oneliner">Memory lets an agent keep context within a task and across sessions. Planning lets it break a goal into steps and recover from mistakes.</p>
   <div class="grid">
     <div class="box blue"><h4>Short-term (working)</h4><p>The current conversation and scratchpad in the context window. Summarise or trim as it grows.</p></div>
@@ -241,7 +241,7 @@ history.AddMessages(r);</code></pre>
 
 <!-- MULTI -->
 <section class="concept" id="multi">
-  <h2><span class="num">13.6</span> Multi-agent patterns <span class="tag-added">Added</span></h2>
+  <h2><span class="num">15.6</span> Multi-agent patterns <span class="tag-added">Added</span></h2>
   <p class="oneliner">Several specialised agents work together, like a team with roles.</p>
   <div class="grid wide">
     <div class="box"><h4>👔 Supervisor / orchestrator</h4><div class="flow" style="padding:8px;margin:6px 0"><div class="n p">Supervisor</div><div class="ar">→</div><div class="n s">Research · Writer · Checker</div></div><p>A central agent routes work and combines the results.</p></div>
@@ -276,7 +276,7 @@ var workflow = AgentWorkflowBuilder.BuildSequential([researcher, writer, checker
 
 <!-- MCP -->
 <section class="concept" id="mcp">
-  <h2><span class="num">13.7</span> MCP &amp; A2A protocols <span class="tag-added">Added</span></h2>
+  <h2><span class="num">15.7</span> MCP &amp; A2A protocols <span class="tag-added">Added</span></h2>
   <p class="oneliner"><b>MCP</b> (Model Context Protocol) is a standard way for AI apps to connect to tools and data, "USB-C for AI". <b>A2A</b> (Agent2Agent) is a standard for agents to talk to each other.</p>
   <div class="flow">
     <div class="n fill">Host app<small>IDE, chat, agent</small></div><div class="ar">→</div>
@@ -318,7 +318,7 @@ public static class CardTools
 
 <!-- GUARDRAILS -->
 <section class="concept" id="guardrails">
-  <h2><span class="num">13.8</span> Guardrails, safety &amp; human-in-the-loop <span class="tag-added">Added</span></h2>
+  <h2><span class="num">15.8</span> Guardrails, safety &amp; human-in-the-loop <span class="tag-added">Added</span></h2>
   <p class="oneliner">Agents act in the real world, so wrap them in controls before, during and after every step.</p>
   <div class="flow">
     <div class="n r">Input guardrails<small>prompt injection · PII · topic filter</small></div><div class="ar">→</div>
@@ -362,7 +362,7 @@ foreach (var request in r.Messages.SelectMany(m =&gt; m.Contents).OfType&lt;Tool
 
 <!-- AGENTOPS -->
 <section class="concept" id="agentops">
-  <h2><span class="num">13.9</span> Agent evaluation &amp; AgentOps <span class="tag-added">Added</span></h2>
+  <h2><span class="num">15.9</span> Agent evaluation &amp; AgentOps <span class="tag-added">Added</span></h2>
   <p class="oneliner">You test an agent on its <b>trajectory</b> (the steps and tools it used), not just its final answer.</p>
   <div class="grid">
     <div class="box"><h4>Metrics</h4><ul><li>Task success rate</li><li>Tool-call accuracy (right tool, right arguments)</li><li>Steps, latency, cost per task</li><li>Escalation and human-override rate</li><li>Safety violations</li></ul></div>
@@ -406,9 +406,9 @@ builder.Services.AddOpenTelemetry()
   <details class="qa"><summary>How do you defend against indirect prompt injection?</summary><p>Treat retrieved content as data, not instructions. Isolate privileges, scope tools tightly, require approval for sensitive actions, use content filters and injection detection, and monitor tool use.</p></details>
 </div>
 
-<div class="pager"><a href="12-rag-genai.html">← 12 · RAG</a><a class="next" href="14-architecture-documents.html">14 · Architecture Documents →</a></div>
+<div class="pager"><a href="14-rag-genai.html">← 14 · RAG &amp; GenAI</a><a class="next" href="16-banking-payments.html">16 · Banking &amp; Payments →</a></div>
 </main>
-<footer>Tech Concepts Prep · Section 13</footer>
+<footer>Tech Concepts Prep · Section 15</footer>
 <script src="assets/app.js"></script>
 <script src="assets/viz.js"></script>
 </body>

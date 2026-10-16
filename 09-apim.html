@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>07 · API Management (APIM) | Tech Concepts Prep</title>
+<title>09 · API Management (APIM) | Tech Concepts Prep</title>
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<nav class="top"><a href="06-api-design.html">← API Design</a><span class="here">07 · API Management</span><a href="08-integration-messaging.html">Next: Integration →</a></nav>
+<nav class="top"><a href="08-api-design.html">← API Design</a><span class="here">09 · API Management</span><a href="10-integration-messaging.html">Next: Integration →</a></nav>
 <main>
 
 <header class="hero">
-  <div class="kicker">Section 07</div>
+  <div class="kicker">Section 09</div>
   <h1>Key concepts for API Management (APIM)</h1>
   <p>APIM is the "front door and control tower" for your APIs: it secures, shapes, publishes, meters and monitors them. The examples use Azure API Management, but the concepts carry over to Apigee, Kong, MuleSoft and AWS API Gateway.</p>
   <div class="toc">
@@ -29,7 +29,7 @@
 
 <!-- WHAT -->
 <section class="concept" id="what">
-  <h2><span class="num">7.1</span> What is API Management?</h2>
+  <h2><span class="num">9.1</span> What is API Management?</h2>
   <p class="oneliner">A platform for publishing, securing, transforming, governing and analysing APIs at scale, made of three parts.</p>
   <div class="flow">
     <div class="n">Consumers<small>apps, partners, mobile</small></div><div class="ar">→</div>
@@ -65,7 +65,7 @@
 
 <!-- BUILDING BLOCKS -->
 <section class="concept" id="blocks">
-  <h2><span class="num">7.2</span> Core building blocks</h2>
+  <h2><span class="num">9.2</span> Core building blocks</h2>
   <p class="oneliner">The objects you create and manage in an APIM instance, and what each one is for.</p>
   <div class="tablewrap"><table>
     <tr><th>Concept</th><th>What it is</th><th>Remember</th></tr>
@@ -76,7 +76,7 @@
     <tr><td><b>Backend</b></td><td>A reusable definition of the target service (URL, credentials, circuit breaker, load-balanced pool)</td><td>Use with <code>set-backend-service</code></td></tr>
     <tr><td><b>Policy</b></td><td>XML rules run on requests and responses</td><td>The real power of APIM</td></tr>
     <tr><td><b>Named value</b></td><td>A reusable config value or secret (can reference Key Vault)</td><td>Never hard-code secrets in policies</td></tr>
-    <tr><td><b>Version</b> / <b>Revision</b></td><td>Breaking vs non-breaking change management</td><td>See 7.5</td></tr>
+    <tr><td><b>Version</b> / <b>Revision</b></td><td>Breaking vs non-breaking change management</td><td>See 9.5</td></tr>
     <tr><td><b>Users &amp; groups</b></td><td>Developer portal identities and visibility</td><td>Groups control which products are visible</td></tr>
     <tr><td><b>Workspaces</b></td><td>Federated API management: teams own their APIs inside a shared instance</td><td>Decentralised ownership with central governance</td></tr>
     <tr><td><b>Self-hosted gateway</b></td><td>Containerised gateway that runs on-prem or in other clouds, managed from Azure</td><td>Hybrid and low-latency to on-prem backends</td></tr>
@@ -151,7 +151,7 @@ builder.Services.AddHttpClient&lt;PaymentsClient&gt;(c =&gt;
 
 <!-- POLICIES -->
 <section class="concept" id="policies">
-  <h2><span class="num">7.3</span> Policies &amp; the request pipeline</h2>
+  <h2><span class="num">9.3</span> Policies &amp; the request pipeline</h2>
   <p class="oneliner">Policies are small rules that run in four stages of every call. They're inherited from the global scope down to individual operations.</p>
   <div class="flow">
     <div class="n">Client</div><div class="ar">→</div>
@@ -205,7 +205,7 @@ builder.Services.AddHttpClient&lt;PaymentsClient&gt;(c =&gt;
     <tr><td><b>Policy expressions</b></td><td>Written in C# inside <code>@(…)</code> / <code>@{…}</code>, with a limited set of allowed .NET types (e.g. <code>context.Request.Headers.GetValueOrDefault(…)</code>, <code>JObject</code>)</td></tr>
     <tr><td><b>Same pipeline in your service</b></td><td><span class="pill builtin">built-in</span> ASP.NET Core middleware and endpoint filters (inbound / outbound / error handling)</td></tr>
     <tr><td><b>Same pipeline in a .NET gateway</b></td><td><code>Yarp.ReverseProxy</code> transforms (<code>AddRequestHeader</code>, <code>AddPathRemovePrefix</code>…) plus auth, rate limiting and output caching middleware</td></tr>
-    <tr><td><b>Policies as code</b></td><td>Policy XML stored in Git and published by APIOps (see 7.6)</td></tr>
+    <tr><td><b>Policies as code</b></td><td>Policy XML stored in Git and published by APIOps (see 9.6)</td></tr>
   </table>
   <p class="warn">Keep C# in policies to one-liners. If the expression grows, the logic belongs in a backend service.</p>
 </div>
@@ -213,7 +213,7 @@ builder.Services.AddHttpClient&lt;PaymentsClient&gt;(c =&gt;
 
 <!-- SECURITY -->
 <section class="concept" id="security">
-  <h2><span class="num">7.4</span> Security in APIM</h2>
+  <h2><span class="num">9.4</span> Security in APIM</h2>
   <p class="oneliner">Secure both legs: consumer → gateway (front door) and gateway → backend (back door).</p>
   <div class="flow">
     <div class="n">Client</div><div class="ar">→<small>WAF / DDoS</small></div>
@@ -257,7 +257,7 @@ builder.Services.AddAuthorizationBuilder()
 
 <!-- VERSIONS -->
 <section class="concept" id="versions">
-  <h2><span class="num">7.5</span> Versions vs revisions</h2>
+  <h2><span class="num">9.5</span> Versions vs revisions</h2>
   <p class="oneliner"><b>Version</b> = a breaking change that consumers choose to adopt. <b>Revision</b> = a safe, non-breaking change you test and then make current.</p>
   <div class="cols2">
     <div class="box purple"><h4>📦 Versions</h4><ul><li><code>/payments/v1</code> and <code>/payments/v2</code> live side by side</li><li>Scheme: path, header or query string</li><li>Grouped in a "version set"</li><li>Consumers migrate at their own pace</li></ul></div>
@@ -277,7 +277,7 @@ builder.Services.AddAuthorizationBuilder()
 
 <!-- LIFECYCLE -->
 <section class="concept" id="lifecycle">
-  <h2><span class="num">7.6</span> API lifecycle &amp; APIOps</h2>
+  <h2><span class="num">9.6</span> API lifecycle &amp; APIOps</h2>
   <p class="oneliner">Treat APIs as products with a lifecycle, and treat APIM configuration as code.</p>
   <div class="flow">
     <div class="n">Design<small>OpenAPI, contract-first</small></div><div class="ar">→</div>
@@ -323,7 +323,7 @@ builder.Services.AddAuthorizationBuilder()
 
 <!-- MONITOR -->
 <section class="concept" id="monitor">
-  <h2><span class="num">7.7</span> Monitoring &amp; analytics</h2>
+  <h2><span class="num">9.7</span> Monitoring &amp; analytics</h2>
   <p class="oneliner">Use APIM's monitoring to see who calls which API, how fast it responds, and how often it fails.</p>
   <ul>
     <li><b>Built-in analytics</b>: calls by API, product, subscription, geography; latency; errors.</li>
@@ -348,7 +348,7 @@ builder.Services.AddAuthorizationBuilder()
 
 <!-- PATTERNS -->
 <section class="concept" id="patterns">
-  <h2><span class="num">7.8</span> Gateway patterns &amp; the AI gateway</h2>
+  <h2><span class="num">9.8</span> Gateway patterns &amp; the AI gateway</h2>
   <p class="oneliner">Standard ways to use a gateway, plus newer policies for fronting LLM APIs.</p>
   <div class="grid">
     <div class="box"><h4>Gateway routing</h4><p>One endpoint routes to many services by path or header.</p></div>
@@ -389,7 +389,7 @@ app.MapReverseProxy();   // each route sets "AuthorizationPolicy" and "RateLimit
 
 <!-- COMPARE -->
 <section class="concept" id="compare">
-  <h2><span class="num">7.9</span> API Gateway vs Load Balancer vs Service Mesh vs ESB <span class="tag-added">Added</span></h2>
+  <h2><span class="num">9.9</span> API Gateway vs Load Balancer vs Service Mesh vs ESB <span class="tag-added">Added</span></h2>
   <p class="oneliner">These four often get mixed up. They sit at different points in the traffic path and solve different problems.</p>
   <div class="tablewrap"><table>
     <tr><th></th><th>Load balancer</th><th>API gateway / APIM</th><th>Service mesh</th><th>ESB / iPaaS</th></tr>
@@ -417,9 +417,9 @@ app.MapReverseProxy();   // each route sets "AuthorizationPolicy" and "RateLimit
   <details class="qa"><summary>How do you roll out a non-breaking policy change safely?</summary><p>Create a new revision, test it with <code>;rev=n</code>, make it current, and keep the previous revision for instant rollback.</p></details>
 </div>
 
-<div class="pager"><a href="06-api-design.html">← 06 · API Design</a><a class="next" href="08-integration-messaging.html">08 · Integration &amp; Messaging →</a></div>
+<div class="pager"><a href="08-api-design.html">← 08 · API Design</a><a class="next" href="10-integration-messaging.html">10 · Integration &amp; Messaging →</a></div>
 </main>
-<footer>Tech Concepts Prep · Section 07</footer>
+<footer>Tech Concepts Prep · Section 09</footer>
 <script src="assets/app.js"></script>
 <script src="assets/viz.js"></script>
 </body>

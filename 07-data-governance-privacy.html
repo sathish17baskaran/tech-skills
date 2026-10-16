@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>07 · Data Governance &amp; Privacy | Tech Concepts Prep</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<nav class="top"><a href="06-databases-data.html">← Databases</a><span class="here">07 · Data Governance &amp; Privacy</span><a href="08-api-design.html">Next: API Design →</a></nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">Section 07</div>
+  <h1>Data governance &amp; privacy</h1>
+  <p>Who owns the data, how sensitive it is, where it may live, how long you keep it, whether you can trust it, and how teams share it safely. Section 06 covers how data is stored and moved. This section covers the rules around it. Encryption, hashing, tokenisation and key management are taught in <a href="12-security-iam.html#hashing">12 Security</a>, and this page links to them.</p>
+  <div class="toc">
+    <a href="#governance" class="added">Governance basics</a>
+    <a href="#classification" class="added">Data classification</a>
+    <a href="#privacy" class="added">Privacy &amp; PII</a>
+    <a href="#residency" class="added">Residency &amp; sovereignty</a>
+    <a href="#retention" class="added">Retention &amp; deletion</a>
+    <a href="#quality" class="added">Quality &amp; lineage</a>
+    <a href="#mdm" class="added">Master data (MDM)</a>
+    <a href="#mesh" class="added">Data contracts &amp; mesh</a>
+  </div>
+</header>
+
+<!-- GOVERNANCE -->
+<section class="concept" id="governance">
+  <h2><span class="num">7.1</span> Data governance basics <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Data governance is the set of <b>roles, policies and processes</b> that decide who owns data, who may use it, and how it must be handled through its whole life.</p>
+  <div class="grid">
+    <div class="box blue"><h4>👔 Data owner</h4><p>A senior <b>business</b> person who is accountable for a data domain (e.g. "Customer"). Approves access, and sets the classification and retention.</p></div>
+    <div class="box purple"><h4>📖 Data steward</h4><p>A business expert who looks after the data day to day: definitions, quality rules and glossary terms. Fixes quality issues.</p></div>
+    <div class="box teal"><h4>🛠️ Data custodian</h4><p>Usually IT or the platform team. Stores, secures, backs up and moves the data, and applies the controls the owner asked for.</p></div>
+    <div class="box"><h4>👩‍💻 Data consumer</h4><p>Anyone who uses the data: analysts, apps, models. Uses it only for the approved purpose.</p></div>
+    <div class="box amber"><h4>🏛️ Governance council / CDO</h4><p>Sets the policies, settles disputes ("whose definition of 'active customer' wins?") and tracks maturity.</p></div>
+  </div>
+<figure class="viz" data-viz="journey"><script type="application/json">
+{"title":"An analytics team asks for customer data","stepMs":1200,
+ "steps":[
+  {"icon":"🔎","t":"Consumer searches the data catalogue","d":"Finds the <b>Customer</b> dataset, its owner, meaning and quality score","c":"blue"},
+  {"icon":"📖","t":"Steward explains the data","d":"Definitions, known quality issues. Classified <b>Confidential</b>","tag":"7.2 Classification","href":"#classification","c":"purple"},
+  {"icon":"👔","t":"Owner approves access for a stated purpose","d":"\"Churn model, 6 months, no direct identifiers\"","tag":"7.3 Purpose","href":"#privacy","c":"amber"},
+  {"icon":"🛠️","t":"Custodian grants role-based access","d":"Read-only role, names and emails masked, every query logged","c":"teal"},
+  {"icon":"⏳","t":"Access reviewed and expires","d":"Quarterly access review; data deleted when the project ends","tag":"7.5 Retention","href":"#retention","c":"green"}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>Building block</th><th>What it is</th><th>Example</th></tr>
+    <tr><td><b>Policies &amp; standards</b></td><td>The written rules</td><td>Classification standard, retention schedule, access policy, data quality standard</td></tr>
+    <tr><td><b>Data catalogue</b></td><td>A searchable inventory of datasets with owner, meaning, classification and lineage</td><td>Microsoft Purview, Collibra, Alation, Databricks Unity Catalog, DataHub (open source)</td></tr>
+    <tr><td><b>Business glossary</b></td><td>One agreed meaning per business term</td><td>"Active customer = at least one open account with a transaction in the last 12 months"</td></tr>
+    <tr><td><b>Processes</b></td><td>How rules are applied</td><td>Access requests, data quality issue management, privacy impact assessments, periodic access reviews</td></tr>
+  </table></div>
+  <ul>
+    <li><b>Why architects care:</b> every design decision touches it. Where data lands, who can read it, how long it stays, and what happens when a field changes.</li>
+    <li>Put governance into the platform ("governance as code"): tags, policies and pipelines that enforce the rules, not a wiki page people forget.</li>
+  </ul>
+  <div class="remember"><ul>
+    <li>The <b>owner is the business</b>, not IT. IT is the custodian.</li>
+    <li>Good governance makes data <b>easier</b> to use safely. If it only says "no", people go around it.</li>
+    <li>In Australian banking, APRA's <b>CPG 235 Managing Data Risk</b> describes the same owner / steward / custodian roles.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Purview Data Map client</b></td><td><code>Azure.Analytics.Purview.DataMap</code> <span class="pill preview">preview</span></td><td>Register assets, glossary terms and lineage in Microsoft Purview from code. Still beta, so many teams call the Purview (Apache Atlas) REST API with <code>HttpClient</code> instead</td></tr>
+    <tr><td><b>Purview provisioning</b></td><td><code>Azure.ResourceManager.Purview</code></td><td>Create and configure the Purview account itself. Most teams do this in Bicep or Terraform</td></tr>
+  </table>
+  <p class="warn">Governance is mostly process and platform. Don't build your own catalogue in .NET; feed an existing one.</p>
+</div>
+  <div class="post">
+    <p>"Who owns this data?" If the answer is "IT", you have a governance problem 🚩</p>
+    <p>👔 Owner: a business leader, accountable, approves access</p>
+    <p>📖 Steward: knows what the data means, keeps it clean</p>
+    <p>🛠️ Custodian: IT/platform, stores and secures it as told</p>
+    <p>🔎 Catalogue: so people can find data without asking on Teams</p>
+    <p>Governance done well is a fast lane for safe data use, not a speed bump. Who owns customer data in your organisation?</p>
+    <p>#DataGovernance #DataManagement #Architecture #Banking</p>
+  </div>
+</section>
+
+<!-- CLASSIFICATION -->
+<section class="concept" id="classification">
+  <h2><span class="num">7.2</span> Data classification <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Classification labels data by <b>how much harm</b> its exposure would cause, so every dataset automatically gets the right controls.</p>
+  <div class="grid">
+    <div class="box green"><h4>🟢 Public</h4><p>Safe to publish. Interest rates on the website, product brochures.</p></div>
+    <div class="box blue"><h4>🔵 Internal</h4><p>For staff only. Low harm if leaked. Org charts, internal procedures.</p></div>
+    <div class="box amber"><h4>🟠 Confidential</h4><p>Harm to customers or the business if leaked. Customer names, contact details, balances, contracts.</p></div>
+    <div class="box red"><h4>🔴 Restricted</h4><p>Serious harm. Card numbers, TFNs, passwords, health or hardship notes, bulk customer extracts.</p></div>
+  </div>
+  <p>Names vary (some use "Highly confidential" or "Secret"), but four levels like these are typical.</p>
+  <div class="cols2">
+    <div class="box"><h4>Personal information (PII)</h4><p>Under the Privacy Act: information or an opinion about an <b>identified or reasonably identifiable</b> person. Name, email, address, phone, account number, and often device IDs or IP addresses when they can be linked to a person.</p></div>
+    <div class="box red"><h4>Sensitive information</h4><p>A special Privacy Act category with a higher bar (usually needs consent): health, genetic and biometric data, racial or ethnic origin, religion, political opinions, sexual orientation, criminal record and more. Some data has its own rules too: <b>card numbers</b> (PCI DSS) and <b>TFNs</b> (the TFN Rule).</p></div>
+  </div>
+<figure class="viz" data-viz="steps"><script type="application/json">
+{"title":"Classifying a new \"loan application\" dataset","stepMs":1100,
+ "items":[
+  {"k":"Discover","t":"A scanner finds TFN, income, employer and free-text hardship notes","c":"blue"},
+  {"k":"Label","t":"The highest field wins: TFN and hardship notes make the dataset <b>Restricted</b>","c":"red"},
+  {"k":"Encrypt","t":"Field-level encryption on TFN; encryption at rest and TLS everywhere","c":"purple","indent":1},
+  {"k":"Access","t":"Only the credit-assessment role; no access for general analytics","c":"purple","indent":1},
+  {"k":"Mask","t":"Masked in reports; synthetic data in dev and test","c":"purple","indent":1},
+  {"k":"Log","t":"Every read logged and monitored; never written to app logs","c":"purple","indent":1},
+  {"k":"Retain","t":"Retention period from the schedule, then delete","c":"amber"},
+  {"k":"Review","t":"Re-check the label when new fields arrive","c":"green"}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>Control</th><th>Public</th><th>Internal</th><th>Confidential</th><th>Restricted</th></tr>
+    <tr><td>Encryption</td><td>In transit</td><td>In transit + at rest</td><td>+ customer-managed keys</td><td>+ field-level encryption or tokenisation</td></tr>
+    <tr><td>Access</td><td>Anyone</td><td>All staff</td><td>Role-based, need to know</td><td>Named roles, approval, regular review, privileged access controls</td></tr>
+    <tr><td>Masking</td><td>No</td><td>No</td><td>In non-prod and wide reports</td><td>Always, except for approved roles</td></tr>
+    <tr><td>Logging</td><td>Basic</td><td>Basic</td><td>Access logged</td><td>Every read logged and alerted on</td></tr>
+    <tr><td>Retention</td><td colspan="4">Set per data type by the retention schedule (see 7.5), not by level alone</td></tr>
+    <tr><td>Sharing outside</td><td>Free</td><td>With approval</td><td>Contract + privacy check</td><td>Exceptional, encrypted, owner sign-off</td></tr>
+  </table></div>
+  <ul>
+    <li><b>Labelling:</b> tag columns in the catalogue, put sensitivity labels on documents and emails (e.g. Microsoft Purview Information Protection), and tag cloud resources so policies can act on them.</li>
+    <li><b>Automate discovery:</b> scanners spot patterns like card numbers, TFNs and emails in files and tables you didn't know held them.</li>
+  </ul>
+  <div class="remember"><ul>
+    <li>A dataset takes the level of its <b>most sensitive field</b>.</li>
+    <li><b>Aggregation raises the level:</b> one customer's postcode is low risk; a million names with postcodes and balances is not.</li>
+    <li>APRA <b>CPS 234</b> requires regulated entities to classify information assets by criticality and sensitivity, and to match controls to that classification.</li>
+    <li>The cheapest control is not collecting the field at all.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Data classification</b></td><td><code>Microsoft.Extensions.Compliance.Abstractions</code> (<code>DataClassification</code>, <code>DataClassificationAttribute</code>)</td><td>Define your own taxonomy (Confidential, Restricted) and tag properties and parameters with it</td></tr>
+    <tr><td><b>Redaction</b></td><td><code>Microsoft.Extensions.Compliance.Redaction</code> (<code>AddRedaction</code>, <code>ErasingRedactor</code>, <code>HmacRedactor</code>)</td><td>Map each classification to a redactor: erase it, or replace it with a keyed hash</td></tr>
+    <tr><td><b>Log redaction</b></td><td><code>Microsoft.Extensions.Telemetry</code> (<code>EnableRedaction</code>)</td><td>Classified values in <code>[LoggerMessage]</code> logs are redacted before they reach any log sink</td></tr>
+  </table>
+<pre class="code"><code>// Your taxonomy, matching the classification standard
+public static class BankData
+{
+    public static string Name =&gt; "BankData";
+    public static DataClassification Confidential =&gt; new(Name, nameof(Confidential));
+    public static DataClassification Restricted =&gt; new(Name, nameof(Restricted));
+}
+public sealed class RestrictedAttribute() : DataClassificationAttribute(BankData.Restricted) { }
+
+// Program.cs: redact classified values in logs
+builder.Logging.EnableRedaction();
+builder.Services.AddRedaction(r =&gt;
+{
+    r.SetRedactor&lt;ErasingRedactor&gt;(BankData.Restricted);   // TFN, card number: removed
+    r.SetHmacRedactor(builder.Configuration.GetSection("Hmac"),
+                      BankData.Confidential);              // stable hash: still joinable
+});
+
+public static partial class Log
+{
+    [LoggerMessage(LogLevel.Information, "Loan application received for {Tfn}")]
+    public static partial void LoanReceived(this ILogger logger, [Restricted] string tfn);
+}</code></pre>
+</div>
+  <div class="post">
+    <p>Not all data is equal. Classify it once, and the controls follow 🏷️</p>
+    <p>🟢 Public: rates on the website</p>
+    <p>🔵 Internal: staff procedures</p>
+    <p>🟠 Confidential: customer contact details, balances</p>
+    <p>🔴 Restricted: card numbers, TFNs, health or hardship notes</p>
+    <p>The label drives encryption, access, masking, logging and sharing. Two traps: a dataset takes its most sensitive field's level, and combining "harmless" data can make it sensitive.</p>
+    <p>#DataClassification #Privacy #Security #DataGovernance</p>
+  </div>
+</section>
+
+<!-- PRIVACY -->
+<section class="concept" id="privacy">
+  <h2><span class="num">7.3</span> Privacy &amp; PII handling <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Privacy means collecting <b>only what you need</b>, using it only in ways people would expect, protecting it end to end, and respecting people's rights over it.</p>
+  <div class="grid">
+    <div class="box green"><h4>🧱 Privacy by design</h4><p>Build privacy in from the first design, not as a fix later. Default to the most private setting.</p></div>
+    <div class="box"><h4>✂️ Data minimisation</h4><p>Collect and keep the smallest set of fields that does the job. Data you don't hold can't leak.</p></div>
+    <div class="box"><h4>🎯 Purpose limitation</h4><p>Use data for the purpose it was collected for, or a related one people would reasonably expect.</p></div>
+    <div class="box"><h4>✅ Consent &amp; notice</h4><p>Tell people what you collect and why. Get consent where the law requires it (e.g. sensitive information).</p></div>
+    <div class="box"><h4>🙋 Individual rights</h4><p>People can ask to access and correct their data. Some laws add erasure and portability.</p></div>
+    <div class="box"><h4>🔒 Security</h4><p>Reasonable technical and organisational steps to protect it. See <a href="12-security-iam.html#hashing">12.5</a> and <a href="12-security-iam.html#secrets">12.7</a>.</p></div>
+  </div>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"One customer record, five ways to show it","interval":2800,
+ "frames":[
+  {"label":"Original","caption":"The real values. Only a few systems and roles should ever see this.",
+   "rows":[
+    {"label":"Name","items":[{"t":"Jane Citizen","c":"red","w":190}]},
+    {"label":"Card","items":[{"t":"4111 1111 1111 1234","c":"red","w":190}]},
+    {"label":"Birth date","items":[{"t":"14/03/1988","c":"red","w":190}]}
+   ]},
+  {"label":"Masked","caption":"<b>Masking</b> hides part of the value on display. The full value is still stored underneath.",
+   "rows":[
+    {"label":"Name","items":[{"t":"Jane C.","c":"amber","w":190}]},
+    {"label":"Card","items":[{"t":"•••• •••• •••• 1234","c":"amber","w":190}]},
+    {"label":"Birth date","items":[{"t":"••/••/1988","c":"amber","w":190}]}
+   ]},
+  {"label":"Tokenised","caption":"<b>Tokenisation</b> swaps the value for a random token. Only the token vault can swap it back.",
+   "rows":[
+    {"label":"Name","items":[{"t":"Jane Citizen","c":"slate","w":190}]},
+    {"label":"Card","items":[{"t":"tok_7Q2f9XkA1234","c":"purple","w":190},{"k":"arrow","g":"⇄","t":"vault"},{"t":"🔐 Token vault","c":"purple"}]},
+    {"label":"Birth date","items":[{"t":"14/03/1988","c":"slate","w":190}]}
+   ]},
+  {"label":"Pseudonymised","caption":"<b>Pseudonymisation</b> replaces identifiers with a keyed ID. Whoever holds the key can re-link it, so it is <b>still personal information</b>.",
+   "rows":[
+    {"label":"Customer","items":[{"t":"cust_A93F2","sub":"HMAC of customer ID","c":"blue","w":190}]},
+    {"label":"Card","items":[{"t":"removed","c":"off","w":190}]},
+    {"label":"Birth date","items":[{"t":"14/03/1988","c":"slate","w":190}]}
+   ]},
+  {"label":"Anonymised","caption":"<b>Anonymisation</b> removes or generalises data so no one can link it back to Jane. Test the re-identification risk before you call it anonymous.",
+   "rows":[
+    {"label":"Customer","items":[{"t":"none","c":"off","w":190}]},
+    {"label":"Card","items":[{"t":"none","c":"off","w":190}]},
+    {"label":"Age band","items":[{"t":"35–39 · NSW","c":"green","w":190}]}
+   ]}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>Technique</th><th>Reversible?</th><th>Still personal info?</th><th>Typical use</th></tr>
+    <tr><td><b>Masking</b></td><td>Data is unchanged underneath</td><td>Yes</td><td>Call-centre screens, receipts, reports</td></tr>
+    <tr><td><b>Tokenisation</b></td><td>Yes, through the vault only</td><td>Yes, for whoever can reach the vault</td><td>Card numbers (shrinks PCI DSS scope), TFNs</td></tr>
+    <tr><td><b>Pseudonymisation</b></td><td>Yes, with the key or mapping</td><td>Yes</td><td>Analytics and ML where you need to join records per person</td></tr>
+    <tr><td><b>Anonymisation</b></td><td>No</td><td>No, if done properly</td><td>Open data, research, aggregate dashboards</td></tr>
+  </table></div>
+  <div class="tablewrap"><table>
+    <tr><th>Law / scheme</th><th>What architects need to know</th></tr>
+    <tr><td><b>Privacy Act 1988</b> and the <b>13 Australian Privacy Principles (APPs)</b></td><td>Applies to government agencies and most organisations with turnover over $3M (and always to some, such as AML/CTF reporting entities and health providers). Key APPs: <b>APP 1</b> open privacy policy, <b>APP 3</b> collection, <b>APP 6</b> use and disclosure, <b>APP 8</b> overseas disclosure (see 7.4), <b>APP 11</b> security, plus destroy or de-identify data you no longer need, <b>APP 12/13</b> access and correction.</td></tr>
+    <tr><td><b>Notifiable Data Breaches (NDB) scheme</b></td><td>Since February 2018. If a breach is likely to cause <b>serious harm</b>, notify the OAIC and affected people as soon as practicable. Assess a suspected breach within <b>30 days</b>.</td></tr>
+    <tr><td><b>2024 amendments</b> (Privacy and Other Legislation Amendment Act 2024)</td><td>Tranche 1 of the reforms, passed December 2024: tiered civil penalties and new OAIC infringement and compliance notice powers; "reasonable steps" now explicitly includes technical and organisational measures; a statutory tort for serious invasions of privacy (from 10 June 2025); a Children's Online Privacy Code; and from <b>10 December 2026</b> privacy policies must explain automated decisions that significantly affect people.</td></tr>
+    <tr><td><b>Tranche 2</b> (proposed)</td><td>An exposure draft (Privacy Amendment (Personal Data Protection) Bill 2026) was released in August 2026: a "fair and reasonable" test, stronger consent, and a right to erasure for large digital platforms. It is <b>not law yet</b>.</td></tr>
+    <tr><td><b>GDPR</b> (EU), in brief</td><td>Can apply to Australian firms that offer services to, or monitor, people in the EU. Needs a lawful basis for each use; breach notification to the regulator within 72 hours; rights to access, erasure and portability; fines up to €20M or 4% of global turnover. Pseudonymised data is still personal data.</td></tr>
+  </table></div>
+  <p class="tip">Australia has no general "right to be forgotten" today. But APP 11.2 already requires you to destroy or de-identify personal information you no longer need, so you need deletion pipelines anyway (see 7.5).</p>
+  <div class="remember"><ul>
+    <li><b>Pseudonymised ≠ anonymised.</b> If anyone can re-link it, privacy law still applies.</li>
+    <li>Run a <b>privacy impact assessment (PIA)</b> early for any new use of personal data, especially AI and analytics.</li>
+    <li>Keep legal calls with privacy and legal teams. The architect's job is to make minimisation, masking, access and deletion easy to do.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Need</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Protect a field in the app</b></td><td><span class="pill builtin">built-in</span> ASP.NET Core Data Protection (<code>IDataProtectionProvider</code>, <code>IDataProtector</code>)</td><td>Encrypt values with keys the framework manages and rotates. A purpose string keeps each use separate</td></tr>
+    <tr><td><b>Shared key ring</b></td><td><code>Azure.Extensions.AspNetCore.DataProtection.Blobs</code> + <code>Azure.Extensions.AspNetCore.DataProtection.Keys</code></td><td>Store the key ring in Blob Storage and wrap it with Key Vault, so every instance can decrypt</td></tr>
+    <tr><td><b>Encrypt columns in SQL</b></td><td><code>Microsoft.Data.SqlClient</code> Always Encrypted (<code>Column Encryption Setting=Enabled</code>) + <code>Microsoft.Data.SqlClient.AlwaysEncrypted.AzureKeyVaultProvider</code></td><td>The driver encrypts and decrypts on the client, so the database and DBAs never see plain TFNs</td></tr>
+    <tr><td><b>Mask on read</b></td><td>SQL Server / Azure SQL Dynamic Data Masking</td><td>Set in T-SQL (<code>MASKED WITH (FUNCTION = 'partial(...)')</code>). No app change, but it is display-only, not security</td></tr>
+    <tr><td><b>Pseudonymise</b></td><td><code>HmacRedactor</code> (<code>Microsoft.Extensions.Compliance.Redaction</code>); <span class="pill builtin">built-in</span> <code>HMACSHA256</code></td><td>Same input + same key = same ID, so analysts can join records without seeing who it is</td></tr>
+  </table>
+<pre class="code"><code>public sealed class TfnProtector(IDataProtectionProvider provider)
+{
+    // The purpose string isolates this use: a protector for "Marketing" can't read these
+    private readonly IDataProtector _protector = provider.CreateProtector("Customer.Tfn.v1");
+
+    public string Protect(string tfn) =&gt; _protector.Protect(tfn);
+    public string Unprotect(string stored) =&gt; _protector.Unprotect(stored);
+}
+
+// Program.cs: persist and protect the key ring so data survives restarts and scale-out
+builder.Services.AddDataProtection()
+    .PersistKeysToAzureBlobStorage(blobUri, new DefaultAzureCredential())
+    .ProtectKeysWithAzureKeyVault(keyUri, new DefaultAzureCredential());</code></pre>
+  <p class="warn">If you lose the Data Protection key ring, anything you stored with it can never be decrypted. Persist it, back it up, and never delete old keys while data still uses them.</p>
+</div>
+  <div class="post">
+    <p>Masked, tokenised, pseudonymised, anonymised. They are NOT the same thing 🕵️</p>
+    <p>🎭 Masked: "•••• 1234" on screen. The real value is still stored.</p>
+    <p>🔐 Tokenised: a random token; only the vault can swap it back.</p>
+    <p>🔑 Pseudonymised: a keyed ID. Re-linkable, so still personal information.</p>
+    <p>🌫️ Anonymised: can't be linked back to anyone. Prove it before you claim it.</p>
+    <p>And in Australia: from 10 December 2026, privacy policies must explain automated decisions that significantly affect people. Does yours?</p>
+    <p>#Privacy #PrivacyByDesign #DataProtection #Australia</p>
+  </div>
+</section>
+
+<!-- RESIDENCY -->
+<section class="concept" id="residency">
+  <h2><span class="num">7.4</span> Data residency &amp; sovereignty <span class="tag-added">Added</span></h2>
+  <p class="oneliner"><b>Residency</b> is where data physically sits. <b>Sovereignty</b> is whose laws can reach it. <b>Localisation</b> is a rule that says it must stay in a country.</p>
+  <div class="grid">
+    <div class="box blue"><h4>📍 Residency</h4><p>"Our data is stored in Australia East and Australia Southeast." A fact about location, usually chosen for regulation, contracts or latency.</p></div>
+    <div class="box purple"><h4>⚖️ Sovereignty</h4><p>Which governments can compel access. A foreign-owned provider may be subject to its home country's laws even for data stored in Australia.</p></div>
+    <div class="box amber"><h4>🚧 Localisation</h4><p>A legal or contract rule that data <b>must not leave</b> a country. Some government and defence work has this.</p></div>
+  </div>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Keeping customer data in Australia","actors":[{"t":"App (AU East)","c":"blue"},{"t":"Key Vault (AU)","c":"purple"},{"t":"Storage (AU East)","c":"teal"},{"t":"DR (AU Southeast)","c":"green"},{"t":"Overseas","c":"red"}],"colW":165,"rowH":46,"stepMs":950,
+ "steps":[
+  {"from":0,"to":1,"t":"get data key","sub":"customer-managed key, AU region","c":"purple"},
+  {"from":0,"to":2,"t":"write record","sub":"encrypted with the AU key","c":"blue"},
+  {"from":2,"to":3,"t":"geo-replicate","sub":"paired region, still in Australia","c":"green"},
+  {"note":"Data, backups and keys all stay in Australia","over":[0,3],"c":"green"},
+  {"from":2,"to":4,"t":"replicate to a US region?","dash":true,"c":"red"},
+  {"note":"Blocked: an \"allowed locations\" policy denies non-AU regions","over":[2,4],"c":"red"},
+  {"from":4,"to":2,"t":"offshore support reads data","dash":true,"c":"amber"},
+  {"note":"Access from overseas can be a cross-border disclosure (APP 8)","over":[1,4],"c":"amber"}
+ ]}
+</script></figure>
+  <ul>
+    <li><b>APP 8 (cross-border disclosure):</b> before disclosing personal information to someone overseas, take reasonable steps so they don't breach the APPs. In most cases <b>you stay accountable</b> for what they do with it.</li>
+    <li>OAIC guidance says that, in limited cases, giving data to an overseas cloud provider that only stores it and can't access it may be a "use", not a "disclosure". Get privacy advice for your case.</li>
+    <li><b>APRA context:</b> CPS 234 (information security, including data held by third parties), CPS 230 (operational risk and material service providers, in force from 1 July 2025) and CPG 235 (data risk) all apply when a bank puts data with a cloud provider or offshore.</li>
+  </ul>
+  <div class="tablewrap"><table>
+    <tr><th>Architecture option</th><th>How</th><th>Watch out for</th></tr>
+    <tr><td><b>In-country regions only</b></td><td>Deploy to Australia East + Australia Southeast (a paired region set), or Australia Central for government work</td><td>Some services aren't in every region; global services may process metadata elsewhere</td></tr>
+    <tr><td><b>No replication outside the region</b></td><td>Choose geo-redundant storage with an in-country pair, restrict database replicas to AU regions</td><td>Backups, logs, CDN caches and AI endpoints are easy to forget</td></tr>
+    <tr><td><b>Keys held in-country</b></td><td>Customer-managed keys in an AU Key Vault or Managed HSM. You can revoke access by disabling the key</td><td>If you lose the key, you lose the data</td></tr>
+    <tr><td><b>Policy guardrails</b></td><td>Azure Policy "allowed locations", AWS SCPs or GCP organisation policies that deny other regions</td><td>Apply at the management-group or organisation level so new projects inherit them</td></tr>
+    <tr><td><b>Regional cells</b> (multi-country firms)</td><td>A separate deployment ("cell") per country, with only aggregated or anonymised data shared centrally</td><td>Cost and duplicated operations; global reporting is harder</td></tr>
+  </table></div>
+  <div class="remember"><ul>
+    <li>Residency ≠ sovereignty: data stored in Sydney can still be reachable by a foreign government through the provider.</li>
+    <li>Map <b>every copy</b>: primary, replicas, backups, logs, analytics, AI prompts and support access.</li>
+    <li>Enforce location with <b>platform policy</b>, not just app settings.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Need</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Region-aware database client</b></td><td><code>Microsoft.Azure.Cosmos</code>: <code>CosmosClientOptions.ApplicationRegion</code> / <code>ApplicationPreferredRegions</code></td><td>Read and write from the nearest of the regions the account replicates to</td></tr>
+    <tr><td><b>In-region resources</b></td><td>Azure SDK clients (<code>BlobServiceClient</code>, <code>SecretClient</code>, …) pointed at in-region endpoints</td><td>The resource's location is fixed when it is created. The client just calls that endpoint</td></tr>
+    <tr><td><b>In-country keys</b></td><td><code>Azure.Security.KeyVault.Keys</code> against an AU Key Vault or Managed HSM</td><td>Customer-managed keys for storage and databases stay under your control in Australia</td></tr>
+    <tr><td><b>Guardrails</b></td><td>Azure Policy "Allowed locations" (Bicep / Terraform)</td><td>Platform configuration, not app code</td></tr>
+  </table>
+<pre class="code"><code>var cosmos = new CosmosClient(accountEndpoint, new DefaultAzureCredential(), new CosmosClientOptions
+{
+    // The account itself only replicates to these two AU regions
+    ApplicationPreferredRegions = [Regions.AustraliaEast, Regions.AustraliaSoutheast]
+});</code></pre>
+  <p class="warn">The client option only picks between regions the account already has. Residency is decided by which regions you add to the account, and enforced by policy.</p>
+</div>
+  <div class="post">
+    <p>"Our data is in Australia, so we're fine." Are you sure? 🌏</p>
+    <p>📍 Residency: where the bytes sit</p>
+    <p>⚖️ Sovereignty: whose laws can reach them</p>
+    <p>🚧 Localisation: a rule that they must never leave</p>
+    <p>🔍 The usual leaks: backups, logs, CDN caches, AI endpoints, and offshore support staff reading production data</p>
+    <p>Map every copy, keep the keys in-country, and enforce allowed regions with policy, not good intentions.</p>
+    <p>#DataSovereignty #CloudArchitecture #Privacy #Azure</p>
+  </div>
+</section>
+
+<!-- RETENTION -->
+<section class="concept" id="retention">
+  <h2><span class="num">7.5</span> Data retention &amp; deletion <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Keep data as long as the law and the business need it, <b>and no longer</b>. Then delete it everywhere, including the copies.</p>
+  <div class="tablewrap"><table>
+    <tr><th>Data (Australian examples)</th><th>Keep for</th><th>Driver</th></tr>
+    <tr><td>AML/CTF transaction records</td><td>7 years from when the record is made</td><td>AML/CTF Act (AUSTRAC)</td></tr>
+    <tr><td>AML/CTF customer due diligence (KYC) records</td><td>7 years after the customer relationship ends</td><td>AML/CTF Act (AUSTRAC)</td></tr>
+    <tr><td>Company financial records</td><td>7 years after the transactions</td><td>Corporations Act</td></tr>
+    <tr><td>Personal information you no longer need</td><td>Destroy or de-identify</td><td>Privacy Act, APP 11.2</td></tr>
+    <tr><td>App and security logs</td><td>Your policy (e.g. 90 days hot, 1 year archive)</td><td>Security monitoring and investigations</td></tr>
+  </table></div>
+  <p>A <b>retention schedule</b> lists every data type, how long to keep it, why, and what happens at the end. When several rules apply to the same record, keep it for the longest period that applies, and no longer.</p>
+<figure class="viz" data-viz="lanes"><script type="application/json">
+{"title":"A transaction record's life (years since it was created)","max":10,"labelW":110,"width":760,"rowH":44,"axis":"years →","dur":5500,
+ "ticks":[{"at":0,"t":"0"},{"at":1,"t":"1"},{"at":2,"t":"2"},{"at":7,"t":"7"},{"at":9,"t":"9"},{"at":10,"t":"10"}],
+ "rows":[
+  {"label":"Normal","blocks":[{"s":0,"e":1,"t":"hot","c":"red"},{"s":1,"e":2,"t":"cool","c":"blue"},{"s":2,"e":7,"t":"archive","c":"slate"}]},
+  {"label":"Legal hold","blocks":[{"s":0,"e":1,"t":"hot","c":"red"},{"s":1,"e":2,"t":"cool","c":"blue"},{"s":2,"e":7,"t":"archive","c":"slate"},{"s":7,"e":9,"t":"on hold","c":"amber"}]}
+ ],
+ "spans":[{"s":0,"e":7,"t":"AML/CTF: keep 7 years","c":"purple"}],
+ "markers":[{"at":7,"t":"🗑 delete","c":"red"},{"at":9,"t":"hold released","c":"amber"}]}
+</script></figure>
+  <div class="flow">
+    <div class="cap">Storage lifecycle policy: move data to cheaper tiers as it cools, then delete it</div>
+    <div class="n r">Hot<small>days to months · frequent reads</small></div><div class="ar">→</div>
+    <div class="n">Cool / cold<small>rare reads · cheaper</small></div><div class="ar">→</div>
+    <div class="n s">Archive<small>hours to restore · cheapest</small></div><div class="ar">→</div>
+    <div class="n g">Delete<small>end of retention</small></div>
+  </div>
+  <div class="grid">
+    <div class="box amber"><h4>⚖️ Legal hold</h4><p>Litigation, a regulator or an investigation can <b>freeze</b> deletion for specific records. A hold overrides the schedule until it is released.</p></div>
+    <div class="box"><h4>🗂️ Soft vs hard delete</h4><p>Soft delete (an <code>IsDeleted</code> flag) is handy for undo. It is <b>not</b> deletion for privacy or retention. Plan the hard delete too.</p></div>
+    <div class="box"><h4>💾 Backups</h4><p>You usually can't edit backups. Let them age out on a short, documented cycle, and keep a <b>deletion log</b> that is replayed after any restore.</p></div>
+    <div class="box"><h4>📜 Logs</h4><p>Keep personal information out of logs in the first place (see 7.2 redaction). Then log retention is easy.</p></div>
+    <div class="box green"><h4>🔑 Crypto-shredding</h4><p>Encrypt each customer's (or each period's) data with its own key. Delete the key, and every copy, including backups, becomes unreadable. Key management: <a href="12-security-iam.html#secrets">12.7</a>.</p></div>
+  </div>
+  <div class="remember"><ul>
+    <li>Over-retention is a risk, not a safety net: old data is breach exposure with no business value.</li>
+    <li>Deletion must reach <b>every copy</b>: replicas, history tables, lake files, extracts, caches, backups and search indexes.</li>
+    <li>AML/CTF records are generally kept for <b>7 years</b>; check the exact trigger (record made vs relationship ended).</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Need</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Soft delete</b></td><td><code>Microsoft.EntityFrameworkCore</code>: <code>HasQueryFilter</code></td><td>Hide deleted rows from every query automatically. EF Core 10 adds named filters you can switch off one at a time</td></tr>
+    <tr><td><b>History</b></td><td><code>Microsoft.EntityFrameworkCore.SqlServer</code>: <code>IsTemporal()</code>, <code>TemporalAsOf</code></td><td>SQL Server temporal tables keep every old version for audit and point-in-time reads</td></tr>
+    <tr><td><b>Legal hold / WORM</b></td><td><code>Azure.Storage.Blobs</code>: <code>SetLegalHoldAsync</code>, <code>SetImmutabilityPolicyAsync</code></td><td>Make blobs undeletable until the hold is cleared or the policy expires</td></tr>
+    <tr><td><b>Tiering &amp; expiry</b></td><td>Blob lifecycle management policy (Bicep, or <code>Azure.ResourceManager.Storage</code>)</td><td>Rules like "cool after 30 days, archive after 1 year, delete after 7 years". Platform config, not app code</td></tr>
+    <tr><td><b>Crypto-shredding</b></td><td><code>Azure.Security.KeyVault.Keys</code>: <code>KeyClient.StartDeleteKeyAsync</code>, <code>PurgeDeletedKeyAsync</code></td><td>One key per customer or per period. Delete and purge the key to make the data unreadable</td></tr>
+  </table>
+<pre class="code"><code>protected override void OnModelCreating(ModelBuilder b)
+{
+    b.Entity&lt;Customer&gt;(e =&gt;
+    {
+        e.HasQueryFilter(c =&gt; !c.IsDeleted);          // soft delete: hidden from normal queries
+        e.ToTable("Customers", t =&gt; t.IsTemporal());  // SQL Server keeps every old version
+    });
+}
+
+// Audit question: "what did we hold for this customer on 31 January?"
+var asAt = await db.Customers
+    .TemporalAsOf(new DateTime(2026, 1, 31, 0, 0, 0, DateTimeKind.Utc))
+    .SingleAsync(c =&gt; c.Id == customerId);</code></pre>
+  <p class="warn">Temporal history tables and Key Vault soft-delete both keep data on purpose. Your erasure process must purge history rows too, and purge protection on a vault means a deleted key can't be purged until its retention period ends.</p>
+</div>
+  <div class="post">
+    <p>Deleting a customer's data is harder than storing it 🗑️</p>
+    <p>📋 Start with a retention schedule: what, how long, why</p>
+    <p>⚖️ Legal hold beats the schedule until it's released</p>
+    <p>💾 Backups: short cycles + a deletion log replayed after restore</p>
+    <p>🔑 Crypto-shredding: one key per customer; delete the key and every copy is unreadable</p>
+    <p>Old data you don't need isn't an asset. It's breach exposure. When did you last delete anything on purpose?</p>
+    <p>#DataRetention #Privacy #DataGovernance #CloudArchitecture</p>
+  </div>
+</section>
+
+<!-- QUALITY -->
+<section class="concept" id="quality">
+  <h2><span class="num">7.6</span> Data quality &amp; lineage <span class="tag-added">Added</span></h2>
+  <p class="oneliner"><b>Data quality</b> measures whether data is fit for its purpose. <b>Lineage</b> shows where data came from, how it changed, and where it goes.</p>
+  <div class="grid">
+    <div class="box"><h4>🎯 Accuracy</h4><p>Matches reality. The address on file is where the customer actually lives.</p></div>
+    <div class="box"><h4>🧩 Completeness</h4><p>Required values are present. No customers without a date of birth.</p></div>
+    <div class="box"><h4>🔗 Consistency</h4><p>Agrees across systems. The balance in the ledger equals the balance in the data warehouse.</p></div>
+    <div class="box"><h4>⏱️ Timeliness</h4><p>Fresh enough for its use. The fraud feed lands within 5 minutes.</p></div>
+    <div class="box"><h4>✅ Validity</h4><p>Follows format and rules. A BSB has 6 digits; amounts are positive.</p></div>
+    <div class="box"><h4>1️⃣ Uniqueness</h4><p>No duplicates. One record per customer (see 7.7).</p></div>
+  </div>
+<figure class="viz" data-viz="bars"><script type="application/json">
+{"title":"Nightly customer feed: failing rows per 10,000, by check","max":160,
+ "threshold":{"v":50,"t":"limit: 50 per 10,000"},
+ "rows":[
+  {"label":"Completeness","v":12,"show":"12","note":"missing DOB","c":"green"},
+  {"label":"Validity","v":38,"show":"38","note":"bad postcode format","c":"green"},
+  {"label":"Uniqueness","v":3,"show":"3","note":"duplicate IDs","c":"green"},
+  {"label":"Consistency","v":140,"show":"140 ✗","note":"status differs from core","c":"red"},
+  {"label":"Timeliness","v":0,"show":"0","note":"arrived on time","c":"green"},
+  {"label":"Accuracy (sample)","v":22,"show":"22","note":"address check","c":"green"}
+ ]}
+</script></figure>
+  <div class="flow">
+    <div class="cap">Quality gates in a pipeline: check early, quarantine bad rows, never fail silently</div>
+    <div class="n">Source feed</div><div class="ar">→</div>
+    <div class="n p">Schema check<small>contract (7.8)</small></div><div class="ar">→</div>
+    <div class="n p">Rule checks<small>null, range, format, reconcile</small></div><div class="ar">→</div>
+    <div style="display:flex;flex-direction:column;gap:6px"><div class="n g">Curated<small>passed rows</small></div><div class="n r">Quarantine<small>failed rows + alert the steward</small></div></div>
+  </div>
+  <div class="flow">
+    <div class="cap">Lineage: trace a number on a report back to its source</div>
+    <div class="n s">Core banking</div><div class="ar">→</div>
+    <div class="n">CDC<small><a href="06-databases-data.html#cdc">6.8</a></small></div><div class="ar">→</div>
+    <div class="n">Lake: raw</div><div class="ar">→</div>
+    <div class="n">Lake: curated<small>joins, rules</small></div><div class="ar">→</div>
+    <div class="n fill">Risk report<small>"total exposure"</small></div>
+  </div>
+  <ul>
+    <li><b>Why lineage matters:</b> impact analysis ("if I change this column, what breaks?"), root cause ("why is this number wrong?"), and regulators. BCBS 239 expects banks to trace risk figures back to their source.</li>
+    <li><b>Table vs column lineage:</b> table-level is easy to collect; column-level is what auditors and impact analysis really need.</li>
+    <li><b>OpenLineage</b> is an open standard for lineage events (job, run, input and output datasets). Spark, Airflow and dbt integrations emit it; Marquez is the reference backend.</li>
+    <li><b>Microsoft Purview</b> scans sources, builds the catalogue, and collects lineage from services such as Azure Data Factory and Synapse.</li>
+    <li>Quality tools outside .NET: <b>Great Expectations</b>, <b>Soda</b> and <b>dbt tests</b> run checks inside data pipelines.</li>
+  </ul>
+  <div class="remember"><ul>
+    <li>Fix quality <b>at the source</b> and as close to capture as possible. Cleaning downstream forever is the expensive option.</li>
+    <li>Measure quality as numbers with thresholds and owners, not as opinions.</li>
+    <li>Quarantine and alert. Don't silently drop bad rows or load them anyway.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Need</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Validate at the API edge</b></td><td><span class="pill builtin">built-in</span> ASP.NET Core 10 minimal API validation (<code>builder.Services.AddValidation()</code> + DataAnnotations)</td><td>Rejects bad input before it is stored, which is the cheapest place to fix quality</td></tr>
+    <tr><td><b>Rich rule sets</b></td><td><code>FluentValidation</code></td><td>Reusable rules for APIs, files and pipeline rows: completeness, validity and cross-field checks</td></tr>
+    <tr><td><b>Lineage &amp; catalogue</b></td><td><code>Azure.Analytics.Purview.DataMap</code> <span class="pill preview">preview</span></td><td>Push custom lineage into Purview from a .NET job</td></tr>
+    <tr><td><b>OpenLineage events</b></td><td><span class="pill builtin">built-in</span> <code>HttpClient</code> + <code>System.Text.Json</code></td><td>The official OpenLineage clients are Java and Python. From .NET, POST the JSON run event to the lineage endpoint (e.g. Marquez)</td></tr>
+  </table>
+<pre class="code"><code>public sealed class CustomerRowValidator : AbstractValidator&lt;CustomerRow&gt;
+{
+    public CustomerRowValidator()
+    {
+        RuleFor(r =&gt; r.CustomerId).NotEmpty();                      // completeness
+        RuleFor(r =&gt; r.DateOfBirth).NotNull();                      // completeness
+        RuleFor(r =&gt; r.Postcode).Matches(@"^\d{4}$");               // validity (AU postcode)
+        RuleFor(r =&gt; r.Balance).GreaterThanOrEqualTo(-1_000_000m);  // sanity range
+    }
+}
+
+foreach (var row in rows)
+{
+    var result = validator.Validate(row);
+    if (result.IsValid) curated.Add(row);
+    else quarantine.Add(new QuarantinedRow(row, result.Errors));  // alert the steward
+}</code></pre>
+</div>
+  <div class="post">
+    <p>"The numbers in the report are wrong." The 3 questions that decide how bad your week is 📉</p>
+    <p>1️⃣ Which quality check should have caught it? (accuracy, completeness, consistency, timeliness, validity, uniqueness)</p>
+    <p>2️⃣ Where did the bad data come from? That's lineage.</p>
+    <p>3️⃣ What else uses it? That's lineage too.</p>
+    <p>🚧 Quality gates + quarantine in every pipeline. Never fail silently.</p>
+    <p>Trustworthy data is a design choice, not luck.</p>
+    <p>#DataQuality #DataLineage #DataEngineering #DataGovernance</p>
+  </div>
+</section>
+
+<!-- MDM -->
+<section class="concept" id="mdm">
+  <h2><span class="num">7.7</span> Master data management (MDM) <span class="tag-added">Added</span></h2>
+  <p class="oneliner">MDM creates one trusted <b>golden record</b> for core business entities, such as customer and product, that many systems share.</p>
+  <div class="grid">
+    <div class="box blue"><h4>👤 Master data</h4><p>The core "nouns" of the business, shared by many systems: customer, product, account, supplier, employee.</p></div>
+    <div class="box teal"><h4>📚 Reference data</h4><p>Standard code lists: country codes, currencies (ISO 4217), BSB directory, merchant category codes. Small, slow-changing, often external.</p></div>
+    <div class="box"><h4>💳 Transactional data</h4><p>Events that involve master data: payments, orders. High volume. <b>Not</b> what MDM manages.</p></div>
+  </div>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"From three records to one golden record","interval":3000,
+ "frames":[
+  {"label":"Sources","caption":"Three systems hold the same person, each slightly differently.",
+   "rows":[
+    {"label":"CRM","items":[{"t":"Jane Citizen","sub":"jane@example.com · updated 2026","c":"blue","w":250}]},
+    {"label":"Core banking","items":[{"t":"J. Citizen","sub":"DOB 14/03/1988 · ID verified · 2019","c":"purple","w":250}]},
+    {"label":"Cards","items":[{"t":"Jane Citzen","sub":"1 George Street · updated 2024","c":"teal","w":250}]}
+   ]},
+  {"label":"Match","caption":"<b>Matching</b>: compare DOB, address and a fuzzy name score. 0.94 is above the threshold, so it's the same person.",
+   "rows":[
+    {"label":"CRM","items":[{"t":"Jane Citizen","c":"blue","w":150},{"k":"arrow","g":"→"},{"t":"match score 0.94","sub":"name ≈, address =, DOB =","c":"amber","big":true}]},
+    {"label":"Core banking","items":[{"t":"J. Citizen","c":"purple","w":150},{"k":"arrow","g":"→"},{"k":"text","t":"same cluster"}]},
+    {"label":"Cards","items":[{"t":"Jane Citzen","c":"teal","w":150},{"k":"arrow","g":"→"},{"k":"text","t":"same cluster"}]}
+   ]},
+  {"label":"Survivorship","caption":"<b>Survivorship</b> rules pick the best value for each field from the most trusted or most recent source.",
+   "rows":[
+    {"label":"Name","items":[{"t":"Jane Citizen","sub":"from CRM: most complete","c":"blue","w":250}]},
+    {"label":"Birth date","items":[{"t":"14/03/1988","sub":"from core banking: ID verified","c":"purple","w":250}]},
+    {"label":"Address","items":[{"t":"1 George Street","sub":"from cards: most recent","c":"teal","w":250}]}
+   ]},
+  {"label":"Golden record","caption":"One golden record, plus a cross-reference of each source system's ID so systems can link back.",
+   "rows":[
+    {"label":"Golden","items":[{"t":"Customer G-1001","sub":"Jane Citizen · 14/03/1988 · 1 George Street","c":"green","big":true,"w":330}]},
+    {"label":"Cross-ref","items":[{"k":"text","t":"CRM 88412 · Core 0045-1192 · Cards C-77310"}]}
+   ]}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>MDM style</th><th>How it works</th><th>Good for</th><th>Trade-off</th></tr>
+    <tr><td><b>Registry</b></td><td>Sources keep their data. The hub holds only match links and IDs, and builds the view on demand</td><td>Fast start, no change to source systems</td><td>Sources stay messy; the view is read-only</td></tr>
+    <tr><td><b>Consolidation</b></td><td>Copy data into the hub, match and merge into golden records for analytics</td><td>Reporting and a single customer view</td><td>Golden record doesn't flow back to sources</td></tr>
+    <tr><td><b>Coexistence</b></td><td>Like consolidation, but the golden record is synced back to sources</td><td>Gradual move to clean data everywhere</td><td>Two-way sync and conflict rules are complex</td></tr>
+    <tr><td><b>Centralised</b> (transaction)</td><td>The hub is the system of record. New data is created and changed only there</td><td>Highest quality and control</td><td>Most invasive and costly; every app must change</td></tr>
+  </table></div>
+  <div class="remember"><ul>
+    <li>MDM is mostly <b>process and stewardship</b>, then tooling. Agree who owns each field first.</li>
+    <li>Tune match thresholds with stewards: false merges (two people merged into one) are worse than missed matches in banking.</li>
+    <li>Start with registry or consolidation; go centralised only when the business case is clear.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Need</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Fuzzy name matching</b></td><td><code>FuzzySharp</code></td><td>Open-source port of Python's fuzzywuzzy: ratio and token-sort scores for "Jane Citzen" vs "Jane Citizen"</td></tr>
+    <tr><td><b>Phonetic matching in SQL</b></td><td>SQL Server <code>SOUNDEX</code> / <code>DIFFERENCE</code></td><td>Cheap blocking step to find candidate pairs before detailed scoring</td></tr>
+  </table>
+  <p class="warn">There's no standard .NET MDM library. Real MDM uses a dedicated platform; .NET code usually integrates with it through APIs or events.</p>
+</div>
+  <div class="post">
+    <p>Your bank has 3 versions of you. MDM picks the truth 👤</p>
+    <p>🗂️ CRM: right email</p>
+    <p>🏦 Core banking: verified date of birth</p>
+    <p>💳 Cards: newest address (and a typo in your name)</p>
+    <p>🔗 Matching finds they're the same person. ⚖️ Survivorship picks the best value per field. ⭐ Result: one golden record.</p>
+    <p>Rule of thumb: a false merge (two people become one) is worse than a missed match.</p>
+    <p>#MDM #MasterData #DataQuality #Banking</p>
+  </div>
+</section>
+
+<!-- MESH -->
+<section class="concept" id="mesh">
+  <h2><span class="num">7.8</span> Data contracts &amp; data mesh <span class="tag-added">Added</span></h2>
+  <p class="oneliner">A <b>data contract</b> is a versioned promise from a data producer to its consumers. <b>Data mesh</b> is an operating model where business domains own and publish data as products, under shared rules.</p>
+  <div class="grid">
+    <div class="box blue"><h4>📐 Schema</h4><p>Fields, types, required or optional. Avro, Protobuf, JSON Schema or OpenAPI.</p></div>
+    <div class="box"><h4>📖 Semantics</h4><p>What each field means: "amount is in cents, AUD, including GST".</p></div>
+    <div class="box"><h4>⏱️ Quality &amp; SLAs</h4><p>Freshness, completeness and availability targets, such as "lands by 6 am, at most 0.5% nulls".</p></div>
+    <div class="box"><h4>👤 Ownership</h4><p>Owning team, support channel, classification (see 7.2).</p></div>
+    <div class="box"><h4>🔢 Versioning</h4><p>Backward-compatible changes in place; breaking changes get a new major version and a deprecation window.</p></div>
+  </div>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"A schema registry enforces the contract","actors":[{"t":"Producer CI","c":"blue"},{"t":"Schema registry","c":"purple"},{"t":"Kafka topic","c":"amber"},{"t":"Consumers","c":"green"}],"colW":190,"rowH":46,"stepMs":950,
+ "steps":[
+  {"from":0,"to":1,"t":"register v2","sub":"adds optional field \"channel\"","c":"blue"},
+  {"from":1,"to":0,"t":"compatible ✓","c":"green"},
+  {"from":0,"to":2,"t":"publish with schema v2","c":"blue"},
+  {"from":2,"to":3,"t":"all consumers OK","c":"amber"},
+  {"from":0,"to":1,"t":"register v3","sub":"removes required field \"amount\"","c":"blue"},
+  {"from":1,"to":0,"t":"rejected: breaks compatibility ✗","c":"red"},
+  {"note":"The breaking change fails the build before any consumer sees it","over":[0,3],"c":"red"}
+ ]}
+</script></figure>
+  <div class="grid">
+    <div class="box purple"><h4>1. Domain ownership</h4><p>The team that runs the business process (payments, lending) owns its analytical data too. No central team as a bottleneck.</p></div>
+    <div class="box purple"><h4>2. Data as a product</h4><p>Each dataset is a product with an owner, documentation, a contract, SLAs and users it must keep happy.</p></div>
+    <div class="box purple"><h4>3. Self-serve platform</h4><p>A platform team provides storage, pipelines, catalogue and access control as self-service, so domains don't rebuild plumbing.</p></div>
+    <div class="box purple"><h4>4. Federated governance</h4><p>Shared global rules (classification, privacy, interoperability) set together and automated in the platform; domains decide the rest.</p></div>
+  </div>
+  <div class="cols2">
+    <div class="box green"><h4>✅ Mesh fits when</h4><p>Many domains, many data producers, a central data team that is a bottleneck, and strong platform engineering.</p></div>
+    <div class="box red"><h4>❌ Mesh is overkill when</h4><p>A small organisation, a handful of sources, a central team that keeps up, or domains without the skills to own data products. Data contracts alone still help.</p></div>
+  </div>
+  <p><b>Data fabric</b>, in one line: a technology-led approach that uses metadata, a catalogue and automation to connect data across sources. Mesh is mainly about organisation; the two can work together.</p>
+  <div class="remember"><ul>
+    <li>Start with <b>contracts</b> on your most important feeds. You don't need a full mesh to get most of the benefit.</li>
+    <li>Enforce contracts in CI and at the registry. A contract in a wiki is just a hope.</li>
+    <li>Mesh changes the org chart before it changes the tech.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Need</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Event contracts</b></td><td><code>Confluent.SchemaRegistry</code> + <code>Confluent.SchemaRegistry.Serdes.Avro</code> (or <code>.Json</code> / <code>.Protobuf</code>)</td><td>Serialise Kafka messages against registered schemas; the registry enforces compatibility rules</td></tr>
+    <tr><td><b>JSON contracts for files and APIs</b></td><td><code>JsonSchema.Net</code> or <code>NJsonSchema</code></td><td>Validate payloads against a JSON Schema in tests, CI and at ingestion</td></tr>
+    <tr><td><b>API contracts</b></td><td><span class="pill builtin">built-in</span> <code>Microsoft.AspNetCore.OpenApi</code></td><td>Generate the OpenAPI document from your minimal APIs and diff it in CI to catch breaking changes</td></tr>
+  </table>
+<pre class="code"><code>var registry = new CachedSchemaRegistryClient(new SchemaRegistryConfig { Url = registryUrl });
+
+var serdeConfig = new AvroSerializerConfig
+{
+    AutoRegisterSchemas = false,   // only CI may register schemas, after a compatibility check
+    UseLatestVersion = true        // serialise with the latest approved version
+};
+
+using var producer = new ProducerBuilder&lt;string, PaymentEvent&gt;(producerConfig)
+    .SetValueSerializer(new AvroSerializer&lt;PaymentEvent&gt;(registry, serdeConfig))
+    .Build();
+
+await producer.ProduceAsync("payments.v1",
+    new Message&lt;string, PaymentEvent&gt; { Key = payment.AccountId, Value = payment });</code></pre>
+  <p class="warn"><code>PaymentEvent</code> here is a class generated from the Avro schema (e.g. with <code>avrogen</code>). The schema file, not the C# class, is the contract.</p>
+</div>
+  <div class="post">
+    <p>Most "data quality issues" are really broken promises between teams 🤝</p>
+    <p>📐 Data contract: schema + meaning + SLAs + owner + version</p>
+    <p>🚫 Schema registry: breaking changes fail the build, not the dashboard</p>
+    <p>🧭 Data mesh: domains own data as products, on a self-serve platform, with federated governance</p>
+    <p>⚠️ Small org, few sources? Mesh is overkill. Contracts alone get you most of the value.</p>
+    <p>Would your team notice if an upstream field was renamed tonight?</p>
+    <p>#DataMesh #DataContracts #DataEngineering #Architecture</p>
+  </div>
+</section>
+
+<div class="qa-wrap">
+  <h2>⚡ Quick-fire Q&amp;A</h2>
+  <details class="qa"><summary>Masking vs tokenisation vs pseudonymisation vs anonymisation?</summary><p>Masking hides part of the value on display; the real value is still stored. Tokenisation swaps the value for a random token that only a vault can reverse. Pseudonymisation replaces identifiers with a keyed ID; it can be re-linked, so it is still personal information. Anonymisation can't be linked back to a person, so privacy law generally stops applying, but you must test the re-identification risk.</p></details>
+  <details class="qa"><summary>How do you delete a customer's data when it's also in backups?</summary><p>Hard-delete it in live systems (including history tables, lake files and indexes), keep a deletion log that is replayed after any restore, and let backups age out on a short, documented cycle. For a stronger guarantee, use crypto-shredding: encrypt each customer's data with its own key and delete the key. Always check legal holds and AML/CTF retention first.</p></details>
+  <details class="qa"><summary>We host in Australia East. Is that enough for data residency?</summary><p>Not by itself. Check every copy (replicas, backups, logs, CDN, AI endpoints), keep keys in an Australian vault, block other regions with policy, and control offshore support access, which can count as a cross-border disclosure under APP 8. Residency also isn't sovereignty: the provider's home-country laws may still reach the data.</p></details>
+  <details class="qa"><summary>When would you not recommend a data mesh?</summary><p>In small or medium organisations with few sources, a central data team that keeps up, or domain teams without data engineering skills or a self-serve platform. Start with data contracts, a catalogue and clear ownership. Move to mesh when the central team becomes the bottleneck.</p></details>
+</div>
+
+<div class="pager"><a href="06-databases-data.html">← 06 · Databases &amp; Data</a><a class="next" href="08-api-design.html">08 · API Design →</a></div>
+</main>
+<footer>Tech Concepts Prep · Section 07</footer>
+<script src="assets/app.js"></script>
+<script src="assets/viz.js"></script>
+</body>
+</html>

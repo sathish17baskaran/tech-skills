@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>06 · API Design, Security &amp; Performance | Tech Concepts Prep</title>
+<title>08 · API Design, Security &amp; Performance | Tech Concepts Prep</title>
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<nav class="top"><a href="05-databases-data.html">← Databases</a><span class="here">06 · API Design</span><a href="07-apim.html">Next: APIM →</a></nav>
+<nav class="top"><a href="07-data-governance-privacy.html">← Data Governance</a><span class="here">08 · API Design</span><a href="09-apim.html">Next: APIM →</a></nav>
 <main>
 
 <header class="hero">
-  <div class="kicker">Section 06</div>
+  <div class="kicker">Section 08</div>
   <h1>APIs: styles, design, auth, performance &amp; rate limiting</h1>
   <p>APIs are the contracts between systems. This section covers which API style to use, how to design them well, how to secure them, how to make them fast, and how to protect them.</p>
   <div class="toc">
@@ -27,7 +27,7 @@
 
 <!-- STYLES -->
 <section class="concept" id="styles">
-  <h2><span class="num">6.1</span> API architecture patterns (styles)</h2>
+  <h2><span class="num">8.1</span> API architecture patterns (styles)</h2>
   <p class="oneliner">The main API styles, each built for a different kind of interaction between client and server.</p>
   <div class="tablewrap"><table>
     <tr><th>Style</th><th>Shape</th><th>Strengths</th><th>Weaknesses</th><th>Use for</th></tr>
@@ -70,7 +70,7 @@ app.MapGet("/payments/{id}/status", (string id, PaymentEvents events, Cancellati
 
 <!-- REST -->
 <section class="concept" id="rest">
-  <h2><span class="num">6.2</span> REST design best practices <span class="tag-added">Added</span></h2>
+  <h2><span class="num">8.2</span> REST design best practices <span class="tag-added">Added</span></h2>
   <p class="oneliner">Nouns for resources, HTTP verbs for actions, status codes for outcomes, and a contract you never break silently.</p>
   <div class="cols2">
     <div>
@@ -145,7 +145,7 @@ app.MapPost("/v1/payments", async (CreatePayment cmd, PaymentService svc, Cancel
 
 <!-- AUTH -->
 <section class="concept" id="auth">
-  <h2><span class="num">6.3</span> API authentication &amp; authorization</h2>
+  <h2><span class="num">8.3</span> API authentication &amp; authorization</h2>
   <p class="oneliner"><b>Authentication</b> = who are you? <b>Authorization</b> = what are you allowed to do? (Fail authN → 401. Fail authZ → 403.)</p>
   <div class="tablewrap"><table>
     <tr><th>Method</th><th>How it works</th><th>Good for</th><th>Caution</th></tr>
@@ -200,7 +200,7 @@ app.MapGet("/accounts/{id:int}", async (int id, AppDbContext db,
 
 <!-- OAUTH DEEP DIVE -->
 <section class="concept" id="oauth">
-  <h2><span class="num">6.4</span> OAuth 2.0, OIDC &amp; JWT deep dive <span class="tag-added">Added</span></h2>
+  <h2><span class="num">8.4</span> OAuth 2.0, OIDC &amp; JWT deep dive <span class="tag-added">Added</span></h2>
   <p class="oneliner">OAuth 2.0 lets an app get <b>limited access</b> to an API on behalf of a user or itself, without ever seeing the user's password.</p>
   <h3>Four roles</h3>
   <div class="flow">
@@ -289,7 +289,7 @@ var result = await msal.AcquireTokenForClient(["api://payments/.default"]).Execu
 
 <!-- PERFORMANCE -->
 <section class="concept" id="performance">
-  <h2><span class="num">6.5</span> API performance</h2>
+  <h2><span class="num">8.5</span> API performance</h2>
   <p class="oneliner">Measure first (p95/p99 latency, throughput, error rate), find the slowest hop, then fix that hop.</p>
   <h3>Where the time goes</h3>
 <figure class="viz" data-viz="lanes"><script type="application/json">
@@ -328,7 +328,7 @@ var result = await msal.AcquireTokenForClient(["api://payments/.default"]).Execu
   <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
   <table>
     <tr><th>Fix</th><th>Library / API</th></tr>
-    <tr><td><b>Caching</b></td><td><span class="pill builtin">built-in</span> <code>AddOutputCache</code>, <code>HybridCache</code> (see section 04)</td></tr>
+    <tr><td><b>Caching</b></td><td><span class="pill builtin">built-in</span> <code>AddOutputCache</code>, <code>HybridCache</code> (see section 05)</td></tr>
     <tr><td><b>Compression</b></td><td><span class="pill builtin">built-in</span> <code>AddResponseCompression</code> (Brotli, gzip). Often better done at the gateway or CDN</td></tr>
     <tr><td><b>Connection reuse</b></td><td><code>IHttpClientFactory</code> (<code>AddHttpClient</code>), <code>AddDbContextPool</code>, HTTP/2 and HTTP/3 in Kestrel</td></tr>
     <tr><td><b>N+1 and big payloads</b></td><td>EF Core <code>Select</code> projections, <code>Include</code> / <code>AsSplitQuery</code>, <code>AsNoTracking</code>; HotChocolate DataLoader; keyset pagination</td></tr>
@@ -354,7 +354,7 @@ await Task.WhenAll(customerTask, accountsTask);</code></pre>
 
 <!-- RATE LIMIT -->
 <section class="concept" id="ratelimit">
-  <h2><span class="num">6.6</span> Rate limit algorithms</h2>
+  <h2><span class="num">8.6</span> Rate limit algorithms</h2>
   <p class="oneliner">Rate limiting caps how many requests a client can make in a time window. It protects backends, ensures fairness and blocks abuse.</p>
 
   <div class="grid wide">
@@ -572,7 +572,7 @@ app.MapPost("/payments", CreatePayment).RequireRateLimiting("per-api-key");</cod
 
 <!-- IDEMPOTENCY -->
 <section class="concept" id="idempotency">
-  <h2><span class="num">6.7</span> Idempotency <span class="tag-added">Added</span></h2>
+  <h2><span class="num">8.7</span> Idempotency <span class="tag-added">Added</span></h2>
   <p class="oneliner">An operation is <b>idempotent</b> if doing it once or many times has the same effect. Essential when networks retry.</p>
 <figure class="viz" data-viz="seq"><script type="application/json">
 {"title":"Retry with an Idempotency-Key","actors":[{"t":"Client","c":"blue"},{"t":"API","c":"purple"},{"t":"Key store","c":"teal"}],"colW":220,"rowH":48,"stepMs":950,
@@ -638,9 +638,9 @@ app.MapPost("/payments", CreatePayment).RequireRateLimiting("per-api-key");</cod
   <details class="qa"><summary>401 vs 403?</summary><p>401: we don't know who you are (missing or invalid token). 403: we know who you are, but you're not allowed.</p></details>
 </div>
 
-<div class="pager"><a href="05-databases-data.html">← 05 · Databases</a><a class="next" href="07-apim.html">07 · API Management →</a></div>
+<div class="pager"><a href="07-data-governance-privacy.html">← 07 · Data Governance &amp; Privacy</a><a class="next" href="09-apim.html">09 · API Management →</a></div>
 </main>
-<footer>Tech Concepts Prep · Section 06</footer>
+<footer>Tech Concepts Prep · Section 08</footer>
 <script src="assets/app.js"></script>
 <script src="assets/viz.js"></script>
 </body>

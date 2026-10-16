@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>10 · Security &amp; IAM | Tech Concepts Prep</title>
+<title>12 · Security &amp; IAM | Tech Concepts Prep</title>
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<nav class="top"><a href="09-architecture-patterns.html">← Architecture</a><span class="here">10 · Security &amp; IAM</span><a href="11-devops-deployment-observability.html">Next: DevOps →</a></nav>
+<nav class="top"><a href="11-architecture-patterns.html">← Architecture Patterns</a><span class="here">12 · Security &amp; IAM</span><a href="13-devops-deployment-observability.html">Next: DevOps →</a></nav>
 <main>
 
 <header class="hero">
-  <div class="kicker">Section 10</div>
+  <div class="kicker">Section 12</div>
   <h1>Security, IAM &amp; cryptography</h1>
   <p>Who can access what (IAM), how data is kept secret and tamper-proof (cryptography, TLS, keys), and the mindset (Zero Trust, OWASP) that ties it together.</p>
   <div class="toc">
@@ -24,12 +24,13 @@
     <a href="#secrets" class="added">Secrets &amp; key management</a>
     <a href="#zerotrust" class="added">Zero Trust</a>
     <a href="#owasp" class="added">OWASP API Top 10</a>
+    <a href="#devsecops" class="added">DevSecOps &amp; supply chain</a>
   </div>
 </header>
 
 <!-- AUTHN AUTHZ -->
 <section class="concept" id="authn-authz">
-  <h2><span class="num">10.1</span> Authentication vs Authorization <span class="tag-added">Added</span></h2>
+  <h2><span class="num">12.1</span> Authentication vs Authorization <span class="tag-added">Added</span></h2>
   <div class="flow">
     <div class="n">User / service</div><div class="ar">→</div>
     <div class="n p">Authentication<small>"Who are you?" password · MFA · cert</small></div><div class="ar">→</div>
@@ -61,7 +62,7 @@ app.MapPost("/orders", CreateOrder).RequireAuthorization("orders.write");</code>
 
 <!-- IAM -->
 <section class="concept" id="iam">
-  <h2><span class="num">10.2</span> IAM: Identity &amp; Access Management</h2>
+  <h2><span class="num">12.2</span> IAM: Identity &amp; Access Management</h2>
   <p class="oneliner">The policies, processes and tools that make sure the <b>right identities</b> get the <b>right access</b> to the <b>right resources</b>, at the right time, for the right reasons.</p>
   <div class="flow">
     <div class="n">User / app</div><div class="ar">→<small>login</small></div>
@@ -115,7 +116,7 @@ var blobs = new BlobServiceClient(
 
 <!-- SSO -->
 <section class="concept" id="sso">
-  <h2><span class="num">10.3</span> SSO protocols: SAML vs OAuth 2.0 vs OIDC <span class="tag-added">Added</span></h2>
+  <h2><span class="num">12.3</span> SSO protocols: SAML vs OAuth 2.0 vs OIDC <span class="tag-added">Added</span></h2>
   <p class="oneliner">SAML and OIDC log users in (single sign-on). OAuth 2.0 grants an app limited access to an API.</p>
   <div class="tablewrap"><table>
     <tr><th></th><th>SAML 2.0</th><th>OAuth 2.0</th><th>OpenID Connect</th></tr>
@@ -152,7 +153,7 @@ var blobs = new BlobServiceClient(
 
 <!-- KEYS -->
 <section class="concept" id="keys">
-  <h2><span class="num">10.4</span> Symmetric vs Asymmetric keys</h2>
+  <h2><span class="num">12.4</span> Symmetric vs Asymmetric keys</h2>
   <p class="oneliner"><b>Symmetric</b>: one shared secret key locks and unlocks. <b>Asymmetric</b>: a key pair. What the public key locks, only the private key can unlock.</p>
   <div class="cols2">
     <div class="flow v"><div class="cap">Symmetric</div>
@@ -225,7 +226,7 @@ bool valid = ecdsa.VerifyData(plain, signature, HashAlgorithmName.SHA256);</code
 
 <!-- HASHING -->
 <section class="concept" id="hashing">
-  <h2><span class="num">10.5</span> Hashing vs Encryption vs Encoding vs Tokenisation <span class="tag-added">Added</span></h2>
+  <h2><span class="num">12.5</span> Hashing vs Encryption vs Encoding vs Tokenisation <span class="tag-added">Added</span></h2>
   <p class="oneliner">Four ways to transform data. Only encryption is meant to be reversed with a key.</p>
   <div class="tablewrap"><table>
     <tr><th></th><th>Reversible?</th><th>Purpose</th><th>Examples</th></tr>
@@ -258,7 +259,7 @@ byte[] hash = Rfc2898DeriveBytes.Pbkdf2(password, salt, 600_000, HashAlgorithmNa
 
 <!-- TLS -->
 <section class="concept" id="tls">
-  <h2><span class="num">10.6</span> TLS, mTLS &amp; PKI <span class="tag-added">Added</span></h2>
+  <h2><span class="num">12.6</span> TLS, mTLS &amp; PKI <span class="tag-added">Added</span></h2>
   <p class="oneliner">TLS encrypts data in transit and proves the server's identity with a certificate. mTLS makes the client prove its identity too.</p>
   <div class="cols2">
 <figure class="viz" data-viz="seq"><script type="application/json">
@@ -323,7 +324,7 @@ builder.Services.AddHttpClient("partner").ConfigurePrimaryHttpMessageHandler(() 
 
 <!-- SECRETS -->
 <section class="concept" id="secrets">
-  <h2><span class="num">10.7</span> Secrets &amp; key management <span class="tag-added">Added</span></h2>
+  <h2><span class="num">12.7</span> Secrets &amp; key management <span class="tag-added">Added</span></h2>
   <p class="oneliner">Never hard-code secrets. Store them in a vault, access them by identity, rotate them, and audit every use.</p>
   <div class="flow"><div class="cap">Envelope encryption</div>
     <div class="n">Data</div><div class="ar">→ encrypted by</div><div class="n a">DEK<small>data encryption key</small></div><div class="ar">→ encrypted by</div><div class="n r">KEK<small>key encryption key, in HSM / Key Vault</small></div>
@@ -359,7 +360,7 @@ WrapResult wrapped = await kek.WrapKeyAsync(KeyWrapAlgorithm.RsaOaep256, dek);
 
 <!-- ZERO TRUST -->
 <section class="concept" id="zerotrust">
-  <h2><span class="num">10.8</span> Zero Trust <span class="tag-added">Added</span></h2>
+  <h2><span class="num">12.8</span> Zero Trust <span class="tag-added">Added</span></h2>
   <p class="oneliner">"Never trust, always verify." Being inside the network doesn't make you trusted.</p>
   <div class="grid">
     <div class="box blue"><h4>1. Verify explicitly</h4><p>Authenticate and authorise every request using identity, device health, location and risk.</p></div>
@@ -381,7 +382,7 @@ WrapResult wrapped = await kek.WrapKeyAsync(KeyWrapAlgorithm.RsaOaep256, dek);
 
 <!-- OWASP -->
 <section class="concept" id="owasp">
-  <h2><span class="num">10.9</span> OWASP API Security Top 10 (2023) <span class="tag-added">Added</span></h2>
+  <h2><span class="num">12.9</span> OWASP API Security Top 10 (2023) <span class="tag-added">Added</span></h2>
   <p class="oneliner">The ten most critical API security risks, according to OWASP.</p>
   <div class="tablewrap"><table>
     <tr><th>#</th><th>Risk</th><th>In plain words / fix</th></tr>
@@ -427,16 +428,101 @@ app.MapGet("/orders/{id:int}", async (int id, ClaimsPrincipal user,
 </div>
   </section>
 
+<!-- DEVSECOPS -->
+<section class="concept" id="devsecops">
+  <h2><span class="num">12.10</span> DevSecOps &amp; software supply chain security <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Build security checks into every step of delivery, and be able to prove that what runs in production is exactly what you built, from parts you trust.</p>
+<figure class="viz" data-viz="journey"><script type="application/json">
+{"title":"Where each check sits in the pipeline","stepMs":1200,
+ "steps":[
+  {"icon":"💻","t":"Code (developer laptop)","d":"IDE analyzers, pre-commit secret scan, threat model for big changes","tag":"shift left","c":"blue"},
+  {"icon":"🔀","t":"Pull request","d":"SAST (e.g. CodeQL), SCA / dependency scan, secret scanning, IaC scan, peer review","tag":"gate: block critical / high","c":"purple"},
+  {"icon":"🏗️","t":"Build","d":"locked dependencies from trusted feeds only, SBOM generated, build provenance recorded (SLSA)","tag":"gate: SBOM + provenance","c":"teal"},
+  {"icon":"📦","t":"Artifact / container image","d":"image scan for OS and library CVEs, sign it (cosign or Notation), push to a private registry","tag":"gate: no critical CVEs","c":"amber"},
+  {"icon":"🚀","t":"Deploy","d":"admission policy verifies the signature, IaC policy checks, least-privilege workload identity","tag":"gate: only signed images run","c":"green"},
+  {"icon":"🔭","t":"Run","d":"DAST against staging, runtime monitoring, re-scan SBOMs for new CVEs, rotate keys and secrets","tag":"shift right","c":"red"}
+ ]}
+</script></figure>
+  <h3>The scanners and what they find</h3>
+  <div class="grid">
+    <div class="box blue"><h4>🔍 SAST</h4><p>Static analysis of your <b>source code</b> for bugs like SQL injection or weak crypto. Runs on every PR. Tools: CodeQL, SonarQube, .NET analyzers.</p></div>
+    <div class="box red"><h4>🎯 DAST</h4><p>Attacks the <b>running app</b> from the outside, like a hacker would. Finds config and runtime issues. Tools: OWASP ZAP, Burp Suite.</p></div>
+    <div class="box amber"><h4>📦 SCA (dependency scanning)</h4><p>Known CVEs and licence problems in <b>third-party packages</b>, including transitive ones. Tools: NuGet Audit, Dependabot, Snyk.</p></div>
+    <div class="box purple"><h4>🔑 Secret scanning</h4><p>Keys, tokens and passwords in code and git history. Use <b>push protection</b> to stop them before they land. Tools: GitHub secret scanning, Gitleaks.</p></div>
+    <div class="box teal"><h4>🏗️ IaC scanning</h4><p>Misconfigured Terraform, Bicep or Kubernetes YAML: public storage, open ports, no encryption. Tools: Checkov, Trivy.</p></div>
+    <div class="box green"><h4>🐳 Container image scanning</h4><p>CVEs in the base image and OS packages. Rebuild often on a small, patched base image. Tools: Trivy, Grype, Defender for Cloud.</p></div>
+  </div>
+  <h3>Supply chain: prove what you ship</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Practice</th><th>What it is</th><th>Why it matters</th></tr>
+    <tr><td><b>SBOM</b></td><td>A machine-readable "ingredients list" of every component and version. Formats: <b>SPDX</b> (Linux Foundation) and <b>CycloneDX</b> (OWASP)</td><td>When the next Log4Shell lands, "are we affected?" takes minutes, not weeks</td></tr>
+    <tr><td><b>Signed builds &amp; images</b></td><td>Sign artifacts and images: <b>Sigstore cosign</b> (keyless signing with OIDC and a public transparency log) or <b>Notation</b> (Notary Project, keys in a vault)</td><td>The cluster can refuse anything that wasn't signed by your pipeline</td></tr>
+    <tr><td><b>SLSA levels</b></td><td>A framework for build integrity. Build L1: provenance exists. L2: signed provenance from a hosted build platform. L3: a hardened, isolated build platform</td><td>Proves where and how an artifact was built, so tampering is detectable</td></tr>
+    <tr><td><b>Dependency confusion</b></td><td>An attacker publishes a public package with the same name as your internal one, often with a higher version, and your build picks it up</td><td>Fix: map package names to feeds, use private feeds with controlled upstreams, reserve your prefix</td></tr>
+    <tr><td><b>Typosquatting</b></td><td>Look-alike names (<code>Newtonsoft.Jsn</code>) that hide malware</td><td>Fix: review new dependencies, lock files, allow-lists</td></tr>
+    <tr><td><b>Key &amp; secret rotation</b></td><td>Rotate signing keys, secrets and tokens on a schedule and immediately on suspicion. Prefer short-lived credentials</td><td>Pipelines should use OIDC workload identity federation, not long-lived cloud secrets</td></tr>
+  </table></div>
+  <div class="remember"><ul>
+    <li><b>Shift left</b> to catch issues cheaply. <b>Shift right</b> to catch what only shows up in production. You need both.</li>
+    <li>Gate on severity, with a time-boxed exception process. Otherwise teams learn to ignore the scanner.</li>
+    <li>An SBOM is only useful if you store it and re-scan it when new CVEs are published.</li>
+    <li>Most of what you ship is code you didn't write. Treat dependencies as part of your attack surface.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Check</th><th>Library / tool</th><th>Notes</th></tr>
+    <tr><td><b>SCA</b></td><td><span class="pill builtin">built-in</span> NuGet Audit on <code>dotnet restore</code> (<code>NuGetAudit</code>, <code>NuGetAuditMode</code>, <code>NuGetAuditLevel</code>); <code>dotnet list package --vulnerable</code></td><td>Projects targeting <code>net10.0</code> audit <b>transitive</b> packages by default (<code>NuGetAuditMode=all</code>). <code>dotnet package update --vulnerable</code> is new in the .NET 10 SDK</td></tr>
+    <tr><td><b>SAST</b></td><td><span class="pill builtin">built-in</span> .NET code analyzers (security rules <code>CA2100</code>, <code>CA3xxx</code>, <code>CA5xxx</code>); GitHub CodeQL (supports C#)</td><td>Many security rules are off by default: turn them on with <code>AnalysisModeSecurity</code>. SecurityCodeScan has had no release since 2022</td></tr>
+    <tr><td><b>Dependency confusion</b></td><td><span class="pill builtin">built-in</span> package source mapping (<code>nuget.config</code>) + lock files (<code>RestorePackagesWithLockFile</code>)</td><td>Internal names can only come from the internal feed. CI runs <code>dotnet restore --locked-mode</code></td></tr>
+    <tr><td><b>Signed packages</b></td><td><span class="pill builtin">built-in</span> <code>dotnet nuget verify</code>; <code>trustedSigners</code> in <code>nuget.config</code></td><td>Only accept packages signed by authors or repositories you trust</td></tr>
+    <tr><td><b>SBOM</b></td><td><code>Microsoft.Sbom.DotNetTool</code> (<code>sbom-tool</code>, SPDX) or <code>CycloneDX</code> (.NET tool, <code>dotnet-CycloneDX</code>)</td><td>Generate an SBOM in the pipeline and publish it with the build</td></tr>
+    <tr><td><b>Updates</b></td><td>Dependabot (NuGet ecosystem) or Renovate</td><td>Automatic PRs for vulnerable and outdated packages</td></tr>
+  </table>
+<pre class="code"><code>&lt;!-- Directory.Build.props: audit everything, pin everything --&gt;
+&lt;PropertyGroup&gt;
+  &lt;NuGetAudit&gt;true&lt;/NuGetAudit&gt;
+  &lt;NuGetAuditMode&gt;all&lt;/NuGetAuditMode&gt;        &lt;!-- default for net10.0 --&gt;
+  &lt;NuGetAuditLevel&gt;moderate&lt;/NuGetAuditLevel&gt;
+  &lt;RestorePackagesWithLockFile&gt;true&lt;/RestorePackagesWithLockFile&gt;
+  &lt;AnalysisModeSecurity&gt;All&lt;/AnalysisModeSecurity&gt;
+&lt;/PropertyGroup&gt;
+
+&lt;!-- nuget.config: Contoso.* packages may ONLY come from the internal feed --&gt;
+&lt;packageSourceMapping&gt;
+  &lt;packageSource key="nuget.org"&gt;
+    &lt;package pattern="*" /&gt;
+  &lt;/packageSource&gt;
+  &lt;packageSource key="internal"&gt;
+    &lt;package pattern="Contoso.*" /&gt;
+  &lt;/packageSource&gt;
+&lt;/packageSourceMapping&gt;</code></pre>
+  <p class="warn">With <code>TreatWarningsAsErrors</code>, the new transitive audit warnings (NU1901&ndash;NU1904) can break restores after upgrading to .NET 10. Fix the root package (<code>dotnet nuget why</code>) rather than suppressing the warning.</p>
+</div>
+  <div class="post">
+    <p>Most of what you ship is code you didn't write 📦</p>
+    <p>🔍 SAST on every PR. DAST against staging.</p>
+    <p>📦 Dependency scanning + lock files: know every package, block known CVEs.</p>
+    <p>🔑 Secret scanning with push protection.</p>
+    <p>🧾 An SBOM for every build, so "are we affected?" takes minutes.</p>
+    <p>✍️ Sign your images, and only run signed ones.</p>
+    <p>Shift left to catch it cheaply. Shift right to catch what only shows up in prod.</p>
+    <p>#DevSecOps #SupplyChainSecurity #SBOM #AppSec</p>
+  </div>
+</section>
+
 <div class="qa-wrap">
   <h2>⚡ Quick-fire Q&amp;A</h2>
   <details class="qa"><summary>Why not encrypt passwords instead of hashing?</summary><p>Encrypted passwords can be decrypted if the key leaks. Slow, salted hashes (bcrypt/Argon2) can't be reversed, and they make brute force expensive.</p></details>
   <details class="qa"><summary>RBAC vs ABAC?</summary><p>RBAC grants access by role and is simple, but leads to role explosion. ABAC uses attributes and context, which is flexible and fine-grained but more complex to govern.</p></details>
   <details class="qa"><summary>What does a managed identity solve?</summary><p>It removes credentials from code and config. The cloud platform issues and rotates tokens for the workload automatically.</p></details>
+  <details class="qa"><summary>What is an SBOM, and why does it matter?</summary><p>A software bill of materials: a machine-readable list of every component and version in a build, in SPDX or CycloneDX format. When a new vulnerability is published, you can search your SBOMs and know in minutes which systems are affected. Regulators and customers increasingly ask for it too.</p></details>
+  <details class="qa"><summary>What is dependency confusion, and how do you prevent it in .NET?</summary><p>An attacker publishes a public package with the same name as an internal one, and the build pulls the public version. In .NET, use NuGet package source mapping so internal prefixes only resolve from the internal feed, commit lock files and restore with --locked-mode in CI, and reserve your package ID prefix on nuget.org.</p></details>
 </div>
 
-<div class="pager"><a href="09-architecture-patterns.html">← 09 · Architecture Patterns</a><a class="next" href="11-devops-deployment-observability.html">11 · DevOps &amp; Deployment →</a></div>
+<div class="pager"><a href="11-architecture-patterns.html">← 11 · Architecture Patterns</a><a class="next" href="13-devops-deployment-observability.html">13 · DevOps &amp; Observability →</a></div>
 </main>
-<footer>Tech Concepts Prep · Section 10</footer>
+<footer>Tech Concepts Prep · Section 12</footer>
 <script src="assets/app.js"></script>
 <script src="assets/viz.js"></script>
 </body>

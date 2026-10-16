@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>04 · Distributed Systems | Tech Concepts Prep</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<nav class="top"><a href="03-scalability-reliability.html">← Scalability</a><span class="here">04 · Distributed Systems</span><a href="05-caching.html">Next: Caching →</a></nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">Section 04</div>
+  <h1>Distributed systems essentials</h1>
+  <p>What changes when one program becomes many machines talking over a network: partial failure, replication, quorums, consensus and leader election, distributed locks, distributed transactions, and why you can't trust the clock. CAP and PACELC are covered in <a href="03-scalability-reliability.html#cap" style="color:#fff">03</a>.</p>
+  <div class="toc">
+    <a href="#fallacies" class="added">Why distributed is hard</a>
+    <a href="#replication" class="added">Replication models</a>
+    <a href="#quorum" class="added">Quorum (N, W, R)</a>
+    <a href="#consensus" class="added">Consensus &amp; leader election</a>
+    <a href="#locks" class="added">Distributed locks</a>
+    <a href="#two-pc" class="added">2PC vs Saga</a>
+    <a href="#clocks" class="added">Time &amp; ordering</a>
+  </div>
+</header>
+
+<!-- FALLACIES -->
+<section class="concept" id="fallacies">
+  <h2><span class="num">4.1</span> Why distributed is hard: fallacies &amp; partial failure <span class="tag-added">Added</span></h2>
+  <p class="oneliner">On one machine, things either work or crash. Across a network, <b>some parts fail while others keep going</b>, and you often can't tell which.</p>
+  <h3>The 8 fallacies of distributed computing</h3>
+  <p>False assumptions that engineers new to distributed systems make (L. Peter Deutsch and others at Sun Microsystems, 1990s).</p>
+  <div class="tablewrap"><table>
+    <tr><th>Fallacy</th><th>Reality</th><th>What you do</th></tr>
+    <tr><td>1. The network is reliable</td><td>Packets drop, connections reset, cables and switches fail</td><td>Timeouts, retries with backoff, idempotency</td></tr>
+    <tr><td>2. Latency is zero</td><td>Cross-region calls take tens to hundreds of ms</td><td>Fewer, coarser calls; caching; async</td></tr>
+    <tr><td>3. Bandwidth is infinite</td><td>Big payloads clog links and cost money</td><td>Paging, compression, claim check</td></tr>
+    <tr><td>4. The network is secure</td><td>Anything on the wire can be read or changed</td><td>TLS / mTLS, zero trust</td></tr>
+    <tr><td>5. Topology doesn't change</td><td>Pods, IPs and routes change all the time</td><td>Service discovery, DNS, health checks</td></tr>
+    <tr><td>6. There is one administrator</td><td>Many teams, vendors and clouds own parts of the path</td><td>Clear contracts, observability, runbooks</td></tr>
+    <tr><td>7. Transport cost is zero</td><td>Serialisation, egress and hops cost CPU and money</td><td>Efficient formats (gRPC/Protobuf), co-location</td></tr>
+    <tr><td>8. The network is homogeneous</td><td>Mixed hardware, OSs, protocols and versions</td><td>Open standards, versioned APIs</td></tr>
+  </table></div>
+  <figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Partial failure: did the payment go through?","actors":[{"t":"Client","c":"blue"},{"t":"Network","c":"slate"},{"t":"Payments API","c":"purple"}],"colW":240,"rowH":48,"stepMs":1000,
+ "steps":[
+  {"from":0,"to":2,"t":"POST debit $100","sub":"Idempotency-Key: 42","c":"blue"},
+  {"note":"debit applied ✓","over":[2,2],"c":"green"},
+  {"from":2,"to":1,"t":"200 OK","dash":true,"c":"green"},
+  {"note":"✂ response lost","over":[1,1],"c":"red"},
+  {"from":0,"to":0,"t":"timeout after 2 s","c":"amber"},
+  {"note":"Client can't tell: failed, slow, or done? Retry with the SAME key","over":[0,2],"c":"purple"}
+ ]}
+</script></figure>
+  <div class="grid">
+    <div class="box red"><h4>💥 Partial failure</h4><p>One node, link or dependency fails while the rest keep running. A timeout tells you <b>nothing</b> about whether the work happened.</p></div>
+    <div class="box amber"><h4>✂ Network partition</h4><p>Nodes are alive but can't reach each other. Each side may think the other is dead. This is the "P" in CAP (see <a href="03-scalability-reliability.html#cap">3.10</a>).</p></div>
+    <div class="box purple"><h4>🪖 Two generals problem</h4><p>Two generals must attack together but can only send messengers who may be captured. No finite number of messages makes both <b>certain</b>. Lesson: over an unreliable network you can't get guaranteed agreement, only good-enough protocols.</p></div>
+    <div class="box blue"><h4>🐢 Slow = dead?</h4><p>A GC pause, a busy disk or a noisy neighbour looks exactly like a crash from outside. Failure detection is always a guess based on timeouts.</p></div>
+  </div>
+  <div class="remember"><ul>
+    <li>A timeout means "I don't know", not "it failed". Design every remote write to be <b>safe to retry</b> (idempotency, see <a href="08-api-design.html#idempotency">8.7</a>).</li>
+    <li>Assume every network call can be slow, fail, or succeed without you hearing about it.</li>
+    <li>The more services in a request path, the more likely one is down. Availabilities multiply.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Resilience pipeline</b></td><td><code>Microsoft.Extensions.Http.Resilience</code></td><td>Timeouts, retries with jitter and circuit breakers on every outbound <code>HttpClient</code> call (details in <a href="03-scalability-reliability.html#resilience">3.6</a>)</td></tr>
+    <tr><td><b>Cancellation</b></td><td><span class="pill builtin">built-in</span> <code>CancellationToken</code>, <code>CancellationTokenSource.CancelAfter</code></td><td>Give every remote call a deadline and pass it down the chain</td></tr>
+  </table>
+</div>
+  <div class="post">
+    <p>"The network is reliable" is the most expensive assumption in software 💸</p>
+    <p>⏱ A timeout doesn't mean it failed. It means you don't know.</p>
+    <p>✂ A partition means both sides are alive but think the other is dead.</p>
+    <p>🐢 A slow node looks exactly like a dead one.</p>
+    <p>🔁 So every remote write must be safe to retry.</p>
+    <p>Which of the 8 fallacies has bitten you hardest?</p>
+    <p>#DistributedSystems #SystemDesign #SoftwareArchitecture #Resilience</p>
+  </div>
+</section>
+
+<!-- REPLICATION -->
+<section class="concept" id="replication">
+  <h2><span class="num">4.2</span> Replication models <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Keep copies of the same data on several nodes for <b>availability, durability and read scale</b>. The big choices: who accepts writes, and whether to wait for copies.</p>
+  <div class="tablewrap"><table>
+    <tr><th></th><th>Single-leader</th><th>Multi-leader</th><th>Leaderless</th></tr>
+    <tr><td>Who takes writes</td><td>One leader. Followers copy its log</td><td>Several leaders (often one per region) that sync with each other</td><td>Any replica. The client writes to several at once</td></tr>
+    <tr><td>Pros</td><td>Simple. No write conflicts</td><td>Local writes in every region. Survives a region loss</td><td>No failover needed. Very high availability</td></tr>
+    <tr><td>Cons</td><td>Leader is a bottleneck. Failover takes time and can lose async writes</td><td><b>Write conflicts</b> need resolving (last-write-wins, merge, CRDTs)</td><td>Weaker consistency. Needs quorums and read repair</td></tr>
+    <tr><td>Examples</td><td>SQL Server Always On, PostgreSQL streaming replication, MongoDB replica sets, a Kafka partition</td><td>Cosmos DB multi-region writes, CouchDB, active-active databases</td><td>Cassandra, ScyllaDB, Riak (Amazon Dynamo paper style)</td></tr>
+  </table></div>
+  <div class="cols2">
+    <div class="box green"><h4>⏳ Synchronous replication</h4><ul>
+      <li>Leader waits for the follower to confirm before saying "done"</li>
+      <li>No data loss on failover (RPO = 0)</li>
+      <li>Slower writes. A slow or dead follower can block writes</li>
+      <li>Common middle ground: wait for <b>one</b> follower (semi-sync), the rest async</li>
+    </ul></div>
+    <div class="box amber"><h4>⚡ Asynchronous replication</h4><ul>
+      <li>Leader confirms right away and ships changes later</li>
+      <li>Fast writes, followers can be far away (other regions)</li>
+      <li>Recent writes can be <b>lost</b> on failover</li>
+      <li>Followers lag behind, so reads can be stale</li>
+    </ul></div>
+  </div>
+  <figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Replication lag breaks read-your-writes","interval":2800,
+ "frames":[
+  {"label":"Write","caption":"You update your email. The write goes to the <b>leader</b> and is confirmed.",
+   "rows":[
+    {"label":"You","items":[{"t":"Customer","sub":"update email","c":"amber"}]},
+    {"label":"Replicas","items":[{"t":"Leader","sub":"email = new","c":"green","big":true,"w":120},{"k":"arrow","g":"→","t":"async"},{"t":"Follower 1","sub":"email = old","c":"slate","big":true,"w":120},{"t":"Follower 2","sub":"email = old","c":"slate","big":true,"w":120}]}
+   ]},
+  {"label":"Stale read","caption":"You refresh the page. The read goes to <b>Follower 2</b>, which hasn't caught up. Your change has \"vanished\".","ms":3200,
+   "rows":[
+    {"label":"You","items":[{"t":"Customer","sub":"sees OLD email ?!","c":"red"}]},
+    {"label":"Replicas","items":[{"t":"Leader","sub":"email = new","c":"green","big":true,"w":120},{"k":"arrow","g":"→","t":"lagging"},{"t":"Follower 1","sub":"email = new","c":"green","big":true,"w":120},{"t":"Follower 2","sub":"email = old","c":"red","big":true,"w":120}]}
+   ]},
+  {"label":"Caught up","caption":"A moment later every follower has the change. The system is <b>eventually</b> consistent.",
+   "rows":[
+    {"label":"You","items":[{"t":"Customer","sub":"sees new email","c":"green"}]},
+    {"label":"Replicas","items":[{"t":"Leader","sub":"email = new","c":"green","big":true,"w":120},{"k":"arrow","g":"→","t":"in sync"},{"t":"Follower 1","sub":"email = new","c":"green","big":true,"w":120},{"t":"Follower 2","sub":"email = new","c":"green","big":true,"w":120}]}
+   ]},
+  {"label":"Fix","caption":"<b>Read-your-writes</b> fix: read your own data from the leader for a few seconds after a write, or pass a session token (Cosmos DB Session level).","ms":3400,
+   "rows":[
+    {"label":"You","items":[{"t":"Customer","sub":"reads from leader","c":"blue"}]},
+    {"label":"Replicas","items":[{"t":"Leader","sub":"serves your reads","c":"blue","big":true,"w":120},{"k":"arrow","g":"→","t":"async"},{"t":"Follower 1","sub":"other users","c":"slate","big":true,"w":120},{"t":"Follower 2","sub":"other users","c":"slate","big":true,"w":120}]}
+   ]}
+ ]}
+</script></figure>
+  <h3>Replication-lag anomalies (and fixes)</h3>
+  <ul>
+    <li><b>Read-your-writes</b>: you don't see your own update. Fix: read from the leader after a write, or use session tokens.</li>
+    <li><b>Monotonic reads</b>: you see new data, refresh, then see older data (two different followers). Fix: pin a user to one replica.</li>
+    <li><b>Consistent prefix</b>: you see an answer before the question. Fix: keep related writes in the same partition.</li>
+    <li>These map to the consistency models in <a href="03-scalability-reliability.html#pacelc">3.11</a>.</li>
+  </ul>
+  <div class="remember"><ul>
+    <li>Single-leader is the default. Pick multi-leader or leaderless only when you need multi-region writes or extreme availability, and have a conflict plan.</li>
+    <li>Async replication means RPO &gt; 0 and stale reads. Say so explicitly in a design.</li>
+    <li>Route reads that must be fresh (balance after a payment) to the primary. Send reports and search to replicas.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Cosmos DB regions</b></td><td><code>Microsoft.Azure.Cosmos</code></td><td><code>CosmosClientOptions.ApplicationPreferredRegions</code> to read from the nearest region; Session consistency gives read-your-writes per client</td></tr>
+    <tr><td><b>SQL read replicas</b></td><td><code>Microsoft.Data.SqlClient</code></td><td><code>ApplicationIntent=ReadOnly</code> in the connection string sends reads to a readable secondary</td></tr>
+    <tr><td><b>EF Core read/write split</b></td><td><code>Microsoft.EntityFrameworkCore.SqlServer</code></td><td>Two <code>DbContext</code> registrations: one on the primary for writes, one on the read-only replica with <code>AsNoTracking</code></td></tr>
+    <tr><td><b>Cassandra</b></td><td><code>CassandraCSharpDriver</code></td><td>Leaderless replication with per-query consistency (see 4.3)</td></tr>
+  </table>
+<pre class="code"><code>// Cosmos DB: read from the closest region first, fail over in order
+var cosmos = new CosmosClient(endpoint, new DefaultAzureCredential(), new CosmosClientOptions
+{
+    ApplicationPreferredRegions = [Regions.AustraliaEast, Regions.AustraliaSoutheast]
+});
+
+// SQL Server: a second connection string for replica reads
+// "Server=tcp:myag-listener;Database=Bank;ApplicationIntent=ReadOnly;..."
+builder.Services.AddDbContext&lt;BankDb&gt;(o =&gt; o.UseSqlServer(primaryCs));
+builder.Services.AddDbContext&lt;BankReadDb&gt;(o =&gt; o.UseSqlServer(readOnlyCs)
+    .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking));</code></pre>
+</div>
+  <div class="post">
+    <p>"I updated my email, refreshed, and it changed back." Not a bug in your code. It's replication lag 🔁</p>
+    <p>👑 Single-leader: one node takes writes, followers copy. Simple.</p>
+    <p>🌏 Multi-leader: write in every region, but now you resolve conflicts.</p>
+    <p>🕸 Leaderless: write to many, read from many, let quorums decide.</p>
+    <p>⚡ Async = fast but stale reads and possible loss on failover.</p>
+    <p>Fix the symptom with read-your-writes: read your own data from the leader for a few seconds.</p>
+    <p>#DistributedSystems #Databases #SystemDesign #Replication</p>
+  </div>
+</section>
+
+<!-- QUORUM -->
+<section class="concept" id="quorum">
+  <h2><span class="num">4.3</span> Quorum: N, W, R <span class="tag-added">Added</span></h2>
+  <p class="oneliner">With <b>N</b> replicas, a write must reach <b>W</b> of them and a read must ask <b>R</b> of them. If <code>R + W &gt; N</code>, every read overlaps at least one replica that has the latest write.</p>
+  <div class="grid">
+    <div class="box blue"><h4>N: replicas</h4><p>How many copies of each item exist (Cassandra calls it the replication factor). Typical: 3.</p></div>
+    <div class="box green"><h4>W: write quorum</h4><p>How many replicas must confirm a write before it counts as done.</p></div>
+    <div class="box purple"><h4>R: read quorum</h4><p>How many replicas a read asks. The newest version among the answers wins.</p></div>
+  </div>
+  <figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"N = 3, W = 2, R = 2: reads always overlap the latest write","interval":2800,
+ "frames":[
+  {"label":"Write W=2","caption":"Write balance = $50 (version 2). Replicas A and B confirm, so W = 2 is met. C missed it and still has v1.",
+   "rows":[
+    {"label":"Client","items":[{"t":"Writer","sub":"balance = $50 (v2)","c":"amber"}]},
+    {"label":"Replicas","items":[{"t":"A","sub":"v2: $50 ✓","c":"green","big":true,"w":110},{"t":"B","sub":"v2: $50 ✓","c":"green","big":true,"w":110},{"t":"C","sub":"v1: $80","c":"slate","big":true,"w":110}]}
+   ]},
+  {"label":"Read R=2","caption":"A read asks 2 replicas, here B and C. B says v2, C says v1. <b>Highest version wins</b>: $50. Because 2 + 2 &gt; 3, at least one answer is fresh.","ms":3400,
+   "rows":[
+    {"label":"Client","items":[{"t":"Reader","sub":"gets $50 ✓","c":"green"}]},
+    {"label":"Replicas","items":[{"t":"A","sub":"not asked","c":"off","big":true,"w":110},{"t":"B","sub":"v2: $50","c":"green","big":true,"w":110},{"t":"C","sub":"v1: $80 (stale)","c":"amber","big":true,"w":110}]}
+   ]},
+  {"label":"Read repair","caption":"The reader noticed C was behind and writes v2 back to it (<b>read repair</b>). Anti-entropy jobs do the same in the background.",
+   "rows":[
+    {"label":"Client","items":[{"t":"Reader","sub":"repairs C","c":"blue"}]},
+    {"label":"Replicas","items":[{"t":"A","sub":"v2: $50","c":"green","big":true,"w":110},{"t":"B","sub":"v2: $50","c":"green","big":true,"w":110},{"t":"C","sub":"v2: $50 (repaired)","c":"green","big":true,"w":110}]}
+   ]},
+  {"label":"R+W ≤ N","caption":"With W = 1 and R = 1 (1 + 1 ≤ 3), a read can hit only C and return the <b>stale</b> $80. Fast, but eventually consistent.","ms":3400,
+   "rows":[
+    {"label":"Client","items":[{"t":"Reader","sub":"gets $80 ✗","c":"red"}]},
+    {"label":"Replicas","items":[{"t":"A","sub":"v2: $50","c":"green","big":true,"w":110},{"t":"B","sub":"not asked","c":"off","big":true,"w":110},{"t":"C","sub":"v1: $80","c":"red","big":true,"w":110}]}
+   ]}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>N / W / R</th><th>R + W &gt; N?</th><th>Behaviour</th><th>Tolerates</th></tr>
+    <tr><td>3 / 2 / 2</td><td>✅ 4 &gt; 3</td><td>Balanced default. Fresh reads</td><td>1 node down for both reads and writes</td></tr>
+    <tr><td>3 / 3 / 1</td><td>✅ 4 &gt; 3</td><td>Fast reads, slow and fragile writes</td><td>Writes fail if any node is down</td></tr>
+    <tr><td>3 / 1 / 3</td><td>✅ 4 &gt; 3</td><td>Fast writes, slow reads</td><td>Reads fail if any node is down</td></tr>
+    <tr><td>3 / 1 / 1</td><td>❌ 2 ≤ 3</td><td>Fastest, eventually consistent</td><td>2 nodes down</td></tr>
+  </table></div>
+  <div class="cols2">
+    <div><h3>Sloppy quorum &amp; hinted handoff</h3><ul>
+      <li>If some home replicas are unreachable, a <b>sloppy quorum</b> accepts the write on other nodes so writes stay available.</li>
+      <li>The stand-in node keeps a <b>hint</b> and hands the data back when the home replica returns (hinted handoff).</li>
+      <li>Trade-off: during that window, <code>R + W &gt; N</code> no longer guarantees a fresh read.</li>
+      <li>Described in Amazon's Dynamo paper. Cassandra does hinted handoff, but hints don't count towards the consistency level (except <code>ANY</code>).</li>
+    </ul></div>
+    <div><h3>In real products</h3><ul>
+      <li><b>Cassandra / ScyllaDB</b>: N = replication factor per keyspace. Pick W and R per query: <code>ONE</code>, <code>QUORUM</code>, <code>LOCAL_QUORUM</code> (majority in your data centre), <code>ALL</code>.</li>
+      <li><b>Cosmos DB</b>: you <b>don't</b> set N, W or R. Each partition has a 4-replica set; writes commit to a local majority (3 of 4), Strong and Bounded Staleness read from 2 replicas, the other levels read from 1. You choose a <b>consistency level</b> instead (<a href="03-scalability-reliability.html#pacelc">3.11</a>).</li>
+      <li><b>Raft / Paxos systems</b> (etcd, ZooKeeper) use majority quorums too (4.4).</li>
+    </ul></div>
+  </div>
+  <div class="remember"><ul>
+    <li><code>R + W &gt; N</code> → read and write sets overlap. Majority both ways (<code>W = R = ⌊N/2⌋ + 1</code>) is the usual choice.</li>
+    <li>Quorums alone aren't full linearizability: sloppy quorums, concurrent writes and half-failed writes can still surprise you.</li>
+    <li>Use odd N (3, 5) so a majority survives one or two failures.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Cassandra quorum</b></td><td><code>CassandraCSharpDriver</code></td><td><code>ConsistencyLevel.LocalQuorum</code>, <code>Quorum</code>, <code>One</code>, <code>All</code> per statement, or as the default in <code>QueryOptions</code></td></tr>
+    <tr><td><b>Cosmos DB</b></td><td><code>Microsoft.Azure.Cosmos</code></td><td>No N/W/R knobs. Choose <code>ConsistencyLevel</code> on the account; a request can only make it weaker</td></tr>
+  </table>
+<pre class="code"><code>// Cassandra: RF = 3 per data centre. LOCAL_QUORUM on both sides → 2 + 2 &gt; 3
+var cluster = Cluster.Builder()
+    .AddContactPoint("cassandra-1")
+    .WithQueryOptions(new QueryOptions().SetConsistencyLevel(ConsistencyLevel.LocalQuorum))
+    .Build();
+var session = await cluster.ConnectAsync("payments");
+
+var insert = new SimpleStatement(
+    "INSERT INTO balances (account_id, balance) VALUES (?, ?)", accountId, 50m);
+await session.ExecuteAsync(insert);                 // waits for 2 of 3 local replicas
+
+var read = new SimpleStatement("SELECT balance FROM balances WHERE account_id = ?", accountId)
+    .SetConsistencyLevel(ConsistencyLevel.One);     // cheaper, may be stale
+var rows = await session.ExecuteAsync(read);</code></pre>
+</div>
+  <div class="post">
+    <p>One inequality explains how Cassandra-style databases stay consistent: R + W &gt; N 🧮</p>
+    <p>📦 N = copies of the data (say 3)</p>
+    <p>✍️ W = copies that must confirm a write (2)</p>
+    <p>👀 R = copies you ask on a read (2)</p>
+    <p>🔗 2 + 2 &gt; 3, so every read touches at least one fresh copy</p>
+    <p>Drop to W = 1, R = 1 and you trade freshness for speed. Which way does your system lean?</p>
+    <p>#DistributedSystems #Cassandra #Databases #SystemDesign</p>
+  </div>
+</section>
+
+<!-- CONSENSUS -->
+<section class="concept" id="consensus">
+  <h2><span class="num">4.4</span> Consensus &amp; leader election (Raft) <span class="tag-added">Added</span></h2>
+  <p class="oneliner"><b>Consensus</b> gets a group of nodes to agree on one value, or one ordered log, even when some nodes crash or messages are lost, as long as a <b>majority</b> is up.</p>
+  <div class="grid">
+    <div class="box blue"><h4>🎯 What it solves</h4><ul><li>Who is the leader right now?</li><li>What's the agreed order of writes?</li><li>Is this config change committed?</li></ul></div>
+    <div class="box green"><h4>🔢 Majority rule</h4><p><b>2f + 1</b> nodes survive <b>f</b> failures. 3 nodes survive 1, 5 survive 2. 4 nodes still survive only 1, so use odd numbers.</p></div>
+    <div class="box purple"><h4>📜 Paxos in one line</h4><p>Lamport's original consensus algorithm: proven correct, famously hard to understand and implement (used in Google Chubby and Spanner).</p></div>
+  </div>
+  <h3>Raft in five ideas</h3>
+  <ul>
+    <li><b>Roles</b>: every node is a <b>follower</b>, <b>candidate</b> or <b>leader</b>. Only the leader accepts writes.</li>
+    <li><b>Terms</b>: time is split into numbered terms. At most one leader per term. A higher term always wins.</li>
+    <li><b>Election</b>: followers expect heartbeats. If a randomised timeout passes with none, a follower becomes a candidate, bumps the term and asks for votes. A majority of votes makes it leader.</li>
+    <li><b>Log replication</b>: the leader appends each write to its log and sends it to followers (<code>AppendEntries</code>). Once a majority has stored it, the entry is <b>committed</b>.</li>
+    <li><b>Safety</b>: a node only votes for a candidate whose log is at least as up to date as its own, so committed entries are never lost.</li>
+  </ul>
+  <figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Raft: leader failure, election and log replication (5 nodes)","interval":2900,
+ "frames":[
+  {"label":"Steady","caption":"A is leader for <b>term 1</b> and sends heartbeats. Followers reset their election timers on each one.",
+   "rows":[{"label":"Cluster","items":[{"t":"A","sub":"LEADER · t1","c":"green","big":true,"w":112},{"t":"B","sub":"follower · t1","c":"blue","big":true,"w":112},{"t":"C","sub":"follower · t1","c":"blue","big":true,"w":112},{"t":"D","sub":"follower · t1","c":"blue","big":true,"w":112},{"t":"E","sub":"follower · t1","c":"blue","big":true,"w":112}]}]},
+  {"label":"Leader fails","caption":"A crashes. Heartbeats stop. Each follower's <b>random</b> election timer keeps running.",
+   "rows":[{"label":"Cluster","items":[{"t":"A","sub":"crashed","c":"off","big":true,"w":112},{"t":"B","sub":"timer…","c":"slate","big":true,"w":112},{"t":"C","sub":"timer…","c":"slate","big":true,"w":112},{"t":"D","sub":"timer…","c":"slate","big":true,"w":112},{"t":"E","sub":"timer…","c":"slate","big":true,"w":112}]}]},
+  {"label":"Candidate","caption":"C's timer fires first. It becomes a <b>candidate</b> for term 2, votes for itself and asks the others for votes.",
+   "rows":[{"label":"Cluster","items":[{"t":"A","sub":"crashed","c":"off","big":true,"w":112},{"t":"B","sub":"vote? t2","c":"slate","big":true,"w":112},{"t":"C","sub":"CANDIDATE · t2","c":"amber","big":true,"w":112},{"t":"D","sub":"vote? t2","c":"slate","big":true,"w":112},{"t":"E","sub":"vote? t2","c":"slate","big":true,"w":112}]}]},
+  {"label":"Elected","caption":"B and D vote for C. With 3 of 5 votes (a <b>majority</b>) C becomes leader for term 2.","ms":3200,
+   "rows":[{"label":"Cluster","items":[{"t":"A","sub":"crashed","c":"off","big":true,"w":112},{"t":"B","sub":"voted C ✓","c":"blue","big":true,"w":112},{"t":"C","sub":"LEADER · t2","c":"green","big":true,"w":112},{"t":"D","sub":"voted C ✓","c":"blue","big":true,"w":112},{"t":"E","sub":"no reply yet","c":"slate","big":true,"w":112}]}]},
+  {"label":"Replicate","caption":"A client writes <b>x = 5</b>. C appends it and sends AppendEntries. B and D store it: 3 of 5 have it, so it's <b>committed</b>.","ms":3400,
+   "rows":[{"label":"Cluster","items":[{"t":"A","sub":"crashed","c":"off","big":true,"w":112},{"t":"B","sub":"log: x=5 ✓","c":"green","big":true,"w":112},{"t":"C","sub":"log: x=5 ✓","c":"green","big":true,"w":112},{"t":"D","sub":"log: x=5 ✓","c":"green","big":true,"w":112},{"t":"E","sub":"catching up","c":"slate","big":true,"w":112}]}]},
+  {"label":"Old leader back","caption":"A restarts still thinking it leads term 1. It sees term 2, <b>steps down</b> and copies the log. A stale leader can't commit anything: it can't get a majority.","ms":3600,
+   "rows":[{"label":"Cluster","items":[{"t":"A","sub":"t1 → t2 follower","c":"purple","big":true,"w":112},{"t":"B","sub":"follower · t2","c":"blue","big":true,"w":112},{"t":"C","sub":"LEADER · t2","c":"green","big":true,"w":112},{"t":"D","sub":"follower · t2","c":"blue","big":true,"w":112},{"t":"E","sub":"follower · t2","c":"blue","big":true,"w":112}]}]}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>System</th><th>Algorithm</th><th>Used for</th></tr>
+    <tr><td><b>etcd</b></td><td>Raft</td><td>Stores all Kubernetes cluster state. Leases and elections for controllers</td></tr>
+    <tr><td><b>ZooKeeper</b></td><td>ZAB (ZooKeeper Atomic Broadcast)</td><td>Coordination for Hadoop, HBase, Solr and older Kafka clusters</td></tr>
+    <tr><td><b>Consul</b></td><td>Raft</td><td>Service catalogue, KV store, sessions and locks</td></tr>
+    <tr><td><b>Kafka KRaft</b></td><td>Raft-based metadata quorum</td><td>Controller election and cluster metadata. Kafka 4.0 (March 2025) removed ZooKeeper entirely</td></tr>
+    <tr><td><b>CockroachDB, TiKV, YugabyteDB</b></td><td>Raft per data range</td><td>Each shard is its own small Raft group</td></tr>
+  </table></div>
+  <div class="cols2">
+    <div class="box red"><h4>🧠🧠 Split brain</h4><p>Two nodes both believe they are leader, usually after a partition or a too-short timeout, and both accept writes. Data diverges.</p><ul><li>Needs a <b>majority</b> to lead, so only one side can win</li><li>Odd node counts, or a tie-breaker witness (e.g. a cloud witness for a 2-node cluster)</li></ul></div>
+    <div class="box green"><h4>🎫 Fencing tokens</h4><p>Every new leader or lock holder gets a number that only goes up (Raft term, ZooKeeper zxid, etcd revision). Storage rejects any request with a lower number than it has already seen, so an old leader that wakes up can't do damage. More in 4.5.</p></div>
+  </div>
+  <div class="remember"><ul>
+    <li>Don't write your own consensus. Borrow it: use a lease from etcd/Kubernetes, ZooKeeper, Consul or a cloud lock (Azure Blob lease).</li>
+    <li>Consensus needs a majority, so a 3-node cluster with 2 nodes down stops accepting writes. That's the CP choice by design.</li>
+    <li>Leader election is only half the job. The resource the leader writes to must also check a fencing token.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Kubernetes leader election</b></td><td><code>KubernetesClient</code> (<code>k8s.LeaderElection</code>)</td><td><code>LeaderElector</code> over a Kubernetes Lease object, with <code>OnStartedLeading</code> / <code>OnStoppedLeading</code> events. Run one active replica of a worker</td></tr>
+    <tr><td><b>Azure Blob lease</b></td><td><code>Azure.Storage.Blobs</code> (<code>BlobLeaseClient</code>)</td><td>Simple leader election outside Kubernetes: whoever holds the blob lease (15&ndash;60 s, renewable) is leader</td></tr>
+    <tr><td><b>etcd client</b></td><td><code>dotnet-etcd</code></td><td>gRPC client for etcd v3: leases, watches, transactions, election and lock APIs</td></tr>
+    <tr><td><b>Raft in .NET</b></td><td><code>DotNext.Net.Cluster</code>, <code>DotNext.AspNetCore.Cluster</code></td><td>A full Raft implementation (TCP or HTTP transport) if you really must build a replicated state machine yourself</td></tr>
+  </table>
+<pre class="code"><code>// Leader election with an Azure Blob lease: only the lease holder runs the job
+var lease = container.GetBlobClient("leader/statement-run").GetBlobLeaseClient();
+while (!ct.IsCancellationRequested)
+{
+    try
+    {
+        await lease.AcquireAsync(TimeSpan.FromSeconds(30), cancellationToken: ct);
+        using var renew = new PeriodicTimer(TimeSpan.FromSeconds(10));
+        var work = RunAsLeaderAsync(ct);                     // the singleton job
+        while (!work.IsCompleted &amp;&amp; await renew.WaitForNextTickAsync(ct))
+            await lease.RenewAsync(cancellationToken: ct);   // keep leadership
+        await work;
+        await lease.ReleaseAsync(cancellationToken: ct);
+    }
+    catch (RequestFailedException e) when (e.Status == 409) // someone else leads
+    {
+        await Task.Delay(TimeSpan.FromSeconds(15), ct);
+    }
+}</code></pre>
+  <p class="warn">If a renew fails, stop working immediately: another instance may already be leader. Pair the lease with a fencing check on the data you write.</p>
+</div>
+  <div class="post">
+    <p>How does Kubernetes know which etcd node is in charge? Raft 🗳️</p>
+    <p>💓 The leader sends heartbeats. Silence for too long → a follower runs for election.</p>
+    <p>🔢 Every election bumps the "term". Higher term always wins.</p>
+    <p>🏆 A majority of votes makes you leader. 5 nodes survive 2 failures.</p>
+    <p>📜 A write is committed once a majority has it in their log.</p>
+    <p>🧟 An old leader that wakes up sees a higher term and steps down.</p>
+    <p>Rule of thumb: never build your own consensus. Borrow it from etcd, ZooKeeper or a cloud lease.</p>
+    <p>#DistributedSystems #Raft #Kubernetes #SystemDesign</p>
+  </div>
+</section>
+
+<!-- LOCKS -->
+<section class="concept" id="locks">
+  <h2><span class="num">4.5</span> Distributed locks <span class="tag-added">Added</span></h2>
+  <p class="oneliner">A lock shared across machines so that <b>only one worker</b> does something at a time, such as running the nightly statement job or refreshing a shared token.</p>
+  <div class="grid">
+    <div class="box blue"><h4>⏲ Lease, not a lock</h4><p>Every distributed lock needs a <b>TTL</b>. If the holder crashes, the lock frees itself. The holder must renew before it expires.</p></div>
+    <div class="box red"><h4>🧟 The zombie problem</h4><p>The holder pauses (GC, VM freeze, slow network) longer than the TTL. The lock expires, someone else takes it, the first one wakes up and still thinks it holds it. <b>Two writers.</b></p></div>
+    <div class="box green"><h4>🎫 Fencing token</h4><p>The lock service hands out a number that goes up with every grant. The storage rejects writes carrying an older number.</p></div>
+  </div>
+  <figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Why a lease alone isn't enough: fencing tokens","actors":[{"t":"Worker 1","c":"blue"},{"t":"Lock service","c":"purple"},{"t":"Worker 2","c":"teal"},{"t":"Storage","c":"amber"}],"colW":190,"rowH":46,"stepMs":950,
+ "steps":[
+  {"from":0,"to":1,"t":"acquire lock","c":"blue"},
+  {"from":1,"to":0,"t":"OK, token 33","dash":true,"c":"green"},
+  {"from":0,"to":0,"t":"GC pause…","c":"amber"},
+  {"note":"lease expires (TTL)","over":[1,1],"c":"amber"},
+  {"from":2,"to":1,"t":"acquire lock","c":"teal"},
+  {"from":1,"to":2,"t":"OK, token 34","dash":true,"c":"green"},
+  {"from":2,"to":3,"t":"write (token 34)","c":"green"},
+  {"from":0,"to":3,"t":"write (token 33)","sub":"Worker 1 wakes up","c":"red"},
+  {"from":3,"to":0,"t":"rejected: 33 < 34","dash":true,"c":"red"},
+  {"note":"Storage remembers the highest token, so the zombie write is blocked","over":[0,3],"c":"green"}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>Option</th><th>How</th><th>Good for</th><th>Watch out</th></tr>
+    <tr><td><b>Redis single key</b></td><td><code>SET lock:job &lt;id&gt; NX PX 30000</code>; release only if the value is still yours (Lua script)</td><td>Fast, simple <b>efficiency</b> locks (avoid doing work twice)</td><td>Lost if Redis fails over before replicating. No fencing token</td></tr>
+    <tr><td><b>Redlock</b></td><td>Take the key on a majority of N independent Redis masters</td><td>Efficiency locks with fewer single points of failure</td><td>Kleppmann (2016) showed it relies on timing assumptions and gives no fencing token; Redis's author disputed this. Don't rely on it for correctness</td></tr>
+    <tr><td><b>Azure Blob lease</b></td><td>Lease a blob for 15&ndash;60 s (or infinite) and renew it</td><td>Azure-native singleton jobs and leader election</td><td>Renew in the background. No built-in token, but the lease ID identifies the holder</td></tr>
+    <tr><td><b>SQL Server / PostgreSQL</b></td><td><code>sp_getapplock</code>; <code>pg_advisory_lock</code> / <code>pg_try_advisory_xact_lock</code></td><td>You already have the DB. The lock dies with the session or transaction</td><td>Holds a connection open. DB failover drops locks</td></tr>
+    <tr><td><b>ZooKeeper / etcd</b></td><td>Ephemeral sequential nodes; etcd lease + lock API</td><td><b>Correctness</b> locks: consensus-backed, natural fencing token (zxid, revision)</td><td>Another cluster to run</td></tr>
+  </table></div>
+  <div class="cols2">
+    <div class="box amber"><h4>⚖️ Efficiency vs correctness</h4><p>Ask "what happens if two workers run at once?" If the answer is "some wasted work", Redis is fine. If it's "a customer is charged twice", you need fencing or, better, no lock at all.</p></div>
+    <div class="box green"><h4>✅ Prefer idempotency over locks</h4><ul><li>A unique constraint on a business key (payment ID)</li><li>Conditional update / optimistic concurrency (rowversion, ETag)</li><li>One consumer per key (Service Bus sessions, Kafka partitions)</li><li>Idempotent handlers (<a href="08-api-design.html#idempotency">8.7</a>)</li></ul></div>
+  </div>
+  <div class="remember"><ul>
+    <li>Every distributed lock is really a <b>lease</b>. Assume it can expire while you're still working.</li>
+    <li>Use fencing tokens, or a conditional write, wherever two holders would corrupt data.</li>
+    <li><code>lock</code> / <code>SemaphoreSlim</code> only work <b>inside one process</b>. They do nothing across pods.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>DistributedLock</b></td><td><code>DistributedLock.SqlServer</code>, <code>DistributedLock.Postgres</code>, <code>DistributedLock.Redis</code>, <code>DistributedLock.Azure</code>, <code>DistributedLock.ZooKeeper</code></td><td>One <code>IDistributedLock</code> API over SQL app locks, Postgres advisory locks, Redis (incl. Redlock), Blob leases and ZooKeeper. Auto-renews while held</td></tr>
+    <tr><td><b>Redis primitives</b></td><td><code>StackExchange.Redis</code></td><td><code>LockTakeAsync(key, value, expiry)</code> / <code>LockReleaseAsync</code> for a simple single-instance lock</td></tr>
+    <tr><td><b>Redlock</b></td><td><code>RedLock.net</code></td><td><code>RedLockFactory.CreateLockAsync</code> across several independent Redis servers (last release 2022)</td></tr>
+    <tr><td><b>Blob lease</b></td><td><code>Azure.Storage.Blobs</code> (<code>BlobLeaseClient</code>)</td><td>Raw lease API: <code>AcquireAsync</code>, <code>RenewAsync</code>, <code>ReleaseAsync</code></td></tr>
+    <tr><td><b>In-process only</b></td><td><span class="pill builtin">built-in</span> <code>SemaphoreSlim</code>, <code>System.Threading.Lock</code></td><td>Guard code inside one app instance. Not a distributed lock</td></tr>
+  </table>
+<pre class="code"><code>// One instance runs the job; a fencing check protects the data anyway
+var @lock = new SqlDistributedLock("statement-run-2026-10", connectionString);
+await using var handle = await @lock.TryAcquireAsync(TimeSpan.Zero, ct);
+if (handle is null) return;                        // another pod has it
+
+long token = await jobs.NextFencingTokenAsync(ct);  // e.g. a SQL SEQUENCE
+foreach (var batch in await LoadBatchesAsync(ct))
+{
+    // Only write if no newer holder has written already
+    int updated = await db.StatementRuns
+        .Where(r =&gt; r.Id == batch.RunId &amp;&amp; r.LastToken &lt; token)
+        .ExecuteUpdateAsync(s =&gt; s.SetProperty(r =&gt; r.LastToken, token)
+                                  .SetProperty(r =&gt; r.Status, "Done"), ct);
+    if (updated == 0) break;                       // we've been fenced off
+}</code></pre>
+</div>
+  <div class="post">
+    <p>Your distributed lock is lying to you. It's really a lease 🔒⏲</p>
+    <p>😴 Worker 1 takes the lock, then freezes in a long GC pause.</p>
+    <p>⌛ The lease expires. Worker 2 takes it and writes.</p>
+    <p>🧟 Worker 1 wakes up, still "holding" the lock, and writes too.</p>
+    <p>🎫 Fix: fencing tokens. Storage rejects any write with an older token.</p>
+    <p>✅ Better fix: make the operation idempotent so you don't need the lock.</p>
+    <p>Where do you still rely on a Redis lock for correctness?</p>
+    <p>#DistributedSystems #Redis #SystemDesign #Concurrency</p>
+  </div>
+</section>
+
+<!-- TWO-PC -->
+<section class="concept" id="two-pc">
+  <h2><span class="num">4.6</span> Distributed transactions: 2PC vs Saga <span class="tag-added">Added</span></h2>
+  <p class="oneliner"><b>Two-phase commit (2PC)</b> makes several databases commit or roll back together. It's atomic, but blocking and fragile, so microservices usually use a <b>saga</b> instead.</p>
+  <figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Two-phase commit and its blocking problem","actors":[{"t":"Coordinator","c":"purple"},{"t":"Accounts DB","c":"blue"},{"t":"Ledger DB","c":"teal"}],"colW":230,"rowH":46,"stepMs":950,
+ "steps":[
+  {"note":"Phase 1: PREPARE (vote)","over":[0,2],"c":"slate"},
+  {"from":0,"to":1,"t":"prepare","c":"purple"},
+  {"from":0,"to":2,"t":"prepare","c":"purple"},
+  {"from":1,"to":0,"t":"yes (locks held)","dash":true,"c":"green"},
+  {"from":2,"to":0,"t":"yes (locks held)","dash":true,"c":"green"},
+  {"note":"Phase 2: COMMIT (decision)","over":[0,2],"c":"slate"},
+  {"from":0,"to":1,"t":"commit","c":"green"},
+  {"from":0,"to":2,"t":"commit","c":"green"},
+  {"note":"If the coordinator dies between the phases, both DBs wait with locks held: they can't decide alone","over":[0,2],"c":"red"}
+ ]}
+</script></figure>
+  <ul>
+    <li><b>Phase 1, prepare</b>: each participant writes everything durably, holds its locks and votes yes or no.</li>
+    <li><b>Phase 2, commit</b>: if all voted yes, the coordinator says commit; otherwise roll back.</li>
+    <li><b>Blocking problem</b>: a participant that voted yes can't commit or abort on its own. If the coordinator is down, it waits with rows locked.</li>
+    <li><b>XA</b> is the standard 2PC interface between a transaction manager and resources. On Windows, <b>MSDTC</b> plays the coordinator role.</li>
+  </ul>
+  <div class="tablewrap"><table>
+    <tr><th></th><th>2PC / XA</th><th>Saga</th><th>TCC (Try-Confirm-Cancel)</th></tr>
+    <tr><td>Consistency</td><td>Atomic (ACID across resources)</td><td>Eventual. Undo with compensating actions</td><td>Eventual, with reservations</td></tr>
+    <tr><td>How</td><td>Prepare, then commit</td><td>Local transaction per step + event; compensate on failure</td><td><b>Try</b> reserves, <b>Confirm</b> uses the reservation, <b>Cancel</b> releases it</td></tr>
+    <tr><td>Locks</td><td>Held across all participants until commit</td><td>Short, local only</td><td>Reservation, not a DB lock</td></tr>
+    <tr><td>Availability</td><td>Low: every participant and the coordinator must be up</td><td>High: steps can retry later</td><td>High</td></tr>
+    <tr><td>Fits</td><td>A few databases in one data centre that all support XA</td><td>Microservices, long-running business flows</td><td>Inventory, seats, funds holds</td></tr>
+    <tr><td>Banking example</td><td>Legacy core moving money between two DBs on one platform</td><td>Open account → KYC → card issue, with undo steps</td><td>Card <b>authorisation</b> (hold funds) then <b>capture</b> or <b>void</b></td></tr>
+  </table></div>
+  <h3>Why microservices avoid 2PC</h3>
+  <ul>
+    <li>Brokers, NoSQL stores and HTTP APIs usually don't support XA at all.</li>
+    <li>Locks held across services kill throughput and couple teams' availability together.</li>
+    <li>The coordinator is a single point of failure.</li>
+    <li>Instead: a <b>saga</b> (<a href="11-architecture-patterns.html#saga">11.4</a>) for the business flow, plus the <b>transactional outbox</b> (<a href="10-integration-messaging.html#eip">10.5</a>) so each step's DB write and event publish stay atomic.</li>
+  </ul>
+  <div class="remember"><ul>
+    <li>2PC gives atomicity at the cost of availability: it's CP, and it blocks.</li>
+    <li>Saga = a chain of local transactions + compensations. Accept intermediate states ("pending") and design them in.</li>
+    <li>TCC is a saga where the first step is an explicit reservation that expires if not confirmed.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>TransactionScope</b></td><td><span class="pill builtin">built-in</span> <code>System.Transactions</code></td><td>An ambient transaction around your DB work. Escalation to a distributed (MSDTC) transaction works on <b>Windows only</b> since .NET 7 and needs <code>TransactionManager.ImplicitDistributedTransactions = true</code></td></tr>
+    <tr><td><b>Orchestrated sagas</b></td><td><code>Microsoft.Azure.Functions.Worker.Extensions.DurableTask</code>, <code>Temporalio</code></td><td>Saga steps and compensations as durable workflow code (see <a href="11-architecture-patterns.html#saga">11.4</a>)</td></tr>
+    <tr><td><b>Outbox</b></td><td><code>WolverineFx.EntityFrameworkCore</code> or a hand-rolled outbox table</td><td>Commit the DB change and the outgoing event together, no 2PC needed (see <a href="10-integration-messaging.html#eip">10.5</a>)</td></tr>
+  </table>
+<pre class="code"><code>// Works anywhere: one database, one local transaction
+using (var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+{
+    await accounts.DebitAsync(from, amount, ct);
+    await ledger.PostAsync(from, to, amount, ct);   // same DB / connection string
+    scope.Complete();
+}
+
+// Two different databases → escalates to MSDTC (Windows only). Avoid in new designs.
+if (OperatingSystem.IsWindows())
+    TransactionManager.ImplicitDistributedTransactions = true;</code></pre>
+  <p class="warn">MSDTC escalation doesn't work in Linux containers, and it ties you to Windows hosts. In the cloud, design for sagas + outbox from day one.</p>
+</div>
+  <div class="post">
+    <p>Why don't microservices use distributed transactions? One word: blocking 🔒</p>
+    <p>1️⃣ Phase 1: every database prepares and holds its locks.</p>
+    <p>2️⃣ Phase 2: the coordinator says commit.</p>
+    <p>💀 Coordinator dies in between? Everyone waits, rows locked.</p>
+    <p>🔁 The alternative: a saga. Local transactions plus compensating "undo" steps.</p>
+    <p>💳 Card payments already work this way: authorise (hold), then capture or void.</p>
+    <p>Atomic and blocking, or available and eventually consistent. Which would you pick for payments?</p>
+    <p>#Microservices #DistributedSystems #Saga #SystemDesign</p>
+  </div>
+</section>
+
+<!-- CLOCKS -->
+<section class="concept" id="clocks">
+  <h2><span class="num">4.7</span> Time &amp; ordering: clocks, Lamport, vector clocks <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Every machine's clock is slightly wrong, so <b>timestamps can't reliably order events</b> across machines. Logical clocks order events by cause and effect instead.</p>
+  <div class="grid">
+    <div class="box red"><h4>🕰 Clock skew</h4><p>Two servers' clocks disagree, often by milliseconds, sometimes by seconds after a bad NTP sync or VM pause.</p></div>
+    <div class="box amber"><h4>⏪ Clocks jump</h4><p>NTP can step a clock backwards. Leap seconds and VM migrations add surprises. "Later" can get a smaller timestamp.</p></div>
+    <div class="box blue"><h4>⏱ Two kinds of clock</h4><p><b>Wall clock</b> (UTC) for display and logs. <b>Monotonic clock</b> for durations and timeouts: it never goes backwards.</p></div>
+  </div>
+  <div class="box red" style="margin:10px 0"><h4>⚠️ Last-write-wins (LWW) loses data silently</h4><p>Two replicas accept updates to the same address. Node B's clock runs 2 s fast, so its <b>older</b> update gets the bigger timestamp and wins. The newer change disappears without any error. Cassandra, and Cosmos DB multi-region writes, resolve conflicts with LWW by default, so use it only where losing a concurrent update is acceptable.</p></div>
+  <figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Lamport timestamps: counters that follow cause and effect","actors":[{"t":"Node A","c":"blue"},{"t":"Node B","c":"purple"},{"t":"Node C","c":"teal"}],"colW":230,"rowH":46,"stepMs":1000,
+ "steps":[
+  {"note":"local event → L = 1","over":[0,0],"c":"blue"},
+  {"note":"local event → L = 1","over":[2,2],"c":"teal"},
+  {"from":0,"to":1,"t":"message, L = 2","sub":"tick before sending","c":"blue"},
+  {"note":"receive: max(0, 2) + 1 = 3","over":[1,1],"c":"purple"},
+  {"from":1,"to":2,"t":"message, L = 4","sub":"tick before sending","c":"purple"},
+  {"note":"receive: max(1, 4) + 1 = 5","over":[2,2],"c":"teal"},
+  {"note":"If a caused b, then L(a) < L(b). But L(a) < L(b) doesn't prove a caused b","over":[0,2],"c":"amber"}
+ ]}
+</script></figure>
+  <div class="grid">
+    <div class="box blue"><h4>🔢 Lamport timestamps</h4><p>One counter per node. Tick on every event; on receive, take <code>max(local, received) + 1</code>. Gives a total order consistent with causality (break ties by node ID). Can't tell whether two events were concurrent.</p></div>
+    <div class="box purple"><h4>🧮 Vector clocks</h4><p>Each node keeps a counter for <b>every</b> node. Compare vectors to see "happened before" or <b>concurrent</b> (a real conflict). Used in Amazon's Dynamo paper and Riak. Size grows with the number of nodes.</p></div>
+    <div class="box teal"><h4>🔀 Hybrid logical clocks (HLC)</h4><p>Physical time plus a small logical counter. Stays close to wall-clock time but still respects causality. Used by CockroachDB, YugabyteDB and MongoDB cluster time.</p></div>
+    <div class="box green"><h4>🛰 TrueTime (Spanner)</h4><p>GPS and atomic clocks give a time <b>interval</b> with bounded uncertainty; Spanner waits out the uncertainty before committing, so timestamps order transactions globally.</p></div>
+  </div>
+  <h3>CRDTs: merge without conflicts</h3>
+  <ul>
+    <li><b>Conflict-free replicated data types</b> are data structures that any replica can update, and that always merge to the same result in any order.</li>
+    <li>Examples: G-Counter (grow-only counter), PN-Counter (up and down), OR-Set (add/remove set), LWW-Register.</li>
+    <li>Used in Redis Active-Active geo-replication, Riak, and collaborative editors (Automerge, Yjs).</li>
+    <li>Great for counters, likes, carts and presence. Not for balances that must never go below zero: that needs coordination.</li>
+  </ul>
+  <div class="remember"><ul>
+    <li>Never order cross-machine events by wall-clock timestamps alone. Use a sequence from one leader, a version number, or a logical clock.</li>
+    <li>Measure durations and timeouts with a monotonic clock (<code>Stopwatch</code>), not <code>DateTime.Now</code>.</li>
+    <li>Store and send times as UTC with an offset (<code>DateTimeOffset</code>). Keep NTP healthy and alert on skew.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>TimeProvider</b></td><td><span class="pill builtin">built-in</span> <code>System.TimeProvider</code> (.NET 8+)</td><td>Inject time: <code>GetUtcNow()</code> for wall time, <code>GetTimestamp()</code> / <code>GetElapsedTime()</code> for durations, timers that tests can control</td></tr>
+    <tr><td><b>Fake time in tests</b></td><td><code>Microsoft.Extensions.TimeProvider.Testing</code></td><td><code>FakeTimeProvider</code>: move time forward to test TTLs, leases and timeouts without waiting</td></tr>
+    <tr><td><b>Monotonic durations</b></td><td><span class="pill builtin">built-in</span> <code>Stopwatch.GetTimestamp()</code> / <code>Stopwatch.GetElapsedTime()</code></td><td>Measure elapsed time; unaffected by clock changes</td></tr>
+    <tr><td><b>UTC timestamps</b></td><td><span class="pill builtin">built-in</span> <code>DateTimeOffset.UtcNow</code></td><td>Unambiguous times for logs, events and audit records</td></tr>
+  </table>
+<pre class="code"><code>// A thread-safe Lamport clock
+public sealed class LamportClock
+{
+    private long _time;
+
+    // Local event or just before sending a message
+    public long Tick() =&gt; Interlocked.Increment(ref _time);
+
+    // On receiving a message stamped with the sender's time
+    public long Receive(long remote)
+    {
+        while (true)
+        {
+            long current = Interlocked.Read(ref _time);
+            long next = Math.Max(current, remote) + 1;
+            if (Interlocked.CompareExchange(ref _time, next, current) == current)
+                return next;
+        }
+    }
+}</code></pre>
+</div>
+  <div class="post">
+    <p>Your servers don't agree on what time it is. And that can silently delete data 🕰️</p>
+    <p>⏩ Clocks drift and NTP can jump them backwards.</p>
+    <p>🗑 Last-write-wins + a fast clock = an older update beats a newer one, with no error.</p>
+    <p>🔢 Lamport clocks order events by cause and effect, not by wall time.</p>
+    <p>🧮 Vector clocks go further and detect true conflicts.</p>
+    <p>⏱ For timeouts, use a monotonic clock, never DateTime.Now.</p>
+    <p>Have you ever debugged a bug caused by clock skew?</p>
+    <p>#DistributedSystems #SystemDesign #SoftwareEngineering #DotNet</p>
+  </div>
+</section>
+
+<div class="qa-wrap">
+  <h2>⚡ Quick-fire Q&amp;A</h2>
+  <details class="qa"><summary>How many nodes should a consensus cluster (etcd, ZooKeeper) have?</summary><p>An odd number, usually 3 or 5. 2f + 1 nodes survive f failures: 3 survive 1, 5 survive 2. Adding a 4th node adds cost without adding fault tolerance.</p></details>
+  <details class="qa"><summary>Does R + W &gt; N guarantee strong consistency?</summary><p>It guarantees that read and write sets overlap, so a read normally sees the latest acknowledged write. Sloppy quorums, concurrent writes and partially failed writes can still give anomalies, so it's not full linearizability.</p></details>
+  <details class="qa"><summary>Is a Redis SET NX lock safe?</summary><p>For efficiency (avoid duplicate work), yes, with a TTL and a release that checks the value. For correctness, no: a paused holder can outlive its lease. Add a fencing token checked by the storage, or make the operation idempotent.</p></details>
+  <details class="qa"><summary>Why not use 2PC across microservices?</summary><p>It blocks when the coordinator fails, holds locks across services, needs every participant to support XA, and lowers availability. Use a saga with compensations plus the transactional outbox.</p></details>
+  <details class="qa"><summary>Why can't you order events from different servers by timestamp?</summary><p>Clocks skew and can jump backwards, so a later event can get an earlier timestamp. Use a single sequencer, version numbers, or logical clocks (Lamport, vector, HLC).</p></details>
+</div>
+
+<div class="pager"><a href="03-scalability-reliability.html">← 03 · Scalability &amp; Reliability</a><a class="next" href="05-caching.html">05 · Caching →</a></div>
+</main>
+<footer>Tech Concepts Prep · Section 04</footer>
+<script src="assets/app.js"></script>
+<script src="assets/viz.js"></script>
+</body>
+</html>

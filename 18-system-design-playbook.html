@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>15 · End-to-End System Design Playbook | Tech Concepts Prep</title>
+<title>18 · End-to-End System Design Playbook | Tech Concepts Prep</title>
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<nav class="top"><a href="14-architecture-documents.html">← Architecture Docs</a><span class="here">15 · System Design Playbook</span><a href="index.html">🏠 Roadmap</a></nav>
+<nav class="top"><a href="17-architecture-documents.html">← Architecture Docs</a><span class="here">18 · System Design Playbook</span><a href="19-design-case-studies.html">Next: Case Studies →</a></nav>
 <main>
 
 <header class="hero">
@@ -26,27 +26,27 @@
 
 <!-- E2E -->
 <section class="concept" id="e2e">
-  <h2><span class="num">15.1</span> End-to-end: the journey of one request <span class="tag-added">Added</span></h2>
+  <h2><span class="num">18.1</span> End-to-end: the journey of one request <span class="tag-added">Added</span></h2>
   <p class="oneliner">A customer taps "Pay" in the mobile app. Here's every hop, and the concept that applies at each one.</p>
 <figure class="viz" data-viz="journey"><script type="application/json">
 {"title":"Tap \"Pay\": every hop and the concept behind it","stepMs":1100,
  "steps":[
-  {"icon":"📱","t":"Mobile app","d":"OAuth2 + PKCE login via IdP (Entra/Okta) → access token","tag":"S10 IAM · S06 OAuth","href":"10-security-iam.html#iam","c":"blue"},
+  {"icon":"📱","t":"Mobile app","d":"OAuth2 + PKCE login via IdP (Entra/Okta) → access token","tag":"S10 IAM · S06 OAuth","href":"12-security-iam.html#iam","c":"blue"},
   {"icon":"🔒","t":"HTTPS","d":"TLS 1.3, HTTP/2","tag":"S02 Protocols","href":"02-networking-protocols.html#http","c":"slate"},
-  {"icon":"🌐","t":"DNS → Global LB / CDN / WAF (Front Door)","d":"geo-routing, DDoS protection, cache static content","tag":"S02 DNS · S04 CDN","href":"04-caching.html#cdn","c":"teal"},
-  {"icon":"🚪","t":"API Gateway / APIM","d":"validate JWT, rate limit, quota, transform, log","tag":"S07 APIM · S06 Rate limit","href":"07-apim.html#policies","c":"purple"},
+  {"icon":"🌐","t":"DNS → Global LB / CDN / WAF (Front Door)","d":"geo-routing, DDoS protection, cache static content","tag":"S02 DNS · S04 CDN","href":"05-caching.html#cdn","c":"teal"},
+  {"icon":"🚪","t":"API Gateway / APIM","d":"validate JWT, rate limit, quota, transform, log","tag":"S07 APIM · S06 Rate limit","href":"09-apim.html#policies","c":"purple"},
   {"icon":"⚖️","t":"Regional L7 load balancer","d":"→ healthy instances (zone-redundant)","tag":"S03 LB · Fault tolerance","href":"03-scalability-reliability.html#lb","c":"slate"},
-  {"icon":"🧩","t":"Payments service","d":"stateless, autoscaled container, circuit breakers, timeouts","tag":"S03 · S09 Microservices","href":"09-architecture-patterns.html#mono-micro","c":"blue"},
-  {"icon":"⚡","t":"Redis cache","d":"cache-aside: payee details, FX rates; TTL + jitter","tag":"S04 Caching","href":"04-caching.html#strategies","indent":1,"c":"red"},
+  {"icon":"🧩","t":"Payments service","d":"stateless, autoscaled container, circuit breakers, timeouts","tag":"S03 · S09 Microservices","href":"11-architecture-patterns.html#mono-micro","c":"blue"},
+  {"icon":"⚡","t":"Redis cache","d":"cache-aside: payee details, FX rates; TTL + jitter","tag":"S04 Caching","href":"05-caching.html#strategies","indent":1,"c":"red"},
   {"icon":"🛡️","t":"Fraud service","d":"gRPC, 200 ms timeout, fallback = queue for review","tag":"S02 gRPC · S03 Resilience","href":"03-scalability-reliability.html#resilience","indent":1,"c":"amber"},
-  {"icon":"🗄️","t":"SQL primary","d":"ACID transaction + outbox row; Idempotency-Key check","tag":"S05 DB · S06 Idempotency","href":"06-api-design.html#idempotency","indent":1,"c":"green"},
+  {"icon":"🗄️","t":"SQL primary","d":"ACID transaction + outbox row; Idempotency-Key check","tag":"S05 DB · S06 Idempotency","href":"08-api-design.html#idempotency","indent":1,"c":"green"},
   {"icon":"🪞","t":"Replicas","d":"sync replica (zone) + async replica (DR region)","tag":"S03 DR · S05 Replication","href":"03-scalability-reliability.html#dr","indent":1,"c":"green"},
-  {"icon":"📬","t":"Outbox relay → Service Bus topic \"PaymentCompleted\"","d":"publishes the committed outbox rows as events","tag":"S08 Outbox · Pub/Sub","href":"08-integration-messaging.html#queue-event","c":"amber"},
-  {"icon":"🔔","t":"Notification service","d":"push / SMS (near real-time)","tag":"S08 Near-RT","href":"08-integration-messaging.html#types","indent":1,"c":"pink"},
-  {"icon":"📒","t":"Ledger / GL service","d":"idempotent consumer, DLQ on failure","tag":"S08 Delivery guarantees","href":"08-integration-messaging.html#guarantees","indent":1,"c":"teal"},
-  {"icon":"🏞️","t":"CDC / stream → Lakehouse","d":"ELT, medallion → nightly batch reconciliation","tag":"S05 ETL/ELT · S08 Batch","href":"05-databases-data.html#etl","indent":1,"c":"slate"},
-  {"icon":"🤖","t":"AI assistant: \"where's my payment?\"","d":"agent uses RAG over FAQs + calls the <b>get_payment_status</b> tool with the user's token","tag":"S12 RAG · S13 Agents","href":"12-rag-genai.html#rag","c":"purple"},
-  {"icon":"🧰","t":"Around everything","d":"Key Vault + managed identity · OpenTelemetry traces/metrics/logs · SLOs & alerts · CI/CD with canary deploys · IaC · ADRs + SO/LLD + SOPs","tag":"S10 · S11 · S14","href":"11-devops-deployment-observability.html#observability","c":"slate"}
+  {"icon":"📬","t":"Outbox relay → Service Bus topic \"PaymentCompleted\"","d":"publishes the committed outbox rows as events","tag":"S08 Outbox · Pub/Sub","href":"10-integration-messaging.html#queue-event","c":"amber"},
+  {"icon":"🔔","t":"Notification service","d":"push / SMS (near real-time)","tag":"S08 Near-RT","href":"10-integration-messaging.html#types","indent":1,"c":"pink"},
+  {"icon":"📒","t":"Ledger / GL service","d":"idempotent consumer, DLQ on failure","tag":"S08 Delivery guarantees","href":"10-integration-messaging.html#guarantees","indent":1,"c":"teal"},
+  {"icon":"🏞️","t":"CDC / stream → Lakehouse","d":"ELT, medallion → nightly batch reconciliation","tag":"S05 ETL/ELT · S08 Batch","href":"06-databases-data.html#etl","indent":1,"c":"slate"},
+  {"icon":"🤖","t":"AI assistant: \"where's my payment?\"","d":"agent uses RAG over FAQs + calls the <b>get_payment_status</b> tool with the user's token","tag":"S12 RAG · S13 Agents","href":"14-rag-genai.html#rag","c":"purple"},
+  {"icon":"🧰","t":"Around everything","d":"Key Vault + managed identity · OpenTelemetry traces/metrics/logs · SLOs & alerts · CI/CD with canary deploys · IaC · ADRs + SO/LLD + SOPs","tag":"S10 · S11 · S14","href":"13-devops-deployment-observability.html#observability","c":"slate"}
  ]}
 </script></figure>
   <div class="dotnet">
@@ -89,7 +89,7 @@
 
 <!-- FRAMEWORK -->
 <section class="concept" id="framework">
-  <h2><span class="num">15.2</span> System design interview framework <span class="tag-added">Added</span></h2>
+  <h2><span class="num">18.2</span> System design interview framework <span class="tag-added">Added</span></h2>
   <p class="oneliner">A repeatable 7-step structure for a 45–60 minute design discussion. Structure beats brilliance.</p>
   <div class="flow">
     <div class="n">1. Clarify<small>~5 min</small></div><div class="ar">→</div>
@@ -118,7 +118,7 @@
 
 <!-- X VS Y -->
 <section class="concept" id="xvy">
-  <h2><span class="num">15.3</span> How to answer any "X vs Y" question <span class="tag-added">Added</span></h2>
+  <h2><span class="num">18.3</span> How to answer any "X vs Y" question <span class="tag-added">Added</span></h2>
   <p class="oneliner">One formula covers Sync vs Async, SQL vs NoSQL, Queue vs Event, ETL vs ELT…</p>
   <div class="flow">
     <div class="n">1. Define both<small>one line each</small></div><div class="ar">→</div>
@@ -132,7 +132,7 @@
 
 <!-- TRADEOFFS -->
 <section class="concept" id="tradeoffs">
-  <h2><span class="num">15.4</span> Trade-off cheat sheet <span class="tag-added">Added</span></h2>
+  <h2><span class="num">18.4</span> Trade-off cheat sheet <span class="tag-added">Added</span></h2>
   <p class="oneliner">Common either/or decisions, with a rule of thumb for when to choose each side.</p>
   <div class="tablewrap"><table>
     <tr><th>Decision</th><th>Choose left when…</th><th>Choose right when…</th></tr>
@@ -156,7 +156,7 @@
 
 <!-- EXAMPLE -->
 <section class="concept" id="example">
-  <h2><span class="num">15.5</span> Worked example: real-time payment notification platform <span class="tag-added">Added</span></h2>
+  <h2><span class="num">18.5</span> Worked example: real-time payment notification platform <span class="tag-added">Added</span></h2>
   <p class="oneliner">"Design a service that notifies customers (push, SMS, email) within 5 seconds of any card or account transaction."</p>
   <div class="cols2">
     <div>
@@ -174,13 +174,13 @@
 <figure class="viz" data-viz="journey"><script type="application/json">
 {"title":"One transaction becomes a notification","stepMs":1200,
  "steps":[
-  {"icon":"🏦","t":"Core banking","d":"<b>TransactionPosted</b> captured by CDC","tag":"S05 CDC","href":"05-databases-data.html#cdc","c":"slate"},
-  {"icon":"📡","t":"Event Hubs / Kafka","d":"key = accountId","tag":"S08","href":"08-integration-messaging.html#queue-event","c":"blue"},
-  {"icon":"🧠","t":"Rules service","d":"prefs from Redis, thresholds","tag":"S04 Redis","href":"04-caching.html#redis","c":"purple"},
-  {"icon":"📥","t":"Service Bus queues","d":"one per channel: push / sms / email","tag":"S08 Queues","href":"08-integration-messaging.html#queue-event","c":"amber"},
+  {"icon":"🏦","t":"Core banking","d":"<b>TransactionPosted</b> captured by CDC","tag":"S05 CDC","href":"06-databases-data.html#cdc","c":"slate"},
+  {"icon":"📡","t":"Event Hubs / Kafka","d":"key = accountId","tag":"S08","href":"10-integration-messaging.html#queue-event","c":"blue"},
+  {"icon":"🧠","t":"Rules service","d":"prefs from Redis, thresholds","tag":"S04 Redis","href":"05-caching.html#redis","c":"purple"},
+  {"icon":"📥","t":"Service Bus queues","d":"one per channel: push / sms / email","tag":"S08 Queues","href":"10-integration-messaging.html#queue-event","c":"amber"},
   {"icon":"⚙️","t":"Channel workers","d":"APNs/FCM · SMS gateway · Email","c":"teal"},
   {"icon":"🗂️","t":"History store","d":"every notification sent is recorded","c":"green"},
-  {"icon":"🚪","t":"GET API via APIM","d":"customer views history","tag":"S07 APIM","href":"07-apim.html#what","c":"blue"}
+  {"icon":"🚪","t":"GET API via APIM","d":"customer views history","tag":"S07 APIM","href":"09-apim.html#what","c":"blue"}
  ]}
 </script></figure>
     </div>
@@ -227,7 +227,7 @@
 
 <!-- CHECKLIST -->
 <section class="concept" id="checklist">
-  <h2><span class="num">15.6</span> Design review checklist <span class="tag-added">Added</span></h2>
+  <h2><span class="num">18.6</span> Design review checklist <span class="tag-added">Added</span></h2>
   <p class="oneliner">Questions to run through before you present or approve a design.</p>
   <div class="grid">
     <div class="box blue"><h4>Scale &amp; performance</h4><ul><li>Peak load known?</li><li>Stateless tier?</li><li>Caching plan?</li><li>DB scaling path?</li></ul></div>
@@ -251,9 +251,9 @@
 </div>
   </section>
 
-<div class="pager"><a href="14-architecture-documents.html">← 14 · Architecture Docs</a><a class="next" href="index.html">🏠 Back to Roadmap</a></div>
+<div class="pager"><a href="17-architecture-documents.html">← 17 · Architecture Documents</a><a class="next" href="19-design-case-studies.html">19 · Design Case Studies →</a></div>
 </main>
-<footer>Tech Concepts Prep · Section 15</footer>
+<footer>Tech Concepts Prep · Section 18</footer>
 <script src="assets/app.js"></script>
 <script src="assets/viz.js"></script>
 </body>

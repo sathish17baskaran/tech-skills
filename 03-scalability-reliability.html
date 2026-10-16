@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<nav class="top"><a href="02-networking-protocols.html">← Protocols</a><span class="here">03 · Scalability &amp; Reliability</span><a href="04-caching.html">Next: Caching →</a></nav>
+<nav class="top"><a href="02-networking-protocols.html">← Protocols</a><span class="here">03 · Scalability &amp; Reliability</span><a href="04-distributed-systems.html">Next: Distributed Systems →</a></nav>
 <main>
 
 <header class="hero">
@@ -23,10 +23,12 @@
     <a href="#resilience" class="added">Resilience patterns</a>
     <a href="#availability" class="added">Availability (HA &amp; nines)</a>
     <a href="#performance" class="added">Performance</a>
+    <a href="#capacity" class="added">Capacity planning &amp; FinOps</a>
     <a href="#sla" class="added">SLA / SLO / SLI</a>
     <a href="#cap">CAP</a>
     <a href="#pacelc" class="added">PACELC &amp; consistency</a>
     <a href="#dr" class="added">Disaster recovery (RPO/RTO)</a>
+    <a href="#cells" class="added">Cells &amp; multi-region active-active</a>
   </div>
 </header>
 
@@ -53,7 +55,7 @@
   <div class="remember"><ul>
     <li><b>Auto-scaling</b> = horizontal scaling triggered by metrics (CPU, queue length, request rate). Kubernetes HPA, VM Scale Sets, Azure Functions.</li>
     <li>Start vertical (it's simple). Go horizontal when you need high availability or pass the ceiling.</li>
-    <li>The data tier is the hardest to scale out. See read replicas and sharding in Section 05.</li>
+    <li>The data tier is the hardest to scale out. See read replicas and sharding in Section 06.</li>
     <li>Scale <b>out</b> fast, scale <b>in</b> slowly (cool-down) so capacity doesn't flap up and down.</li>
   </ul></div>
   <div class="dotnet">
@@ -97,7 +99,7 @@
     <tr><td><b>Session</b></td><td><span class="pill builtin">built-in</span> <code>AddSession</code> on <code>IDistributedCache</code> (<code>Microsoft.Extensions.Caching.StackExchangeRedis</code>)</td></tr>
     <tr><td><b>Auth</b></td><td><code>Microsoft.AspNetCore.Authentication.JwtBearer</code>: tokens carry the identity, so no server-side login state</td></tr>
     <tr><td><b>Files / uploads</b></td><td><code>Azure.Storage.Blobs</code> instead of the local disk</td></tr>
-    <tr><td><b>Cached data</b></td><td><code>HybridCache</code> with a Redis L2 (see section 4)</td></tr>
+    <tr><td><b>Cached data</b></td><td><code>HybridCache</code> with a Redis L2 (see section 05)</td></tr>
   </table>
 <pre class="code"><code>var credential = new DefaultAzureCredential();
 builder.Services.AddDataProtection()
@@ -321,7 +323,7 @@ app.MapReverseProxy();
     <li><b>Redundancy models</b>: active-active (all serve traffic) or active-passive (standby takes over). N+1 or N+2 capacity.</li>
     <li><b>Replication</b> of data: synchronous (no data loss, slower) or asynchronous (fast, may lose recent writes).</li>
     <li><b>Failover</b>: automatic detection (health checks, heartbeats) and switchover. Leader election (Raft/Paxos) for clusters.</li>
-    <li><b>Isolation</b>: bulkheads and cells, so one failure doesn't sink everything.</li>
+    <li><b>Isolation</b>: bulkheads and cells (see <a href="#cells">3.14</a>), so one failure doesn't sink everything.</li>
     <li><b>Graceful degradation</b>: serve cached or partial data, turn off non-critical features.</li>
     <li><b>Chaos engineering</b>: inject failures on purpose to prove resilience (Chaos Monkey, Azure Chaos Studio).</li>
   </ul>
@@ -603,7 +605,7 @@ await provider.GetPipeline("ledger").ExecuteAsync(async t =&gt; await ledger.Pos
     <tr><td><b>SQL connection resiliency</b></td><td><code>Microsoft.Data.SqlClient</code></td><td><code>ConnectRetryCount</code> / <code>ConnectRetryInterval</code> reconnect after a blip; connect to the failover-group listener so failover needs no config change</td></tr>
     <tr><td><b>Cosmos DB multi-region</b></td><td><code>Microsoft.Azure.Cosmos</code></td><td><code>ApplicationPreferredRegions</code>: the SDK reads from the nearest region and moves to the next one if it fails</td></tr>
     <tr><td><b>Geo-redundant storage reads</b></td><td><code>Azure.Storage.Blobs</code></td><td><code>GeoRedundantSecondaryUri</code>: reads fall back to the secondary region (RA-GRS)</td></tr>
-    <tr><td><b>Availability SLI</b></td><td><span class="pill builtin">built-in</span> <code>http.server.request.duration</code> metric</td><td>Count successful vs failed requests to measure "the nines" (see 3.9)</td></tr>
+    <tr><td><b>Availability SLI</b></td><td><span class="pill builtin">built-in</span> <code>http.server.request.duration</code> metric</td><td>Count successful vs failed requests to measure "the nines" (see 3.10)</td></tr>
   </table>
 <pre class="code"><code>// Cosmos DB: nearest region first, automatic move to the next if it fails
 var cosmos = new CosmosClient(endpoint, new DefaultAzureCredential(), new CosmosClientOptions
@@ -721,7 +723,7 @@ var cosmos = new CosmosClient(endpoint, new DefaultAzureCredential(), new Cosmos
     <li>Fix the biggest bottleneck first. Speeding up anything else won't help (Amdahl's law).</li>
     <li>Keep headroom. Run at 60–70% utilisation, not 95%.</li>
     <li>Tools: JMeter, k6, Gatling, Azure Load Testing for testing. App Insights, Datadog, Dynatrace for APM and profiling.</li>
-    <li>For API-specific techniques, see <a href="06-api-design.html#performance">06 · API performance</a>. For caching, see <a href="04-caching.html">04 · Caching</a>.</li>
+    <li>For API-specific techniques, see <a href="08-api-design.html#performance">06 · API performance</a>. For caching, see <a href="05-caching.html">04 · Caching</a>.</li>
   </ul></div>
   <div class="dotnet">
   <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
@@ -762,9 +764,136 @@ public class ParseBench
   </div>
 </section>
 
+<!-- CAPACITY -->
+<section class="concept" id="capacity">
+  <h2><span class="num">3.9</span> Capacity planning &amp; cost (FinOps) <span class="tag-added">Added</span></h2>
+  <p class="oneliner"><b>Capacity planning</b> makes sure you have enough resources for the peak, with headroom. <b>FinOps</b> makes sure you don't pay for much more than that.</p>
+
+  <h3>Capacity planning in 6 steps</h3>
+  <div class="flow">
+    <div class="n">1. Baseline<small>today's load, p95, CPU per request</small></div><div class="ar">→</div>
+    <div class="n p">2. Forecast<small>growth, seasonality, campaigns</small></div><div class="ar">→</div>
+    <div class="n a">3. Add headroom<small>run at 60–70%, N+1 for failures</small></div><div class="ar">→</div>
+    <div class="n t">4. Load test<small>prove the per-instance limit</small></div><div class="ar">→</div>
+    <div class="n g">5. Set autoscale limits<small>min, max, quotas, DB limits</small></div><div class="ar">→</div>
+    <div class="n s">6. Review<small>monthly, after big events</small></div>
+  </div>
+  <ul>
+    <li><b>Find the peak, not the average</b>: payday, end of month, Black Friday, end of financial year (30 June in Australia), a marketing push.</li>
+    <li><b>Find the bottleneck resource</b>: often the database (DTU/vCores, connections), not the stateless web tier.</li>
+    <li><b>Check the limits you can't autoscale</b>: subscription quotas, IP addresses in a subnet, DB connection limits, third-party API rate limits, licences.</li>
+    <li><b>Plan for losing a zone</b>: if one of 3 zones goes down, the other 2 must carry the full peak.</li>
+  </ul>
+
+  <h3>Little's Law: how much concurrency do I need?</h3>
+  <div class="cols2">
+    <div class="box blue"><h4>L = λ × W</h4><p><b>L</b> = average number of requests in the system (in flight)</p><p><b>λ</b> (lambda) = arrival rate (requests per second)</p><p><b>W</b> = average time each request spends in the system</p><p>Works for any stable system: APIs, queues, call centres, bank branches.</p></div>
+    <div class="box green"><h4>🧮 Example</h4><p>Peak = <b>400 requests/s</b>, average response = <b>0.25 s</b>.</p><p>L = 400 × 0.25 = <b>100 requests in flight</b>.</p><p>Load test shows one instance handles 25 concurrent requests at 65% CPU → 100 ÷ 25 = <b>4 instances</b>, + 1 for a failure (N+1) = <b>5</b>.</p><p>If a slow dependency doubles W to 0.5 s, L doubles to 200. Latency eats capacity.</p></div>
+  </div>
+
+  <h3>Autoscaling: reactive vs scheduled vs predictive</h3>
+<figure class="viz" data-viz="lanes"><script type="application/json">
+{"title":"A weekday: demand vs three ways to scale","max":24,"labelW":110,"width":760,"rowH":40,"dur":6000,
+ "ticks":[{"at":0,"t":"00:00"},{"at":6,"t":"06:00"},{"at":9,"t":"09:00"},{"at":12,"t":"12:00"},{"at":17,"t":"17:00"},{"at":21,"t":"21:00"},{"at":24,"t":"24:00"}],
+ "markers":[{"at":7,"t":"demand rises","c":"red"}],
+ "rows":[
+  {"label":"Demand","blocks":[
+   {"s":0,"e":7,"t":"quiet","c":"slate","h":0.6},
+   {"s":7,"e":9,"t":"ramp","c":"amber","h":0.8},
+   {"s":9,"e":17,"t":"business-hours peak","c":"red"},
+   {"s":17,"e":21,"t":"evening","c":"amber","h":0.8},
+   {"s":21,"e":24,"t":"quiet","c":"slate","h":0.6}]},
+  {"label":"Reactive","blocks":[
+   {"s":0,"e":7,"t":"2 instances","c":"green"},
+   {"s":7,"e":8.5,"t":"lag","c":"red","size":11},
+   {"s":8.5,"e":17.5,"t":"6 instances (after the metric breached)","c":"blue"},
+   {"s":17.5,"e":24,"t":"2–3","c":"green"}]},
+  {"label":"Scheduled","blocks":[
+   {"s":0,"e":6.5,"t":"2","c":"green"},
+   {"s":6.5,"e":18,"t":"6, pre-warmed at 06:30 by a cron rule","c":"blue"},
+   {"s":18,"e":24,"t":"2","c":"green"}]},
+  {"label":"Predictive","blocks":[
+   {"s":0,"e":6.5,"t":"2","c":"green"},
+   {"s":6.5,"e":9,"t":"4","c":"teal"},
+   {"s":9,"e":17,"t":"6, from the forecast","c":"blue"},
+   {"s":17,"e":21,"t":"4","c":"teal"},
+   {"s":21,"e":24,"t":"2","c":"green"}]}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>Type</th><th>How</th><th>Good for</th><th>Watch out</th></tr>
+    <tr><td><b>Reactive</b></td><td>Scale when a metric crosses a threshold (CPU &gt; 70%, queue length, requests/s)</td><td>Unpredictable load</td><td>Lag: new instances take minutes to start and warm up. Set a max</td></tr>
+    <tr><td><b>Scheduled</b></td><td>Cron rules: "6 instances from 06:30 to 18:00 on weekdays" (KEDA cron scaler, App Service / VMSS schedules)</td><td>Known patterns: business hours, batch windows, payday</td><td>Wasted spend if the pattern changes</td></tr>
+    <tr><td><b>Predictive</b></td><td>The platform learns history and scales ahead of the forecast (Azure VMSS predictive autoscale, AWS EC2 predictive scaling)</td><td>Regular cycles with a slow warm-up</td><td>Needs history. Combine with reactive for surprises</td></tr>
+  </table></div>
+
+  <h3>FinOps: cost as a shared responsibility</h3>
+  <div class="flow">
+    <div class="n t">Inform<small>who spends what: tags, showback, unit cost</small></div><div class="ar">→</div>
+    <div class="n a">Optimise<small>right-size, commit, use spot, delete waste</small></div><div class="ar">→</div>
+    <div class="n g">Operate<small>budgets, alerts, policies, reviews</small></div><div class="ar">↻</div>
+  </div>
+  <div class="grid">
+    <div class="box blue"><h4>📏 Unit economics</h4><p>Track <b>cost per transaction</b>, per customer or per payment, not just the total bill. A rising bill with a falling unit cost is healthy growth.</p></div>
+    <div class="box green"><h4>📉 Right-sizing</h4><p>Most VMs and DBs are over-provisioned. Use utilisation data (Azure Advisor, AWS Compute Optimizer) to step down a size. Turn off non-prod at night.</p></div>
+    <div class="box purple"><h4>🤝 Commitments</h4><p><b>Reservations</b> and <b>savings plans</b> (1 or 3 years) cut the price of steady, always-on load. Commit to the baseline only, not the peak.</p></div>
+    <div class="box amber"><h4>⚡ Spot / preemptible</h4><p>Big discounts on spare capacity, but the cloud can take it back at short notice. Only for interruptible work: batch, CI, stateless workers.</p></div>
+    <div class="box teal"><h4>🏷 Tagging</h4><p>Tag every resource (<code>app</code>, <code>env</code>, <code>owner</code>, <code>cost-centre</code>) and enforce it with policy. No tags = no showback.</p></div>
+    <div class="box red"><h4>🔔 Budgets &amp; alerts</h4><p>Budgets per subscription or team, alerts at 50/80/100% and on anomalies. A forgotten GPU or log ingestion spike shows up in days, not at month end.</p></div>
+  </div>
+  <div class="remember"><ul>
+    <li>Little's Law: <b>concurrency = throughput × latency</b>. Cut latency and you need fewer instances.</li>
+    <li>Write <b>cost as an NFR</b>: "under $0.002 per payment at 500 TPS". Then it can be designed, tested and traded off like latency.</li>
+    <li>Commit (reserve) for the baseline, autoscale for the peak, spot for interruptible work.</li>
+    <li>Scaling has limits you can't buy your way past quickly: quotas, DB connections, downstream rate limits. Find them in the load test, not in production.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Concurrency and throughput metrics</b></td><td><span class="pill builtin">built-in</span> <code>System.Diagnostics.Metrics</code>; ASP.NET Core <code>http.server.active_requests</code></td><td>Measure L and λ for Little's Law per instance. Watch live with <code>dotnet-counters monitor</code></td></tr>
+    <tr><td><b>Load testing in C#</b></td><td><code>NBomber</code> <span class="pill lic">commercial licence</span></td><td>Find the per-instance limit. Free for personal use only; organisations need a paid licence. Free alternatives: k6, JMeter, Azure Load Testing</td></tr>
+    <tr><td><b>Micro-benchmarks</b></td><td><code>BenchmarkDotNet</code></td><td>Cost per call of hot code paths (see 3.8)</td></tr>
+    <tr><td><b>Event-driven autoscale</b></td><td>Platform config: KEDA scalers in Azure Container Apps / AKS (Service Bus, Kafka, HTTP, cron)</td><td>Scale workers on queue length; scheduled scaling with the cron scaler</td></tr>
+    <tr><td><b>Cost queries</b></td><td><code>Azure.ResourceManager.CostManagement</code></td><td>Query cost by tag or resource group and build cost-per-transaction reports</td></tr>
+    <tr><td><b>Usage metrics</b></td><td><code>Azure.Monitor.Query.Metrics</code>, <code>Azure.Monitor.Query.Logs</code></td><td>Pull utilisation and request counts for capacity reviews. These replace the older <code>Azure.Monitor.Query</code> package, now deprecated</td></tr>
+  </table>
+<pre class="code"><code>// Track in-flight work (L) and completed work (λ) for a queue worker
+public sealed class WorkerMetrics
+{
+    private readonly UpDownCounter&lt;long&gt; _inFlight;   // L
+    private readonly Counter&lt;long&gt; _done;             // its rate = λ
+
+    public WorkerMetrics(IMeterFactory meterFactory)
+    {
+        var meter = meterFactory.Create("Bank.Payments.Worker");
+        _inFlight = meter.CreateUpDownCounter&lt;long&gt;("payments.in_flight");
+        _done = meter.CreateCounter&lt;long&gt;("payments.processed");
+    }
+
+    public async Task TrackAsync(Func&lt;Task&gt; work)
+    {
+        _inFlight.Add(1);
+        try { await work(); _done.Add(1); }
+        finally { _inFlight.Add(-1); }
+    }
+}
+// dotnet-counters monitor -n PaymentsWorker --counters Bank.Payments.Worker</code></pre>
+</div>
+  <div class="post">
+    <p>One formula every architect should know: L = λ × W 🧮</p>
+    <p>📥 λ = how many requests arrive per second</p>
+    <p>⏱ W = how long each one takes</p>
+    <p>🔄 L = how many are in flight at once, which is the capacity you must provide</p>
+    <p>400 req/s × 0.25 s = 100 in flight. If a slow dependency doubles latency, you need double the capacity. Latency is a cost.</p>
+    <p>💸 Then FinOps: reserve the baseline, autoscale the peak, use spot for batch, and track cost per transaction, not just the bill.</p>
+    <p>#CapacityPlanning #FinOps #Cloud #SystemDesign</p>
+  </div>
+</section>
+
 <!-- SLA -->
 <section class="concept" id="sla">
-  <h2><span class="num">3.9</span> SLA vs SLO vs SLI &amp; error budgets <span class="tag-added">Added</span></h2>
+  <h2><span class="num">3.10</span> SLA vs SLO vs SLI &amp; error budgets <span class="tag-added">Added</span></h2>
   <p class="oneliner"><b>SLI</b> is what you measure, <b>SLO</b> is the target you set, <b>SLA</b> is what you promise in a contract (with penalties).</p>
   <div class="flow">
     <div class="n">SLI<small>99.95% of requests &lt; 300 ms (measured)</small></div><div class="ar">→</div>
@@ -813,7 +942,7 @@ public sealed class PaymentSli
 
 <!-- CAP -->
 <section class="concept" id="cap">
-  <h2><span class="num">3.10</span> CAP theorem</h2>
+  <h2><span class="num">3.11</span> CAP theorem</h2>
   <p class="oneliner">When a network <b>Partition</b> splits a distributed data store, it must choose between <b>Consistency</b> (everyone sees the latest write) and <b>Availability</b> (every request gets an answer).</p>
   <div class="svgwrap">
     <svg viewBox="0 0 620 310" width="620" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, sans-serif" role="img" aria-label="CAP triangle: Consistency, Availability, Partition tolerance">
@@ -874,7 +1003,7 @@ public sealed class PaymentSli
   <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
   <table>
     <tr><th>Library / API</th><th>Use it for</th></tr>
-    <tr><td><code>Microsoft.Azure.Cosmos</code> <code>ConsistencyLevel</code></td><td>CAP is a theory, but Cosmos DB lets you choose the trade-off: <code>Strong</code> (CP-like across regions) down to <code>Eventual</code> (AP). Details in 3.11</td></tr>
+    <tr><td><code>Microsoft.Azure.Cosmos</code> <code>ConsistencyLevel</code></td><td>CAP is a theory, but Cosmos DB lets you choose the trade-off: <code>Strong</code> (CP-like across regions) down to <code>Eventual</code> (AP). Details in 3.12</td></tr>
     <tr><td><code>CassandraCSharpDriver</code> <code>ConsistencyLevel</code></td><td>Per query: <code>LocalQuorum</code> leans to C, <code>One</code> leans to A</td></tr>
   </table>
 </div>
@@ -890,7 +1019,7 @@ public sealed class PaymentSli
 
 <!-- PACELC -->
 <section class="concept" id="pacelc">
-  <h2><span class="num">3.11</span> PACELC &amp; consistency models <span class="tag-added">Added</span></h2>
+  <h2><span class="num">3.12</span> PACELC &amp; consistency models <span class="tag-added">Added</span></h2>
   <p class="oneliner">PACELC extends CAP: if there's a <b>P</b>artition choose <b>A</b> or <b>C</b>; <b>E</b>lse (normal operation) choose <b>L</b>atency or <b>C</b>onsistency.</p>
   <div class="cols2">
     <div><h3>Examples</h3><ul>
@@ -932,7 +1061,7 @@ public class Account
 
 <!-- DR -->
 <section class="concept" id="dr">
-  <h2><span class="num">3.12</span> Disaster recovery: RPO, RTO &amp; DR strategies <span class="tag-added">Added</span></h2>
+  <h2><span class="num">3.13</span> Disaster recovery: RPO, RTO &amp; DR strategies <span class="tag-added">Added</span></h2>
   <p class="oneliner"><b>RPO</b> = how much data you can afford to lose. <b>RTO</b> = how long you can afford to be down.</p>
 <figure class="viz" data-viz="lanes"><script type="application/json">
 {"title":"RPO looks back from the disaster, RTO looks forward","max":10,"labelW":90,"width":760,"rowH":42,"axis":"time →","dur":5000,
@@ -980,14 +1109,157 @@ var blobs = new BlobServiceClient(new Uri("https://paymentsdocs.blob.core.window
 </div>
   </section>
 
+<!-- CELLS -->
+<section class="concept" id="cells">
+  <h2><span class="num">3.14</span> Cell-based architecture &amp; multi-region active-active <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Split the <b>whole stack</b> (app, data, cache, queues) into independent copies called <b>cells</b>, each serving a slice of customers, so one failure or bad deployment only hurts that slice.</p>
+  <div class="grid">
+    <div class="box blue"><h4>🧱 Cell</h4><p>A complete, self-contained copy of the service with its own database. Sized to a known maximum (e.g. 50,000 customers). Azure calls this the <b>Deployment Stamps</b> pattern.</p></div>
+    <div class="box purple"><h4>🧭 Cell router</h4><p>A thin, very simple layer that maps a <b>cell key</b> (tenant, customer or account ID) to a cell and forwards the request. It must be the most reliable part of the system.</p></div>
+    <div class="box red"><h4>💥 Blast radius</h4><p>With 10 cells, a poison request, bad config or DB outage affects about 10% of customers, not 100%.</p></div>
+    <div class="box green"><h4>📈 Scale by adding cells</h4><p>Instead of growing one giant cluster, add a new cell when existing cells are full. Each cell stays a size you've tested.</p></div>
+  </div>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Cells limit the blast radius","interval":2800,
+ "frames":[
+  {"label":"Normal","caption":"The router sends each customer to its home cell. Every cell has its own app, DB and cache.",
+   "rows":[
+    {"label":"Edge","items":[{"t":"Cell router","sub":"customer ID → cell","c":"purple","big":true,"w":220}]},
+    {"label":"Cells","items":[{"t":"Cell 1","sub":"customers A–H<br>app + DB + cache","c":"green","big":true,"w":160},{"t":"Cell 2","sub":"customers I–P<br>app + DB + cache","c":"green","big":true,"w":160},{"t":"Cell 3","sub":"customers Q–Z<br>app + DB + cache","c":"green","big":true,"w":160}]}
+   ]},
+  {"label":"Bad deploy","caption":"A bad release goes to <b>cell 1 only</b> (deploy in waves). Its customers see errors.","ms":3200,
+   "rows":[
+    {"label":"Edge","items":[{"t":"Cell router","sub":"customer ID → cell","c":"purple","big":true,"w":220}]},
+    {"label":"Cells","items":[{"t":"Cell 1","sub":"v2 release: errors ✗","c":"red","big":true,"w":160},{"t":"Cell 2","sub":"still on v1 ✓","c":"green","big":true,"w":160},{"t":"Cell 3","sub":"still on v1 ✓","c":"green","big":true,"w":160}]}
+   ]},
+  {"label":"Contained","caption":"Health checks stop the rollout and cell 1 rolls back. <b>About 1/3 of customers</b> were affected, not all of them.","ms":3400,
+   "rows":[
+    {"label":"Edge","items":[{"t":"Cell router","sub":"customer ID → cell","c":"purple","big":true,"w":220}]},
+    {"label":"Cells","items":[{"t":"Cell 1","sub":"rolled back to v1","c":"amber","big":true,"w":160},{"t":"Cell 2","sub":"never touched","c":"green","big":true,"w":160},{"t":"Cell 3","sub":"never touched","c":"green","big":true,"w":160}]}
+   ]},
+  {"label":"Grow","caption":"Growth: add <b>cell 4</b> for new customers. No cell grows past the size you load-tested.","ms":3000,
+   "rows":[
+    {"label":"Edge","items":[{"t":"Cell router","sub":"customer ID → cell","c":"purple","big":true,"w":220}]},
+    {"label":"Cells","items":[{"t":"Cell 1","sub":"full","c":"green","big":true,"w":120},{"t":"Cell 2","sub":"full","c":"green","big":true,"w":120},{"t":"Cell 3","sub":"full","c":"green","big":true,"w":120},{"t":"Cell 4","sub":"new customers","c":"blue","big":true,"w":120}]}
+   ]}
+ ]}
+</script></figure>
+
+  <h3>Across regions: active-active vs active-passive vs pilot light</h3>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Active-active across two regions","interval":2800,
+ "frames":[
+  {"label":"Both serving","caption":"A global traffic manager splits users between two live regions. Data replicates both ways.",
+   "rows":[
+    {"label":"Global","items":[{"t":"Front Door / Route 53","sub":"health-probed routing","c":"purple","big":true,"w":240}]},
+    {"label":"Regions","items":[{"t":"Australia East","sub":"50% of traffic","c":"green","big":true,"w":170},{"k":"arrow","g":"⇄","t":"replication"},{"t":"Australia Southeast","sub":"50% of traffic","c":"green","big":true,"w":170}]}
+   ]},
+  {"label":"Region fails","caption":"Australia East fails. Health probes notice within seconds to minutes.","ms":2600,
+   "rows":[
+    {"label":"Global","items":[{"t":"Front Door / Route 53","sub":"probes failing in East","c":"amber","big":true,"w":240}]},
+    {"label":"Regions","items":[{"t":"Australia East","sub":"down ✗","c":"red","big":true,"w":170},{"k":"arrow","g":"✕","t":"replication stops"},{"t":"Australia Southeast","sub":"50% of traffic","c":"green","big":true,"w":170}]}
+   ]},
+  {"label":"Failover","caption":"All traffic shifts to Southeast. It only survives if it has <b>headroom for 100%</b>, and writes not yet replicated may be lost or conflict later.","ms":3800,
+   "rows":[
+    {"label":"Global","items":[{"t":"Front Door / Route 53","sub":"all traffic to Southeast","c":"purple","big":true,"w":240}]},
+    {"label":"Regions","items":[{"t":"Australia East","sub":"down ✗","c":"red","big":true,"w":170},{"k":"arrow","g":"→"},{"t":"Australia Southeast","sub":"100% of traffic","c":"blue","big":true,"w":170}]}
+   ]}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>Model</th><th>Second region</th><th>Failover</th><th>Cost and complexity</th></tr>
+    <tr><td><b>Active-active</b></td><td>Serves live traffic all the time</td><td>Near zero: shift traffic</td><td>Highest. Each region needs headroom to take everything, and data conflicts must be handled</td></tr>
+    <tr><td><b>Active-passive (warm standby)</b></td><td>Running, scaled down, not serving</td><td>Minutes: scale up, switch traffic</td><td>Medium. Simpler data (one writer)</td></tr>
+    <tr><td><b>Pilot light</b></td><td>Only data is replicated; compute is off or minimal</td><td>Tens of minutes or more: deploy and start compute</td><td>Low. Needs good automation (IaC)</td></tr>
+  </table></div>
+  <p class="tip">These are the same strategies as the DR table in <a href="#dr">3.13</a>, seen from the traffic side.</p>
+
+  <h3>Data replication and conflicts</h3>
+  <ul>
+    <li><b>Single writer per record</b> (simplest): each customer has a <b>home region</b> for writes; any region can serve reads. No write conflicts. Common for ledgers and account balances.</li>
+    <li><b>Multi-region writes</b>: any region accepts writes for any record, so two regions can change the same record at once. You need a <b>conflict policy</b>:
+      <ul>
+        <li><b>Last writer wins</b> (by timestamp): simple, but silently drops one update. Fine for profiles, wrong for balances.</li>
+        <li><b>Custom merge</b>: app or stored procedure decides. <b>CRDTs</b>: data types that merge automatically (counters, sets).</li>
+        <li><b>Avoid the conflict</b>: route all writes for one account to one region.</li>
+      </ul></li>
+    <li>Cross-region replication is usually <b>asynchronous</b> (hundreds of km means milliseconds of extra latency per write), so RPO is above zero unless you pay for synchronous writes.</li>
+  </ul>
+
+  <h3>Global traffic managers</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Service</th><th>How it routes</th><th>Notes</th></tr>
+    <tr><td><b>Azure Front Door</b></td><td>Global anycast HTTP(S) proxy (L7)</td><td>Health probes, WAF, CDN, latency- or priority-based routing. Fast failover because it doesn't rely on DNS TTLs</td></tr>
+    <tr><td><b>Azure Traffic Manager</b></td><td>DNS-based</td><td>Any protocol. Failover speed depends on DNS TTL and client caching</td></tr>
+    <tr><td><b>Amazon Route 53</b></td><td>DNS-based routing policies</td><td>Failover, latency, weighted and geolocation routing with health checks</td></tr>
+    <tr><td><b>AWS Global Accelerator</b></td><td>Anycast IPs (L4)</td><td>TCP/UDP traffic to the nearest healthy region</td></tr>
+  </table></div>
+
+  <div class="cols2">
+    <div class="box green"><h4>✓ Worth it when</h4><ul><li>The availability target is 99.99% or higher, or a region outage is unacceptable to the business or regulator</li><li>Large multi-tenant platforms where one noisy or broken tenant must not hurt the rest</li><li>You need to deploy safely in waves at scale</li></ul></div>
+    <div class="box red"><h4>✗ Probably not when</h4><ul><li>Single-region with zones already meets the SLO</li><li>The team can't yet automate deployments and failover</li><li>Data must be strongly consistent across regions on every write and the latency cost is unacceptable</li></ul></div>
+  </div>
+  <div class="remember"><ul>
+    <li>Cells shrink the <b>blast radius</b>; multi-region protects against <b>region loss</b>. Big platforms combine them: several cells per region.</li>
+    <li>Keep the cell router <b>dumb and static</b> (a lookup table), and cache the mapping. A complex router becomes the new single point of failure.</li>
+    <li>Active-active only works if each region can take the <b>full load</b>, and you've decided how <b>write conflicts</b> are avoided or resolved.</li>
+    <li>Test failover regularly. Traffic shifting is easy; data and capacity are where it breaks.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Cell router</b></td><td><code>Yarp.ReverseProxy</code></td><td>Route by a cell key: match a header or path per route, one cluster per cell. Or pick the cluster in code from a tenant → cell lookup</td></tr>
+    <tr><td><b>Service discovery</b></td><td><code>Microsoft.Extensions.ServiceDiscovery</code></td><td>Resolve each cell's endpoints by name (<code>https+http://cell-2-api</code>) from configuration instead of hard-coded URLs</td></tr>
+    <tr><td><b>Multi-region data</b></td><td><code>Microsoft.Azure.Cosmos</code></td><td>Multi-region writes are an account setting. <code>ApplicationPreferredRegions</code> picks the nearest region; <code>ConflictResolutionPolicy</code> is last writer wins (default) or a custom stored procedure</td></tr>
+    <tr><td><b>Health probes</b></td><td><span class="pill builtin">built-in</span> <code>MapHealthChecks</code></td><td>What Front Door, Traffic Manager or Route 53 probe to decide a region or cell is healthy</td></tr>
+  </table>
+<pre class="code"><code>// YARP: the edge sets X-Cell from a tenant lookup; each route sends one cell to its cluster
+"Routes": {
+  "cell-1": { "ClusterId": "cell-1",
+              "Match": { "Path": "{**catch-all}", "Headers": [ { "Name": "X-Cell", "Values": [ "cell-1" ] } ] } },
+  "cell-2": { "ClusterId": "cell-2",
+              "Match": { "Path": "{**catch-all}", "Headers": [ { "Name": "X-Cell", "Values": [ "cell-2" ] } ] } }
+}
+
+// Cosmos DB: nearest region first; last-writer-wins on a property you control
+var cosmos = new CosmosClient(endpoint, new DefaultAzureCredential(), new CosmosClientOptions
+{
+    ApplicationPreferredRegions = [Regions.AustraliaEast, Regions.AustraliaSoutheast]
+});
+await database.CreateContainerIfNotExistsAsync(new ContainerProperties("profiles", "/customerId")
+{
+    ConflictResolutionPolicy = new ConflictResolutionPolicy
+    {
+        Mode = ConflictResolutionMode.LastWriterWins,
+        ResolutionPath = "/updatedAtTicks"
+    }
+});</code></pre>
+  <p class="warn">Last writer wins is fine for a customer profile, not for a balance. For money, give each account one home region for writes, so there is nothing to resolve.</p>
+</div>
+  <div class="post">
+    <p>Don't build one giant system. Build many small identical ones 🧱</p>
+    <p>That's cell-based architecture:</p>
+    <p>🧭 A thin router maps each customer to a cell</p>
+    <p>🧱 Each cell has its own app, database and cache</p>
+    <p>💥 A bad deploy or DB outage hits one cell (say 10% of customers), not everyone</p>
+    <p>📈 Need more capacity? Add a cell. Never run a size you haven't tested</p>
+    <p>Add multi-region active-active on top, and the hard part is no longer routing. It's capacity headroom and write conflicts.</p>
+    <p>#SystemDesign #Resilience #CloudArchitecture #SRE</p>
+  </div>
+</section>
+
 <div class="qa-wrap">
   <h2>⚡ Quick-fire Q&amp;A</h2>
   <details class="qa"><summary>Your service has 3 dependencies at 99.9% each. What's your max availability?</summary><p>About 99.7% (0.999³). To do better, add redundancy, caching or async decoupling.</p></details>
   <details class="qa"><summary>When would you choose AP over CP?</summary><p>When stale data is acceptable and downtime isn't: product catalogues, social feeds, recommendations, shopping carts.</p></details>
   <details class="qa"><summary>Difference between HA and DR?</summary><p>HA handles local failures (node or zone) automatically with little or no downtime. DR recovers from a large-scale disaster (region loss, ransomware) within the agreed RPO/RTO.</p></details>
+  <details class="qa"><summary>Peak is 600 requests/s and the average response time is 200 ms. How many requests are in flight?</summary><p>Little's Law: L = λ × W = 600 × 0.2 = 120. If one instance handles 30 concurrently at a safe utilisation, you need 4, plus at least 1 spare for failures or a lost zone.</p></details>
+  <details class="qa"><summary>What is a cell-based architecture, and why use it?</summary><p>Many independent copies of the whole stack, each serving a fixed slice of customers, behind a thin router. A failure or bad deployment only affects one cell's customers (smaller blast radius), and you scale by adding cells of a tested size.</p></details>
+  <details class="qa"><summary>Active-active across regions: what's the hardest part?</summary><p>Not routing. It's data (async replication means possible loss or write conflicts, so pick a home region per record or a conflict policy) and capacity (each region must be able to take 100% of traffic after a failover).</p></details>
 </div>
 
-<div class="pager"><a href="02-networking-protocols.html">← 02 · Protocols</a><a class="next" href="04-caching.html">04 · Caching →</a></div>
+<div class="pager"><a href="02-networking-protocols.html">← 02 · Networking &amp; Protocols</a><a class="next" href="04-distributed-systems.html">04 · Distributed Systems →</a></div>
 </main>
 <footer>Tech Concepts Prep · Section 03</footer>
 <script src="assets/app.js"></script>

@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>04 · Caching | Tech Concepts Prep</title>
+<title>05 · Caching | Tech Concepts Prep</title>
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<nav class="top"><a href="03-scalability-reliability.html">← Scalability</a><span class="here">04 · Caching</span><a href="05-databases-data.html">Next: Databases →</a></nav>
+<nav class="top"><a href="04-distributed-systems.html">← Distributed Systems</a><span class="here">05 · Caching</span><a href="06-databases-data.html">Next: Databases →</a></nav>
 <main>
 
 <header class="hero">
-  <div class="kicker">Section 04</div>
+  <div class="kicker">Section 05</div>
   <h1>Caching: strategies, expiration &amp; pitfalls</h1>
   <p>A cache keeps a copy of data somewhere faster, so you don't repeat expensive work. It's the cheapest performance win, and the easiest way to serve stale or wrong data.</p>
   <div class="toc">
@@ -22,12 +22,13 @@
     <a href="#problems" class="added">Stampede, penetration, avalanche</a>
     <a href="#cdn" class="added">CDN</a>
     <a href="#redis" class="added">Redis vs Memcached</a>
+    <a href="#probabilistic" class="added">Probabilistic data structures</a>
   </div>
 </header>
 
 <!-- LAYERS -->
 <section class="concept" id="layers">
-  <h2><span class="num">4.1</span> Caching basics: where can you cache? <span class="tag-added">Added</span></h2>
+  <h2><span class="num">5.1</span> Caching basics: where can you cache? <span class="tag-added">Added</span></h2>
   <p class="oneliner">Cache as close to the user as you can, for as long as the data can safely be stale.</p>
   <div class="flow">
     <div class="n">Browser / app<small>Cache-Control</small></div><div class="ar">→</div>
@@ -70,7 +71,7 @@ app.MapGet("/products", GetProducts)
 
 <!-- STRATEGIES -->
 <section class="concept" id="strategies">
-  <h2><span class="num">4.2</span> Caching strategies (read &amp; write patterns)</h2>
+  <h2><span class="num">5.2</span> Caching strategies (read &amp; write patterns)</h2>
   <p class="oneliner">They answer two questions: who loads the cache on a read, and what happens to the cache on a write?</p>
 
   <div class="grid wide">
@@ -158,7 +159,7 @@ app.MapGet("/products", GetProducts)
 
 <!-- EXPIRATION -->
 <section class="concept" id="expiration">
-  <h2><span class="num">4.3</span> Cache expiration strategies</h2>
+  <h2><span class="num">5.3</span> Cache expiration strategies</h2>
   <p class="oneliner">Expiration decides <b>when an entry stops being valid</b>. (Eviction decides <b>what to throw out when memory is full</b>.)</p>
   <div class="grid">
     <div class="box"><h4>⏳ Absolute TTL</h4><p>Expires X seconds after it's written. Simple and predictable. Example: FX rates, TTL 60 s.</p></div>
@@ -214,7 +215,7 @@ memoryCache.Set(sessionId, session, new MemoryCacheEntryOptions
 
 <!-- EVICTION -->
 <section class="concept" id="eviction">
-  <h2><span class="num">4.4</span> Cache eviction policies <span class="tag-added">Added</span></h2>
+  <h2><span class="num">5.4</span> Cache eviction policies <span class="tag-added">Added</span></h2>
   <p class="oneliner">When the cache is full, which entry goes?</p>
   <div class="tablewrap"><table>
     <tr><th>Policy</th><th>Evicts</th><th>Good for</th></tr>
@@ -303,11 +304,11 @@ memoryCache.Set(sessionId, session, new MemoryCacheEntryOptions
 
 <!-- PROBLEMS -->
 <section class="concept" id="problems">
-  <h2><span class="num">4.5</span> Cache problems &amp; fixes <span class="tag-added">Added</span></h2>
+  <h2><span class="num">5.5</span> Cache problems &amp; fixes <span class="tag-added">Added</span></h2>
   <p class="oneliner">The classic ways caches fail in production, and the standard fix for each.</p>
   <div class="grid wide">
     <div class="box red"><h4>🐘 Cache stampede (thundering herd)</h4><p>A hot key expires and 10,000 requests hit the DB at once.</p><ul><li>Lock or <b>request coalescing</b> (only one request rebuilds)</li><li>Stale-while-revalidate, refresh-ahead</li><li>Probabilistic early expiry</li></ul></div>
-    <div class="box red"><h4>🕳 Cache penetration</h4><p>Requests for keys that <b>don't exist</b> always miss and hit the DB (often an attack).</p><ul><li>Cache "null" results with a short TTL</li><li><b>Bloom filter</b> of valid keys</li><li>Input validation, rate limiting</li></ul></div>
+    <div class="box red"><h4>🕳 Cache penetration</h4><p>Requests for keys that <b>don't exist</b> always miss and hit the DB (often an attack).</p><ul><li>Cache "null" results with a short TTL</li><li><b>Bloom filter</b> of valid keys (see <a href="#probabilistic">5.8</a>)</li><li>Input validation, rate limiting</li></ul></div>
     <div class="box red"><h4>🏔 Cache avalanche</h4><p>Many keys expire together, or the cache cluster goes down, and the DB is flooded.</p><ul><li>TTL jitter</li><li>Highly available cache cluster, multi-level cache</li><li>Circuit breaker and rate limiting on the DB</li></ul></div>
     <div class="box amber"><h4>🔥 Hot key</h4><p>One key (a celebrity or a promotion) overloads a single cache node.</p><ul><li>Local L1 cache in front</li><li>Replicate the key (<code>key#1..#N</code>)</li></ul></div>
     <div class="box amber"><h4>🔀 Inconsistency</h4><p>Cache and DB disagree after a race or a failed invalidation.</p><ul><li>Update the DB, then delete the key</li><li>Delayed double delete</li><li>CDC-driven invalidation (Debezium → delete key)</li></ul></div>
@@ -332,7 +333,7 @@ if (!await bloom.ExistsAsync("accounts:valid", accountId))
 
 <!-- CDN -->
 <section class="concept" id="cdn">
-  <h2><span class="num">4.6</span> CDN (Content Delivery Network) <span class="tag-added">Added</span></h2>
+  <h2><span class="num">5.6</span> CDN (Content Delivery Network) <span class="tag-added">Added</span></h2>
   <p class="oneliner">A worldwide network of edge servers that cache content close to users, cutting latency and load on your origin.</p>
   <div class="flow">
     <div class="n">User in Perth</div><div class="ar">→</div><div class="n t">Edge POP (Perth)<small>HIT → ~10 ms</small></div><div class="ar">miss →</div><div class="n s">Origin (Sydney)<small>App / Blob storage</small></div>
@@ -357,7 +358,7 @@ if (!await bloom.ExistsAsync("accounts:valid", accountId))
 
 <!-- REDIS -->
 <section class="concept" id="redis">
-  <h2><span class="num">4.7</span> Redis vs Memcached <span class="tag-added">Added</span></h2>
+  <h2><span class="num">5.7</span> Redis vs Memcached <span class="tag-added">Added</span></h2>
   <div class="tablewrap"><table>
     <tr><th></th><th>Redis</th><th>Memcached</th></tr>
     <tr><td>Data types</td><td>Strings, hashes, lists, sets, sorted sets, streams, JSON, vectors</td><td>Strings only</td></tr>
@@ -379,16 +380,138 @@ if (!await bloom.ExistsAsync("accounts:valid", accountId))
 </div>
   </section>
 
+<!-- PROBABILISTIC -->
+<section class="concept" id="probabilistic">
+  <h2><span class="num">5.8</span> Probabilistic data structures: Bloom filter, HyperLogLog, Count-Min Sketch <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Tiny, fast structures that give an <b>approximate</b> answer ("probably yes", "about 1.2 million", "roughly 340 times") using a fraction of the memory an exact answer needs.</p>
+  <div class="grid">
+    <div class="box blue"><h4>🌸 Bloom filter</h4><p><b>"Have we seen this before?"</b></p><ul><li>Answers "definitely not" or "probably yes"</li><li><b>No false negatives</b>. False positives are tunable (1% needs about 10 bits per item)</li><li>Can't delete items</li></ul></div>
+    <div class="box purple"><h4>🐦 Cuckoo filter</h4><p>Same question as a Bloom filter, but it <b>supports delete</b> and is often smaller at low error rates.</p></div>
+    <div class="box green"><h4>🔢 HyperLogLog (HLL)</h4><p><b>"How many unique items?"</b></p><ul><li>Count distinct with a fixed, tiny memory</li><li>Redis: <b>12 KB</b> per key, about <b>0.81%</b> standard error, for counts into the billions</li><li>Can merge (daily → monthly uniques)</li></ul></div>
+    <div class="box amber"><h4>📊 Count-Min Sketch</h4><p><b>"How often has X appeared?"</b></p><ul><li>Frequency per item in a fixed grid of counters</li><li>May <b>over-count</b>, never under-counts</li></ul></div>
+    <div class="box teal"><h4>🏆 Top-K</h4><p><b>"What are the K most frequent items?"</b> Heavy hitters in a stream: top merchants, hottest cache keys, noisiest API clients.</p></div>
+  </div>
+
+  <h3>How a Bloom filter works</h3>
+  <ul>
+    <li>Start with an array of <b>m</b> bits, all 0, and <b>k</b> hash functions.</li>
+    <li><b>Add</b>: hash the item k times and set those k bits to 1.</li>
+    <li><b>Check</b>: hash it again. Any bit is 0? <b>Definitely not added.</b> All bits are 1? <b>Probably added</b> (other items may have set those bits).</li>
+    <li>More bits per item = fewer false positives. The filter fills up as you add items, so size it for the expected count.</li>
+  </ul>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Bloom filter: 12 bits, k = 3 hashes","interval":2600,
+ "frames":[
+  {"label":"empty","caption":"An empty filter: 12 bits, all 0.",
+   "rows":[
+    {"label":"Item","items":[{"t":"(nothing yet)","sub":"k = 3 hash functions","c":"off","big":true,"w":220}]},
+    {"label":"Bits","items":[{"t":"0","sub":"0","c":"off"},{"t":"0","sub":"1","c":"off"},{"t":"0","sub":"2","c":"off"},{"t":"0","sub":"3","c":"off"},{"t":"0","sub":"4","c":"off"},{"t":"0","sub":"5","c":"off"},{"t":"0","sub":"6","c":"off"},{"t":"0","sub":"7","c":"off"},{"t":"0","sub":"8","c":"off"},{"t":"0","sub":"9","c":"off"},{"t":"0","sub":"10","c":"off"},{"t":"0","sub":"11","c":"off"}]},
+    {"label":"Answer","items":[{"t":"&mdash;","c":"off","w":220}]}
+   ]},
+  {"label":"add alice","caption":"<b>Add alice</b>: the 3 hashes point to bits 2, 5 and 9. Set them to 1.","ms":3000,
+   "rows":[
+    {"label":"Item","items":[{"t":"add alice","sub":"h1 = 2 &middot; h2 = 5 &middot; h3 = 9","c":"blue","big":true,"w":220}]},
+    {"label":"Bits","items":[{"t":"0","sub":"0","c":"off"},{"t":"0","sub":"1","c":"off"},{"t":"1","sub":"2","c":"green"},{"t":"0","sub":"3","c":"off"},{"t":"0","sub":"4","c":"off"},{"t":"1","sub":"5","c":"green"},{"t":"0","sub":"6","c":"off"},{"t":"0","sub":"7","c":"off"},{"t":"0","sub":"8","c":"off"},{"t":"1","sub":"9","c":"green"},{"t":"0","sub":"10","c":"off"},{"t":"0","sub":"11","c":"off"}]},
+    {"label":"Answer","items":[{"t":"stored","c":"green","w":220}]}
+   ]},
+  {"label":"add bob","caption":"<b>Add bob</b>: bits 1, 5 and 11. Bit 5 was already 1, so bob and alice share it.","ms":3000,
+   "rows":[
+    {"label":"Item","items":[{"t":"add bob","sub":"h1 = 1 &middot; h2 = 5 &middot; h3 = 11","c":"blue","big":true,"w":220}]},
+    {"label":"Bits","items":[{"t":"0","sub":"0","c":"off"},{"t":"1","sub":"1","c":"green"},{"t":"1","sub":"2","c":"blue"},{"t":"0","sub":"3","c":"off"},{"t":"0","sub":"4","c":"off"},{"t":"1","sub":"5","c":"green"},{"t":"0","sub":"6","c":"off"},{"t":"0","sub":"7","c":"off"},{"t":"0","sub":"8","c":"off"},{"t":"1","sub":"9","c":"blue"},{"t":"0","sub":"10","c":"off"},{"t":"1","sub":"11","c":"green"}]},
+    {"label":"Answer","items":[{"t":"stored","c":"green","w":220}]}
+   ]},
+  {"label":"check carol","caption":"<b>Check carol</b>: bits 2, 7, 11. Bit 7 is 0, so carol was <b>definitely never added</b>. Skip the DB.","ms":3400,
+   "rows":[
+    {"label":"Item","items":[{"t":"check carol","sub":"h1 = 2 &middot; h2 = 7 &middot; h3 = 11","c":"purple","big":true,"w":220}]},
+    {"label":"Bits","items":[{"t":"0","sub":"0","c":"off"},{"t":"1","sub":"1","c":"blue"},{"t":"1","sub":"2","c":"amber"},{"t":"0","sub":"3","c":"off"},{"t":"0","sub":"4","c":"off"},{"t":"1","sub":"5","c":"blue"},{"t":"0","sub":"6","c":"off"},{"t":"0","sub":"7","c":"red"},{"t":"0","sub":"8","c":"off"},{"t":"1","sub":"9","c":"blue"},{"t":"0","sub":"10","c":"off"},{"t":"1","sub":"11","c":"amber"}]},
+    {"label":"Answer","items":[{"t":"definitely NOT","sub":"a 0 bit = no","c":"red","w":220}]}
+   ]},
+  {"label":"check dave","caption":"<b>Check dave</b>: bits 1, 2, 9 are all 1 (set by alice and bob). Answer: <b>probably yes</b>, but dave was never added. A <b>false positive</b>.","ms":3800,
+   "rows":[
+    {"label":"Item","items":[{"t":"check dave","sub":"h1 = 1 &middot; h2 = 2 &middot; h3 = 9","c":"purple","big":true,"w":220}]},
+    {"label":"Bits","items":[{"t":"0","sub":"0","c":"off"},{"t":"1","sub":"1","c":"amber"},{"t":"1","sub":"2","c":"amber"},{"t":"0","sub":"3","c":"off"},{"t":"0","sub":"4","c":"off"},{"t":"1","sub":"5","c":"blue"},{"t":"0","sub":"6","c":"off"},{"t":"0","sub":"7","c":"off"},{"t":"0","sub":"8","c":"off"},{"t":"1","sub":"9","c":"amber"},{"t":"0","sub":"10","c":"off"},{"t":"1","sub":"11","c":"blue"}]},
+    {"label":"Answer","items":[{"t":"probably yes","sub":"false positive: check the DB","c":"amber","w":220}]}
+   ]}
+ ]}
+</script></figure>
+
+  <h3>When to use which</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Question</th><th>Structure</th><th>Example</th><th>Error type</th></tr>
+    <tr><td>Is X in the set?</td><td>Bloom filter</td><td>Cache-penetration guard (see <a href="#problems">5.5</a>): reject account IDs that don't exist before hitting the DB. "Have we already processed this payment ID?" (then confirm in the DB)</td><td>False positives only</td></tr>
+    <tr><td>Is X in the set, and I need to remove items?</td><td>Cuckoo filter</td><td>Active session IDs, revoked tokens that expire</td><td>False positives only</td></tr>
+    <tr><td>How many unique?</td><td>HyperLogLog</td><td>Unique cards used today, unique visitors per page</td><td>About &plusmn;0.81% (Redis)</td></tr>
+    <tr><td>How often?</td><td>Count-Min Sketch</td><td>Card attempts per merchant in the last hour (fraud velocity)</td><td>Over-counts only</td></tr>
+    <tr><td>What's most frequent?</td><td>Top-K</td><td>Top 10 hottest cache keys, top merchants, top error codes</td><td>Approximate ranking</td></tr>
+  </table></div>
+  <div class="remember"><ul>
+    <li>Bloom filter: a "no" is always right; a "yes" means "go and check". Never use it as the final answer for money or security decisions.</li>
+    <li>Use them when the exact answer is too big or too slow and a small error is fine: counting, deduplicating, filtering at huge scale.</li>
+    <li>In Redis, HyperLogLog is a core type. Bloom, Cuckoo, Count-Min Sketch and Top-K come from RedisBloom, which is built into Redis 8 and available in Azure Managed Redis.</li>
+    <li>Interview line: "exact needs memory that grows with the data; probabilistic needs fixed memory and trades a little accuracy."</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>HyperLogLog</b></td><td><code>StackExchange.Redis</code> (<code>HyperLogLogAddAsync</code>, <code>HyperLogLogLengthAsync</code>, <code>HyperLogLogMergeAsync</code>)</td><td>Approximate unique counts in core Redis</td></tr>
+    <tr><td><b>Bloom / Cuckoo</b></td><td><code>NRedisStack</code> (<code>db.BF()</code>, <code>db.CF()</code>)</td><td>Shared filters across all instances: <code>ReserveAsync</code> (error rate, capacity), <code>AddAsync</code>, <code>ExistsAsync</code>; Cuckoo adds <code>DelAsync</code></td></tr>
+    <tr><td><b>Count-Min Sketch / Top-K</b></td><td><code>NRedisStack</code> (<code>db.CMS()</code>, <code>db.TOPK()</code>)</td><td>Frequencies (<code>IncrByAsync</code>, <code>QueryAsync</code>) and heavy hitters (<code>AddAsync</code>, <code>ListAsync</code>)</td></tr>
+    <tr><td><b>In-memory Bloom filter</b></td><td><span class="pill builtin">built-in</span> <code>System.Collections.BitArray</code> + the <code>System.IO.Hashing</code> package (<code>XxHash3</code>)</td><td>A per-process filter when you don't need Redis. .NET has no built-in Bloom filter type</td></tr>
+  </table>
+<pre class="code"><code>// Redis: unique cards today (HLL) and card attempts per merchant (CMS)
+await db.HyperLogLogAddAsync($"uniq:cards:{day}", cardToken);
+long uniqueCards = await db.HyperLogLogLengthAsync($"uniq:cards:{day}");   // about &plusmn;0.81%
+
+var cms = db.CMS();                                     // NRedisStack
+await cms.IncrByAsync($"attempts:{hour}", merchantId, 1);
+long[] attempts = await cms.QueryAsync($"attempts:{hour}", merchantId);
+
+// In memory: a small Bloom filter with double hashing
+public sealed class BloomFilter(int bits, int hashes)
+{
+    private readonly BitArray _bits = new(bits);
+
+    public void Add(string item) { foreach (var i in Positions(item)) _bits[i] = true; }
+
+    public bool MightContain(string item)          // false = definitely not added
+    {
+        foreach (var i in Positions(item)) if (!_bits[i]) return false;
+        return true;
+    }
+
+    private IEnumerable&lt;int&gt; Positions(string item)
+    {
+        ulong h = XxHash3.HashToUInt64(Encoding.UTF8.GetBytes(item));
+        ulong h1 = (uint)h, h2 = h &gt;&gt; 32;
+        for (ulong k = 0; k &lt; (ulong)hashes; k++) yield return (int)((h1 + k * h2) % (ulong)bits);
+    }
+}</code></pre>
+  <p class="warn">Size a Bloom filter for the number of items you expect. Overfill it and the false-positive rate climbs fast. Rebuild it (or use Redis's scaling filters) when the data grows.</p>
+</div>
+  <div class="post">
+    <p>Your cache doesn't need to know everything. Sometimes "probably" is enough 🎯</p>
+    <p>🌸 Bloom filter: "Have we seen this ID?" A "no" is always right. A "yes" means "go and check".</p>
+    <p>🔢 HyperLogLog: count unique users in 12 KB with under 1% error.</p>
+    <p>📊 Count-Min Sketch: "how often?" for millions of keys in fixed memory.</p>
+    <p>🏆 Top-K: the heavy hitters in a stream, live.</p>
+    <p>Exact answers need memory that grows with your data. These need a fixed, tiny amount. Where would a 1% error be fine in your system?</p>
+    <p>#SystemDesign #DataStructures #Redis #Caching</p>
+  </div>
+</section>
+
 <div class="qa-wrap">
   <h2>⚡ Quick-fire Q&amp;A</h2>
   <details class="qa"><summary>Expiration vs eviction?</summary><p>Expiration is time or validity based (TTL). Eviction is space based (LRU/LFU when memory is full).</p></details>
   <details class="qa"><summary>Why delete instead of update the cache on write?</summary><p>Two concurrent writers can update the cache in the opposite order to the DB and leave stale data. Deleting forces the next read to load the true value.</p></details>
   <details class="qa"><summary>Would you cache an account balance?</summary><p>Generally no, or only with a very short TTL, clearly labelled "as at" time, and never for authorising transactions. Correctness beats speed.</p></details>
+  <details class="qa"><summary>Can a Bloom filter give a false negative?</summary><p>No. If an item was added, all its bits are 1, so the filter always says "probably yes". It can give false positives, because other items may have set the same bits. That's why a "yes" is followed by a real lookup.</p></details>
+  <details class="qa"><summary>How would you count unique daily users across 50 million events cheaply?</summary><p>A HyperLogLog per day (Redis <code>PFADD</code> / <code>PFCOUNT</code>): 12 KB per key, about 0.81% error. Merge the daily keys (<code>PFMERGE</code>) for weekly or monthly uniques. Use an exact set only if the number must be exact.</p></details>
 </div>
 
-<div class="pager"><a href="03-scalability-reliability.html">← 03 · Scalability</a><a class="next" href="05-databases-data.html">05 · Databases &amp; Data →</a></div>
+<div class="pager"><a href="04-distributed-systems.html">← 04 · Distributed Systems</a><a class="next" href="06-databases-data.html">06 · Databases &amp; Data →</a></div>
 </main>
-<footer>Tech Concepts Prep · Section 04</footer>
+<footer>Tech Concepts Prep · Section 05</footer>
 <script src="assets/app.js"></script>
 <script src="assets/viz.js"></script>
 </body>

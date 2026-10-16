@@ -3,19 +3,20 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>09 · Architecture Patterns | Tech Concepts Prep</title>
+<title>11 · Architecture Patterns | Tech Concepts Prep</title>
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<nav class="top"><a href="08-integration-messaging.html">← Integration</a><span class="here">09 · Architecture Patterns</span><a href="10-security-iam.html">Next: Security &amp; IAM →</a></nav>
+<nav class="top"><a href="10-integration-messaging.html">← Integration</a><span class="here">11 · Architecture Patterns</span><a href="12-security-iam.html">Next: Security &amp; IAM →</a></nav>
 <main>
 
 <header class="hero">
-  <div class="kicker">Section 09</div>
+  <div class="kicker">Section 11</div>
   <h1>Architecture styles, microservice patterns &amp; serverless</h1>
   <p>The shapes systems take, from monoliths to microservices to serverless, and the proven patterns for splitting services, sharing data, communicating and surviving failure.</p>
   <div class="toc">
     <a href="#styles">Architecture patterns (styles)</a>
+    <a href="#hexagonal" class="added">Hexagonal / Clean / Onion</a>
     <a href="#mono-micro" class="added">Monolith vs Microservices</a>
     <a href="#ms-patterns">Microservice patterns</a>
     <a href="#saga" class="added">Saga</a>
@@ -23,14 +24,16 @@
     <a href="#strangler" class="added">Strangler Fig</a>
     <a href="#mesh" class="added">Sidecar &amp; Service Mesh</a>
     <a href="#ddd" class="added">DDD essentials</a>
+    <a href="#eventstorming" class="added">Event storming</a>
     <a href="#serverless">Serverless architecture</a>
     <a href="#twelve" class="added">12-Factor App</a>
+    <a href="#multitenancy" class="added">Multi-tenancy patterns</a>
   </div>
 </header>
 
 <!-- STYLES -->
 <section class="concept" id="styles">
-  <h2><span class="num">9.1</span> Different types of architecture patterns</h2>
+  <h2><span class="num">11.1</span> Different types of architecture patterns</h2>
   <p class="oneliner">An architecture style is the overall shape of a system: how it's split into parts and how those parts talk.</p>
   <div class="grid">
     <div class="box"><h4>🧱 Monolith</h4><p>One deployable unit. Simple to build, test and deploy at first. Grows into a "big ball of mud".</p></div>
@@ -40,7 +43,7 @@
     <div class="box blue"><h4>🧩 Microservices</h4><p>Small, independently deployable services, each owning one business capability and its data.</p></div>
     <div class="box purple"><h4>⚡ Event-driven</h4><p>Components communicate through events (broker or mediator topology). Highly decoupled.</p></div>
     <div class="box teal"><h4>☁️ Serverless</h4><p>Functions and managed services. No servers to manage, pay per use.</p></div>
-    <div class="box"><h4>⬡ Hexagonal / Clean / Onion</h4><p>Domain at the centre. Ports and adapters isolate it from DBs, UIs and frameworks. Very testable.</p></div>
+    <div class="box"><h4>⬡ Hexagonal / Clean / Onion</h4><p>Domain at the centre. Ports and adapters isolate it from DBs, UIs and frameworks. Very testable. More in 11.2.</p></div>
     <div class="box"><h4>🔌 Microkernel (plug-in)</h4><p>Core system + plug-ins (IDEs, rules engines, browsers).</p></div>
     <div class="box"><h4>🌌 Space-based</h4><p>In-memory data grid and processing units, for extreme, spiky scale.</p></div>
     <div class="box"><h4>🖼 Micro-frontends</h4><p>The UI split by domain, each part owned by its own team.</p></div>
@@ -99,7 +102,7 @@
     <tr><td><b>Hexagonal / Clean</b></td><td><span class="pill builtin">built-in</span> interfaces (ports) + DI (adapters)</td><td>The domain project references no framework packages. Adapters live in outer projects</td></tr>
     <tr><td><b>Enforce boundaries</b></td><td><code>NetArchTest.Rules</code> or <code>TngTech.ArchUnitNET</code></td><td>Unit tests that fail the build when a layer or module uses something it shouldn't</td></tr>
     <tr><td><b>Microkernel</b></td><td><span class="pill builtin">built-in</span> <code>AssemblyLoadContext</code></td><td>Load plug-in assemblies at runtime (and unload them if the context is collectible)</td></tr>
-    <tr><td><b>Event-driven</b></td><td>See 8.3: Service Bus, Event Hubs, Kafka, Wolverine</td><td>Broker topology in .NET means the messaging SDKs and frameworks from section 8</td></tr>
+    <tr><td><b>Event-driven</b></td><td>See 10.3: Service Bus, Event Hubs, Kafka, Wolverine</td><td>Broker topology in .NET means the messaging SDKs and frameworks from section 10</td></tr>
   </table>
 <pre class="code"><code>// xUnit + NetArchTest: the domain must not depend on infrastructure or EF Core
 [Fact]
@@ -115,9 +118,162 @@ public void Domain_has_no_infrastructure_dependencies()
 </div>
   </section>
 
+<!-- HEXAGONAL -->
+<section class="concept" id="hexagonal">
+  <h2><span class="num">11.2</span> Hexagonal, Clean &amp; Onion architecture <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Put the business rules in the middle and make every dependency point <b>inwards</b>. The database, UI and frameworks become replaceable plug-ins at the edge.</p>
+  <p>The ports-and-adapters diagram is in 11.1. This section covers the rule behind it, how the three names differ, and when the pattern is overkill.</p>
+<div class="svgwrap">
+<svg viewBox="0 0 880 380" width="880" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, sans-serif" role="img" aria-label="Clean architecture as concentric rings: frameworks and drivers on the outside, then interface adapters, then use cases, with entities at the centre. HTTP, Kafka, SQL DB and UI or tests sit outside and their dependencies point inwards. Source-code dependencies point inwards only; inner rings never name outer ones.">
+  <defs><marker id="hex-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#d97706"/></marker></defs>
+  <text x="20" y="22" font-size="14" font-weight="800" fill="#1e293b">Clean / Onion: concentric layers</text>
+  <circle cx="290" cy="200" r="165" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+  <circle cx="290" cy="200" r="122" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <circle cx="290" cy="200" r="80" fill="#d1fae5" stroke="#059669" stroke-width="2"/>
+  <circle cx="290" cy="200" r="40" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+  <g fill="none" stroke="#f59e0b" stroke-width="5">
+    <circle cx="290" cy="200" r="165" opacity="1"><animate attributeName="opacity" values="1;0" keyTimes="0;0.25" calcMode="discrete" dur="8s" repeatCount="indefinite"/></circle>
+    <circle cx="290" cy="200" r="122" opacity="0"><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.25;0.5" calcMode="discrete" dur="8s" repeatCount="indefinite"/></circle>
+    <circle cx="290" cy="200" r="80" opacity="0"><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.5;0.75" calcMode="discrete" dur="8s" repeatCount="indefinite"/></circle>
+    <circle cx="290" cy="200" r="40" opacity="0"><animate attributeName="opacity" values="0;1" keyTimes="0;0.75" calcMode="discrete" dur="8s" repeatCount="indefinite"/></circle>
+  </g>
+  <g text-anchor="middle" font-weight="700">
+    <text x="290" y="61" font-size="12.5" fill="#334155">Frameworks &amp; drivers</text>
+    <text x="290" y="103" font-size="12.5" fill="#1d4ed8">Interface adapters</text>
+    <text x="290" y="144" font-size="12.5" fill="#047857">Use cases</text>
+    <text x="290" y="205" font-size="13" fill="#5b21b6">Entities</text>
+  </g>
+  <g stroke="#d97706" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#hex-ah)">
+    <line x1="100" y1="200" x2="246" y2="200"/>
+    <line x1="470" y1="200" x2="334" y2="200"/>
+    <line x1="159" y1="331" x2="259" y2="231"/>
+    <line x1="421" y1="331" x2="321" y2="231"/>
+  </g>
+  <g font-size="12.5" font-weight="700" fill="#475569">
+    <text x="92" y="196" text-anchor="end">HTTP</text>
+    <text x="470" y="220" text-anchor="start">SQL DB</text>
+    <text x="152" y="350" text-anchor="end">Kafka</text>
+    <text x="428" y="350" text-anchor="start">UI / tests</text>
+  </g>
+  <g fill="#f59e0b" stroke="#fff" stroke-width="1.5">
+    <circle r="6"><animateMotion path="M100,200 L246,200" dur="2.4s" repeatCount="indefinite"/></circle>
+    <circle r="6"><animateMotion path="M470,200 L334,200" dur="2.4s" begin="-0.6s" repeatCount="indefinite"/></circle>
+    <circle r="6"><animateMotion path="M159,331 L259,231" dur="2.4s" begin="-1.2s" repeatCount="indefinite"/></circle>
+    <circle r="6"><animateMotion path="M421,331 L321,231" dur="2.4s" begin="-1.8s" repeatCount="indefinite"/></circle>
+  </g>
+  <g>
+    <rect x="530" y="40" width="330" height="56" rx="10" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+    <rect x="530" y="110" width="330" height="56" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+    <rect x="530" y="180" width="330" height="56" rx="10" fill="#d1fae5" stroke="#059669" stroke-width="2"/>
+    <rect x="530" y="250" width="330" height="56" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+  </g>
+  <g fill="none" stroke="#f59e0b" stroke-width="4">
+    <rect x="527" y="37" width="336" height="62" rx="12" opacity="1"><animate attributeName="opacity" values="1;0" keyTimes="0;0.25" calcMode="discrete" dur="8s" repeatCount="indefinite"/></rect>
+    <rect x="527" y="107" width="336" height="62" rx="12" opacity="0"><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.25;0.5" calcMode="discrete" dur="8s" repeatCount="indefinite"/></rect>
+    <rect x="527" y="177" width="336" height="62" rx="12" opacity="0"><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.5;0.75" calcMode="discrete" dur="8s" repeatCount="indefinite"/></rect>
+    <rect x="527" y="247" width="336" height="62" rx="12" opacity="0"><animate attributeName="opacity" values="0;1" keyTimes="0;0.75" calcMode="discrete" dur="8s" repeatCount="indefinite"/></rect>
+  </g>
+  <g font-size="13.5" font-weight="700" fill="#1e293b">
+    <text x="546" y="63">Frameworks &amp; drivers</text>
+    <text x="546" y="133">Interface adapters</text>
+    <text x="546" y="203">Use cases (application)</text>
+    <text x="546" y="273">Entities (domain)</text>
+  </g>
+  <g font-size="12" fill="#475569">
+    <text x="546" y="83">ASP.NET Core, EF Core, Kafka client, Azure SDKs</text>
+    <text x="546" y="153">Controllers, repositories, mappers, gateways</text>
+    <text x="546" y="223">TransferFunds, OpenAccount: run the steps</text>
+    <text x="546" y="293">Account, Money, limits: pure business rules</text>
+  </g>
+  <text x="530" y="336" font-size="13" font-weight="800" fill="#b45309">Source-code dependencies point inwards only.</text>
+  <text x="530" y="356" font-size="12.5" fill="#475569">Inner rings never name outer ones.</text>
+</svg>
+</div>
+  <div class="grid">
+    <div class="box purple"><h4>🔌 Port</h4><p>An interface the core owns. <b>Inbound</b> (driving) port: a use case the outside calls, like <code>TransferFunds</code>. <b>Outbound</b> (driven) port: something the core needs, like <code>IAccountStore</code>.</p></div>
+    <div class="box blue"><h4>🧩 Adapter</h4><p>The code at the edge that plugs into a port: an API endpoint or queue listener (inbound), an EF Core repository or HTTP client (outbound).</p></div>
+    <div class="box amber"><h4>➡️ Dependency rule</h4><p>Outer code may use inner code, never the reverse. The core declares an interface. Infrastructure implements it (dependency inversion).</p></div>
+  </div>
+  <div class="tablewrap"><table>
+    <tr><th></th><th>Hexagonal (ports &amp; adapters)</th><th>Onion</th><th>Clean</th></tr>
+    <tr><td>Coined by</td><td>Alistair Cockburn (2005)</td><td>Jeffrey Palermo (2008)</td><td>Robert C. Martin (2012)</td></tr>
+    <tr><td>Picture</td><td>Inside vs outside, ports on the edge</td><td>Concentric layers</td><td>Concentric circles</td></tr>
+    <tr><td>Layers inside</td><td>Not prescribed: just "the application"</td><td>Domain model → domain services → application services → UI / infrastructure / tests</td><td>Entities → use cases → interface adapters → frameworks &amp; drivers</td></tr>
+    <tr><td>Main point</td><td>Swap adapters freely. Drive the app from tests</td><td>Domain at the centre, infrastructure at the edge</td><td>The dependency rule</td></tr>
+  </table></div>
+  <p class="tip">Mostly the same idea with different names: domain in the middle, dependencies pointing inwards, I/O at the edge.</p>
+  <div class="cols2">
+    <div class="box green"><h4>✅ Benefits</h4><ul><li>Test business rules in milliseconds, with fakes and no database</li><li>Swap a database, broker or vendor API without touching the rules</li><li>Framework upgrades stay at the edge</li><li>Clear places for code to live</li></ul></div>
+    <div class="box red"><h4>⚠️ Overkill risks</h4><ul><li>Simple CRUD drowning in mappers and pass-through layers</li><li>An interface for every class "just in case"</li><li>A repository wrapping EF Core, which is already a repository</li><li>Many projects and ceremony that slow small teams down</li></ul></div>
+  </div>
+  <h3>The alternative: vertical slice architecture</h3>
+  <ul>
+    <li>Organise by <b>feature</b>, not by technical layer: one folder per use case holds the endpoint, request, handler and data access.</li>
+    <li>Each slice picks the simplest approach it needs. A report can query SQL directly; a complex payment flow can use a rich domain model.</li>
+    <li>Change one feature in one place. Fewer shared abstractions to break.</li>
+    <li>They mix well: vertical slices on the outside, a clean domain core for the complex parts.</li>
+  </ul>
+  <div class="remember"><ul>
+    <li>Explain it with one test: "Does my domain project reference EF Core or ASP.NET Core?" If yes, it isn't clean, whatever the folders are called.</li>
+    <li>Use it for complex, long-lived domains (payments, lending rules). For simple CRUD, vertical slices or a plain layered app is often better.</li>
+    <li>Enforce the rule with architecture tests in CI (example in 11.1).</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Need</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Rings as projects</b></td><td><span class="pill builtin">built-in</span> separate projects: <code>Domain</code>, <code>Application</code>, <code>Infrastructure</code>, <code>Api</code></td><td><code>ProjectReference</code>s only point inwards. The Domain project has no ASP.NET Core or EF Core packages</td></tr>
+    <tr><td><b>Ports &amp; adapters</b></td><td><span class="pill builtin">built-in</span> interfaces + <code>Microsoft.Extensions.DependencyInjection</code></td><td>The core declares <code>IAccountStore</code>. The Api project registers the EF Core adapter in DI</td></tr>
+    <tr><td><b>Architecture tests</b></td><td><code>TngTech.ArchUnitNET</code> (+ its xUnit / NUnit / MSTest extension)</td><td>Actively maintained, rich rule language. Fails the build when a layer uses something it shouldn't</td></tr>
+    <tr><td><b>Architecture tests (simple)</b></td><td><code>NetArchTest.Rules</code></td><td>Small fluent API (see 11.1), but no release since 1.3.2 in May 2021</td></tr>
+    <tr><td><b>Vertical slices</b></td><td><span class="pill builtin">built-in</span> minimal APIs with <code>MapGroup</code>, one folder per feature; optional <code>WolverineFx</code> handlers</td><td>Each feature maps its own endpoints. No shared service layer needed</td></tr>
+  </table>
+<pre class="code"><code>// Application (inner): owns the port. No EF Core, no HTTP.
+public interface IAccountStore                              // outbound port
+{
+    Task&lt;Account?&gt; FindAsync(Guid id, CancellationToken ct);
+    Task SaveAsync(CancellationToken ct);                   // one unit of work
+}
+
+public sealed class TransferFunds(IAccountStore store)      // use case (inbound port)
+{
+    public async Task Handle(Guid from, Guid to, decimal amount, CancellationToken ct)
+    {
+        var source = await store.FindAsync(from, ct) ?? throw new KeyNotFoundException();
+        var target = await store.FindAsync(to, ct) ?? throw new KeyNotFoundException();
+        source.Withdraw(amount);                            // the rules live in the domain
+        target.Deposit(amount);
+        await store.SaveAsync(ct);
+    }
+}
+
+// Infrastructure (outer): the adapter depends on the port, not the other way round
+public sealed class EfAccountStore(BankDbContext db) : IAccountStore
+{
+    public Task&lt;Account?&gt; FindAsync(Guid id, CancellationToken ct) =&gt;
+        db.Accounts.FindAsync([id], ct).AsTask();
+    public Task SaveAsync(CancellationToken ct) =&gt; db.SaveChangesAsync(ct);
+}
+
+// Api (outermost): wire it up
+builder.Services.AddScoped&lt;IAccountStore, EfAccountStore&gt;();
+builder.Services.AddScoped&lt;TransferFunds&gt;();</code></pre>
+</div>
+  <div class="post">
+    <p>Clean, Onion, Hexagonal: three names, one rule 🧅</p>
+    <p>🎯 Business rules sit in the middle.</p>
+    <p>➡️ Every dependency points inwards. The core never names EF Core, ASP.NET Core or Kafka.</p>
+    <p>🔌 Ports are interfaces the core owns. Adapters are the DB, API and broker code at the edge.</p>
+    <p>🧪 You can test the core in milliseconds, with no database.</p>
+    <p>⚠️ For simple CRUD it's ceremony. Try vertical slices instead.</p>
+    <p>Quick check: does your Domain project reference EF Core? Then it isn't clean, whatever the folders say.</p>
+    <p>#SoftwareArchitecture #CleanArchitecture #DotNet #DDD</p>
+  </div>
+</section>
+
 <!-- MONO VS MICRO -->
 <section class="concept" id="mono-micro">
-  <h2><span class="num">9.2</span> Monolith vs Microservices <span class="tag-added">Added</span></h2>
+  <h2><span class="num">11.3</span> Monolith vs Microservices <span class="tag-added">Added</span></h2>
   <div class="tablewrap"><table>
     <tr><th></th><th>Monolith</th><th>Microservices</th></tr>
     <tr><td>Deploy</td><td>Everything together</td><td>Each service on its own</td></tr>
@@ -170,7 +326,7 @@ builder.Build().Run();</code></pre>
 
 <!-- MS PATTERNS -->
 <section class="concept" id="ms-patterns">
-  <h2><span class="num">9.3</span> Microservice architecture patterns (map)</h2>
+  <h2><span class="num">11.4</span> Microservice architecture patterns (map)</h2>
   <p class="oneliner">The common patterns, grouped by the problem each one solves.</p>
   <div class="grid wide">
     <div class="box blue"><h4>✂️ Decomposition</h4><ul><li>By business capability</li><li>By subdomain (DDD bounded context)</li><li>Strangler fig (migrate gradually)</li></ul></div>
@@ -221,7 +377,7 @@ app.MapHealthChecks("/health");</code></pre>
 
 <!-- SAGA -->
 <section class="concept" id="saga">
-  <h2><span class="num">9.4</span> Saga pattern <span class="tag-added">Added</span></h2>
+  <h2><span class="num">11.5</span> Saga pattern <span class="tag-added">Added</span></h2>
   <p class="oneliner">A long business transaction split into local transactions. If one step fails, <b>compensating actions</b> undo the earlier steps.</p>
 <figure class="viz" data-viz="frames"><script type="application/json">
 {"title":"Payment saga","interval":2600,
@@ -276,7 +432,7 @@ public static async Task PaymentSaga([OrchestrationTrigger] TaskOrchestrationCon
 
 <!-- CQRS -->
 <section class="concept" id="cqrs">
-  <h2><span class="num">9.5</span> CQRS &amp; Event Sourcing <span class="tag-added">Added</span></h2>
+  <h2><span class="num">11.6</span> CQRS &amp; Event Sourcing <span class="tag-added">Added</span></h2>
   <p class="oneliner"><b>CQRS</b>: separate the write model (commands) from the read model (queries). <b>Event sourcing</b>: store every change as an event and rebuild state from them.</p>
   <div class="flow">
     <div class="n">Command<small>"Transfer $100"</small></div><div class="ar">→</div><div class="n p">Write model<small>validates rules</small></div><div class="ar">→</div>
@@ -322,7 +478,7 @@ var account = await session.Events.AggregateStreamAsync&lt;Account&gt;(accountId
 
 <!-- STRANGLER -->
 <section class="concept" id="strangler">
-  <h2><span class="num">9.6</span> Strangler Fig pattern <span class="tag-added">Added</span></h2>
+  <h2><span class="num">11.7</span> Strangler Fig pattern <span class="tag-added">Added</span></h2>
   <p class="oneliner">Modernise a legacy system bit by bit: put a façade in front, route one feature at a time to new services, and retire the old system once it's empty.</p>
 <figure class="viz" data-viz="frames"><script type="application/json">
 {"title":"Strangler fig migration","interval":2600,
@@ -368,7 +524,7 @@ app.Run();</code></pre>
 
 <!-- MESH -->
 <section class="concept" id="mesh">
-  <h2><span class="num">9.7</span> Sidecar &amp; Service Mesh <span class="tag-added">Added</span></h2>
+  <h2><span class="num">11.8</span> Sidecar &amp; Service Mesh <span class="tag-added">Added</span></h2>
   <p class="oneliner">A <b>sidecar</b> is a helper container that runs next to your service. A <b>service mesh</b> puts a sidecar proxy next to every service to handle networking concerns.</p>
   <div class="flow">
     <div class="n g">Service A</div><div class="ar">⇄</div><div class="n p">Envoy proxy</div>
@@ -406,7 +562,7 @@ app.MapPost("/on-payment", (Payment p) =&gt; Results.Ok())
 
 <!-- DDD -->
 <section class="concept" id="ddd">
-  <h2><span class="num">9.8</span> Domain-Driven Design essentials <span class="tag-added">Added</span></h2>
+  <h2><span class="num">11.9</span> Domain-Driven Design essentials <span class="tag-added">Added</span></h2>
   <p class="oneliner">Model software around the business domain, and draw service boundaries where the business language changes.</p>
   <div class="grid">
     <div class="box"><h4>Bounded context</h4><p>A boundary inside which a model and its terms have one meaning. "Account" in Lending ≠ "Account" in Login.</p></div>
@@ -453,9 +609,94 @@ modelBuilder.Entity&lt;Account&gt;().Ignore(a =&gt; a.DomainEvents);</code></pre
 </div>
   </section>
 
+<!-- EVENT STORMING -->
+<section class="concept" id="eventstorming">
+  <h2><span class="num">11.10</span> Event storming <span class="tag-added">Added</span></h2>
+  <p class="oneliner">A fast sticky-note workshop (created by Alberto Brandolini) where business and tech people map a domain as a timeline of events, then find the boundaries in it.</p>
+<figure class="viz" data-viz="frames" style="min-height:265px"><script type="application/json">
+{"title":"A payment flow on the wall, one layer of stickies at a time","interval":2800,
+ "frames":[
+  {"label":"Events","caption":"Chaotic exploration: everyone writes <b>domain events</b> in the past tense, then puts them on one timeline.","rows":[
+   {"label":"Events (orange)","items":[{"t":"Payment submitted","c":"amber"},{"t":"Fraud check passed","c":"amber"},{"t":"Payment sent","c":"amber"},{"t":"Payment settled","c":"amber"},{"t":"Customer notified","c":"amber"}]}]},
+  {"label":"Commands","caption":"Add what triggers each event: <b>commands</b> (blue), and who issues them: <b>actors</b> (yellow).","rows":[
+   {"label":"Actors (yellow)","items":[{"t":"Customer","c":"slate"},{"t":"Payments ops","c":"slate"}]},
+   {"label":"Commands (blue)","items":[{"t":"Submit payment","c":"blue"},{"t":"Release held payment","c":"blue"}]},
+   {"label":"Events (orange)","items":[{"t":"Payment submitted","c":"amber"},{"t":"Fraud check passed","c":"amber"},{"t":"Payment sent","c":"amber"},{"t":"Payment settled","c":"amber"},{"t":"Customer notified","c":"amber"}]}]},
+  {"label":"Policies","caption":"Add <b>policies</b> (lilac: \"whenever X, then Y\"), <b>external systems</b> (pink) and <b>read models</b> (green).","rows":[
+   {"label":"Policies (lilac)","items":[{"t":"Whenever fraud score is high → hold payment","c":"purple"}]},
+   {"label":"External (pink)","items":[{"t":"Fraud engine","c":"pink"},{"t":"Payment scheme","c":"pink"}]},
+   {"label":"Read models (green)","items":[{"t":"Available balance","c":"green"},{"t":"Held payments list","c":"green"}]}]},
+  {"label":"Hotspots","caption":"<b>Hotspots</b> mark questions, conflicts and risks. They're where the real learning is.","ms":3200,"rows":[
+   {"label":"Hotspots","items":[{"t":"❓ Who may release a held payment?","c":"red"},{"t":"❓ \"Account\" means different things to Ops and Lending","c":"red"}]}]},
+  {"label":"Boundaries","caption":"Where language and ownership change, draw lines: these are candidate <b>bounded contexts</b> (11.9).","ms":3600,"rows":[
+   {"label":"Payments","items":[{"t":"Payment submitted","c":"amber"},{"t":"Payment sent","c":"amber"},{"t":"Payment settled","c":"amber"}]},
+   {"label":"Fraud","items":[{"t":"Fraud check passed","c":"amber"},{"t":"Payment held","c":"amber"}]},
+   {"label":"Notifications","items":[{"t":"Customer notified","c":"amber"}]}]}
+ ]}
+</script></figure>
+  <h3>The sticky-note legend</h3>
+  <div class="grid">
+    <div class="box" style="background:#ffedd5;border-color:#fdba74"><h4>🟧 Domain event</h4><p>Something that happened, in the past tense: "Payment settled". The backbone of the wall.</p></div>
+    <div class="box blue"><h4>🟦 Command</h4><p>An intent or decision that causes an event: "Submit payment".</p></div>
+    <div class="box" style="background:#fef9c3;border-color:#fde047"><h4>🟨 Actor (small yellow)</h4><p>The person or role who issues a command: "Customer", "Payments ops".</p></div>
+    <div class="box purple"><h4>🟪 Policy (lilac)</h4><p>A reaction rule: "Whenever fraud score is high, hold the payment".</p></div>
+    <div class="box" style="background:#fce7f3;border-color:#f9a8d4"><h4>🔗 External system (pink)</h4><p>Something outside your control: a payment scheme, a credit bureau, a fraud engine.</p></div>
+    <div class="box green"><h4>🟩 Read model</h4><p>The information someone looks at to make a decision: "Available balance".</p></div>
+    <div class="box" style="background:#fef9c3;border-color:#fde047"><h4>🟨 Aggregate (large yellow)</h4><p>The thing that accepts commands and enforces the rules: "Payment", "Account".</p></div>
+    <div class="box red"><h4>🟥 Hotspot</h4><p>A question, conflict or risk, often on a magenta or red note.</p></div>
+  </div>
+  <p class="tip">Colours vary between facilitators and tools. Agree a legend at the start and keep it visible on the wall.</p>
+  <div class="tablewrap"><table>
+    <tr><th></th><th>Big picture</th><th>Process modelling</th><th>Software design</th></tr>
+    <tr><td>Goal</td><td>Explore a whole business line. Find hotspots and boundaries</td><td>Model one business process end to end</td><td>Design aggregates and services you'll build</td></tr>
+    <tr><td>Who</td><td>Many people: domain experts, ops, risk, tech</td><td>A smaller group for one process</td><td>The dev team plus domain experts</td></tr>
+    <tr><td>Notes used</td><td>Events, hotspots, actors, external systems</td><td>+ commands, policies, read models</td><td>+ aggregates</td></tr>
+    <tr><td>Output</td><td>A shared timeline, pivotal events, candidate bounded contexts</td><td>An agreed flow with rules and unknowns</td><td>Aggregates, commands and events ready to code</td></tr>
+  </table></div>
+  <h3>How it feeds DDD (11.9)</h3>
+  <div class="flow">
+    <div class="n a">Events on a timeline</div><div class="ar">→</div>
+    <div class="n">Pivotal events &amp; swimlanes</div><div class="ar">→</div>
+    <div class="n p">Language &amp; ownership changes</div><div class="ar">→</div>
+    <div class="n g">Bounded contexts<small>→ context map → services or modules</small></div>
+  </div>
+  <ul>
+    <li>Same word, different meaning ("Account" in Lending vs Login) usually marks a context boundary.</li>
+    <li>Events become domain events inside a context, and integration events between contexts.</li>
+    <li>Aggregates become your consistency boundaries: one transaction each.</li>
+    <li>Hotspots turn into open questions, risks and architecture decisions (ADRs).</li>
+  </ul>
+  <div class="remember"><ul>
+    <li>Events are past tense and in business language. "PaymentRow inserted" is not a domain event.</li>
+    <li>Invite people with the answers (domain experts) and people with the questions (engineers). Give them unlimited wall space, physical or a virtual board.</li>
+    <li>The output isn't a document. It's shared understanding and candidate bounded contexts.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <p>Event storming is a workshop, so there's no library. This is how the stickies usually map to .NET code afterwards:</p>
+  <table>
+    <tr><th>Sticky</th><th>.NET building block</th><th>Notes</th></tr>
+    <tr><td><b>Command</b> (blue)</td><td><span class="pill builtin">built-in</span> a <code>record</code> + a handler class; or a <code>WolverineFx</code> handler</td><td>One handler per command, named in the business language</td></tr>
+    <tr><td><b>Aggregate</b> (yellow)</td><td><span class="pill builtin">built-in</span> a class with private setters and rule-checking methods</td><td>See the <code>Account</code> example in 11.9</td></tr>
+    <tr><td><b>Domain event</b> (orange)</td><td><span class="pill builtin">built-in</span> a past-tense <code>record</code> raised by the aggregate</td><td>Publish to other contexts through an outbox (10.6)</td></tr>
+    <tr><td><b>Policy</b> (lilac)</td><td>An event handler that sends the next command (Wolverine, Service Bus subscriber)</td><td>Long-running policies become sagas (11.5)</td></tr>
+  </table>
+</div>
+  <div class="post">
+    <p>The fastest way to find your service boundaries? Sticky notes 🟧</p>
+    <p>🟧 Orange: what happened ("Payment settled")</p>
+    <p>🟦 Blue: what triggered it ("Submit payment")</p>
+    <p>🟪 Lilac: the rule ("Whenever the fraud score is high, hold it")</p>
+    <p>🟩 Green: what people look at to decide</p>
+    <p>🟥 Hotspots: where everyone disagrees. That's the gold.</p>
+    <p>Where the language changes, draw a line. That's your bounded context.</p>
+    <p>#EventStorming #DDD #SoftwareArchitecture #Microservices</p>
+  </div>
+</section>
+
 <!-- SERVERLESS -->
 <section class="concept" id="serverless">
-  <h2><span class="num">9.9</span> Serverless architecture</h2>
+  <h2><span class="num">11.11</span> Serverless architecture</h2>
   <p class="oneliner">You write the code or configuration. The cloud runs, scales (even to zero) and bills it per execution. Servers still exist, you just don't manage them.</p>
   <div class="flow">
     <div class="n">Trigger<small>HTTP · queue · blob · timer · event</small></div><div class="ar">→</div>
@@ -522,7 +763,7 @@ modelBuilder.Entity&lt;Account&gt;().Ignore(a =&gt; a.DomainEvents);</code></pre
 
 <!-- 12 FACTOR -->
 <section class="concept" id="twelve">
-  <h2><span class="num">9.10</span> The 12-Factor App <span class="tag-added">Added</span></h2>
+  <h2><span class="num">11.12</span> The 12-Factor App <span class="tag-added">Added</span></h2>
   <p class="oneliner">Twelve principles for building cloud-native apps that are portable and scalable.</p>
   <div class="tablewrap"><table>
     <tr><td>1. Codebase: one repo, many deploys</td><td>7. Port binding: self-contained service</td></tr>
@@ -560,16 +801,127 @@ builder.Logging.AddJsonConsole();                    // logs as an event stream<
 </div>
   </section>
 
+<!-- MULTI-TENANCY -->
+<section class="concept" id="multitenancy">
+  <h2><span class="num">11.13</span> Multi-tenancy patterns <span class="tag-added">Added</span></h2>
+  <p class="oneliner">One system serves many customers (tenants). The key design question is how much they <b>share</b>: everything (pool), nothing (silo), or a mix (bridge).</p>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Silo vs bridge vs pool","interval":3000,
+ "frames":[
+  {"label":"Silo","caption":"<b>Silo</b>: every tenant gets its own stack. Strongest isolation, highest cost per tenant.","rows":[
+   [{"t":"Tenant A","c":"blue","w":110},{"t":"Tenant B","c":"purple","w":110},{"t":"Tenant C","c":"teal","w":110}],
+   [{"k":"arrow","g":"↓","w":110},{"k":"arrow","g":"↓","w":110},{"k":"arrow","g":"↓","w":110}],
+   [{"t":"App A","c":"blue","w":110},{"t":"App B","c":"purple","w":110},{"t":"App C","c":"teal","w":110}],
+   [{"k":"arrow","g":"↓","w":110},{"k":"arrow","g":"↓","w":110},{"k":"arrow","g":"↓","w":110}],
+   [{"t":"DB A","c":"blue","w":110},{"t":"DB B","c":"purple","w":110},{"t":"DB C","c":"teal","w":110}]]},
+  {"label":"Bridge","caption":"<b>Bridge</b> (hybrid): shared compute, but a separate database or schema per tenant. A common middle ground.","rows":[
+   [{"t":"Tenant A","c":"blue","w":110},{"t":"Tenant B","c":"purple","w":110},{"t":"Tenant C","c":"teal","w":110}],
+   [{"k":"arrow","g":"↘","w":110},{"k":"arrow","g":"↓","w":110},{"k":"arrow","g":"↙","w":110}],
+   [{"t":"Shared app","sub":"resolves the tenant","c":"slate","w":346}],
+   [{"k":"arrow","g":"↙","w":110},{"k":"arrow","g":"↓","w":110},{"k":"arrow","g":"↘","w":110}],
+   [{"t":"DB A","c":"blue","w":110},{"t":"DB B","c":"purple","w":110},{"t":"DB C","c":"teal","w":110}]]},
+  {"label":"Pool","caption":"<b>Pool</b>: everything shared. Cheapest and simplest to run, but isolation lives entirely in your code.","rows":[
+   [{"t":"Tenant A","c":"blue","w":110},{"t":"Tenant B","c":"purple","w":110},{"t":"Tenant C","c":"teal","w":110}],
+   [{"k":"arrow","g":"↘","w":110},{"k":"arrow","g":"↓","w":110},{"k":"arrow","g":"↙","w":110}],
+   [{"t":"Shared app","sub":"resolves the tenant","c":"slate","w":346}],
+   [{"k":"arrow","g":"↓","w":346}],
+   [{"t":"Shared DB","sub":"every row has a TenantId","c":"green","w":346}]]},
+  {"label":"Noisy neighbour","caption":"One tenant's spike slows everyone in the pool. Fix: <b>per-tenant rate limits and quotas</b>, or move big tenants to a silo.","ms":3600,"rows":[
+   [{"t":"Tenant A","sub":"normal","c":"blue","w":110},{"t":"Tenant B","sub":"10× traffic 📈","c":"red","w":110},{"t":"Tenant C","sub":"normal","c":"teal","w":110}],
+   [{"k":"arrow","g":"↘","w":110},{"k":"arrow","g":"⇊","w":110},{"k":"arrow","g":"↙","w":110}],
+   [{"t":"Shared app","sub":"slow for everyone 🐢","c":"amber","w":346}],
+   [{"k":"arrow","g":"↓","w":346}],
+   [{"t":"Shared DB","sub":"CPU at 100%","c":"red","w":346}]]}
+ ]}
+</script></figure>
+  <h3>Where tenant data lives</h3>
+  <div class="tablewrap"><table>
+    <tr><th></th><th>Database per tenant</th><th>Schema per tenant</th><th>Shared tables + <code>TenantId</code></th></tr>
+    <tr><td>Isolation</td><td><span class="pill g">Strongest</span></td><td><span class="pill a">Medium</span></td><td><span class="pill r">Code-enforced</span></td></tr>
+    <tr><td>Cost per tenant</td><td>Highest (elastic pools help)</td><td>Medium</td><td>Lowest</td></tr>
+    <tr><td>Number of tenants</td><td>Tens to thousands</td><td>Hundreds</td><td>Up to millions</td></tr>
+    <tr><td>Migrations &amp; backups</td><td>Run per database: must be automated</td><td>Run per schema</td><td>Once for everyone</td></tr>
+    <tr><td>Restore one tenant / data residency</td><td>Easy</td><td>Possible</td><td>Hard</td></tr>
+    <tr><td>Typical fit</td><td>Large, regulated customers that demand isolation</td><td>Mid-sized B2B SaaS</td><td>Self-service SaaS, free tiers</td></tr>
+  </table></div>
+  <div class="grid">
+    <div class="box red"><h4>🔐 Tenant isolation</h4><p><b>Data</b>: filters, row-level security, per-tenant encryption keys. <b>Compute</b>: dedicated pools or nodes for big tenants. Watch the <b>noisy neighbour</b>.</p></div>
+    <div class="box blue"><h4>🧭 Tenant context</h4><p>Resolve the tenant once at the edge (host name, token claim) and carry it everywhere: DB filter, logs, traces, message headers, cache keys.</p></div>
+    <div class="box amber"><h4>🚦 Limits &amp; quotas</h4><p>Rate limits partitioned by tenant, and quotas per plan (requests, storage, users).</p></div>
+    <div class="box purple"><h4>🗝️ Tenant-aware caching</h4><p>Prefix every cache key with the tenant (<code>t:42:account:7</code>). One missing prefix leaks data across tenants.</p></div>
+    <div class="box green"><h4>🤖 Onboarding automation</h4><p>One pipeline creates the database or schema, config, identity and DNS for a new tenant, and removes them on exit.</p></div>
+    <div class="box teal"><h4>💰 Cost per tenant</h4><p>Tag resources and meter usage per tenant, so you know which customers and plans are profitable.</p></div>
+  </div>
+  <div class="remember"><ul>
+    <li>Most platforms end up <b>tiered</b>: a pool for the long tail of small tenants, silos for the big or regulated ones.</li>
+    <li>The tenant ID comes from the authenticated token or host name, never from the request body.</li>
+    <li>Write tests that try to read tenant B's data as tenant A, and run them in CI.</li>
+    <li>Put the tenant ID in logs and traces. Only use it as a metric label if the number of tenants is small (cardinality).</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Need</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Resolve the tenant</b></td><td><code>Finbuckle.MultiTenant.AspNetCore</code> (Apache-2.0)</td><td>Find the tenant from host, route, header or claim, with per-tenant options and auth. v10 releases line up with .NET 10</td></tr>
+    <tr><td><b>Shared tables</b></td><td><span class="pill builtin">built-in</span> EF Core global query filters (<code>HasQueryFilter</code>); EF Core 10 named filters</td><td>Adds <code>WHERE TenantId = @t</code> to every query. Named filters let you switch off soft delete without switching off the tenant filter. <code>Finbuckle.MultiTenant.EntityFrameworkCore</code> can set this up for you</td></tr>
+    <tr><td><b>Database per tenant</b></td><td><span class="pill builtin">built-in</span> <code>AddDbContextFactory</code> / <code>IDbContextFactory&lt;T&gt;</code></td><td>Pick the connection string for the current tenant from a tenant catalog or Key Vault</td></tr>
+    <tr><td><b>Per-tenant limits</b></td><td><span class="pill builtin">built-in</span> <code>Microsoft.AspNetCore.RateLimiting</code>: <code>PartitionedRateLimiter</code></td><td>One token bucket per tenant. Different plans get different limits</td></tr>
+    <tr><td><b>Tenant-aware cache</b></td><td><code>Microsoft.Extensions.Caching.Hybrid</code> (<code>HybridCache</code>)</td><td>Prefix keys with the tenant ID and tag entries <code>tenant:42</code>, so <code>RemoveByTagAsync</code> clears one tenant</td></tr>
+  </table>
+<pre class="code"><code>// EF Core 10: named filters, so soft delete can be ignored while the tenant filter stays
+public sealed class BankDbContext(DbContextOptions&lt;BankDbContext&gt; options, ITenantContext tenant)
+    : DbContext(options)
+{
+    private string TenantId =&gt; tenant.TenantId;
+    public DbSet&lt;Account&gt; Accounts =&gt; Set&lt;Account&gt;();
+
+    protected override void OnModelCreating(ModelBuilder b) =&gt;
+        b.Entity&lt;Account&gt;()
+         .HasQueryFilter("Tenant", a =&gt; a.TenantId == TenantId)
+         .HasQueryFilter("SoftDelete", a =&gt; !a.IsDeleted);
+}
+// db.Accounts.IgnoreQueryFilters(["SoftDelete"]) still only sees this tenant's rows
+
+// One token bucket per tenant: a noisy tenant can't starve the others
+builder.Services.AddRateLimiter(o =&gt;
+{
+    o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    o.GlobalLimiter = PartitionedRateLimiter.Create&lt;HttpContext, string&gt;(ctx =&gt;
+        RateLimitPartition.GetTokenBucketLimiter(
+            ctx.User.FindFirst("tenant_id")?.Value ?? "anonymous",
+            _ =&gt; new TokenBucketRateLimiterOptions
+            {
+                TokenLimit = 200, TokensPerPeriod = 100,
+                ReplenishmentPeriod = TimeSpan.FromSeconds(1)
+            }));
+});</code></pre>
+  <p class="warn"><code>IgnoreQueryFilters()</code> with no names turns off <i>every</i> filter, including the tenant one. Always pass the names you mean.</p>
+</div>
+  <div class="post">
+    <p>Multi-tenant SaaS: how much do your customers share? 🏢</p>
+    <p>🏠 Silo: a stack per tenant. Safest, and the most expensive.</p>
+    <p>🏬 Pool: everything shared, with a TenantId on every row. Cheapest, but isolation lives in your code.</p>
+    <p>🌉 Bridge: shared app, a database per tenant. The common middle ground.</p>
+    <p>📢 Noisy neighbour? Per-tenant rate limits and quotas.</p>
+    <p>🔑 The tenant ID comes from the token, never the request body.</p>
+    <p>Most real platforms end up tiered: a pool for the long tail, silos for the big, regulated customers.</p>
+    <p>#SaaS #MultiTenancy #SystemDesign #CloudArchitecture</p>
+  </div>
+</section>
+
 <div class="qa-wrap">
   <h2>⚡ Quick-fire Q&amp;A</h2>
   <details class="qa"><summary>How do you keep data consistent across microservices?</summary><p>Sagas with compensating actions, the transactional outbox for reliable events, idempotent consumers, and accepting eventual consistency where the business allows it.</p></details>
   <details class="qa"><summary>When would you NOT use microservices?</summary><p>Small team, unclear domain boundaries, early-stage product, or no mature DevOps and observability. Use a modular monolith instead.</p></details>
   <details class="qa"><summary>Serverless or containers?</summary><p>Serverless for event-driven, spiky, short tasks. Containers for long-running, steady, latency-sensitive workloads or when you need full runtime control.</p></details>
+  <details class="qa"><summary>Hexagonal vs Clean vs Onion: what's the difference?</summary><p>Very little. All three put the domain at the centre and make dependencies point inwards, with infrastructure at the edge. Hexagonal talks about ports and adapters; Onion and Clean draw concentric layers, and Clean names them (entities, use cases, interface adapters, frameworks). For simple CRUD, a vertical slice structure is often a better fit.</p></details>
+  <details class="qa"><summary>What do you get out of an event storming workshop?</summary><p>A shared timeline of domain events, the commands, actors, policies and external systems around them, a list of hotspots (open questions and risks), and candidate bounded contexts where the language and ownership change. That feeds the DDD context map and the service boundaries.</p></details>
+  <details class="qa"><summary>How do you isolate tenants in a shared database?</summary><p>Resolve the tenant from the token or host, never from the request body. Add a TenantId to every row and enforce it with an EF Core global query filter (named, so it's never switched off by accident) and ideally database row-level security as a second layer. Prefix cache keys with the tenant, rate limit per tenant, and test for cross-tenant leaks in CI. Move large or regulated tenants to their own database.</p></details>
 </div>
 
-<div class="pager"><a href="08-integration-messaging.html">← 08 · Integration</a><a class="next" href="10-security-iam.html">10 · Security &amp; IAM →</a></div>
+<div class="pager"><a href="10-integration-messaging.html">← 10 · Integration &amp; Messaging</a><a class="next" href="12-security-iam.html">12 · Security &amp; IAM →</a></div>
 </main>
-<footer>Tech Concepts Prep · Section 09</footer>
+<footer>Tech Concepts Prep · Section 11</footer>
 <script src="assets/app.js"></script>
 <script src="assets/viz.js"></script>
 </body>
