@@ -127,6 +127,132 @@
         ['What happens if you block with .Result inside a grain?', 'Grains process one request at a time, so blocking stalls every caller of that grain.']
       ],
       q: [{ q: 'Why does an Orleans grain usually need no locks?', o: ['It runs on the UI thread', 'It processes one request at a time by default', 'It stores all state in SQL', 'Orleans disables multithreading globally'], a: 1, e: 'Grains are single-threaded by default, so their state is never touched by two calls at once.' }]
-    }
+    },
+    'dotnet-core': {
+          say: '.NET Framework 4.8.x is Windows-only and in maintenance: supported with Windows, but frozen. .NET Core made .NET cross-platform, open source and side-by-side, and since .NET 5 it is one platform released every November. Even numbers are LTS for 3 years, odd are STS for 24 months. .NET 10 is the current LTS; .NET 8 and 9 end on 10 November 2026.',
+          k: ['.NET Framework 4.8.x', '.NET Core', 'LTS vs STS', 'net10.0 / netstandard2.0', 'SDK vs runtime', 'self-contained', 'PublishContainer', 'strangler fig'],
+          p: ['Even = LTS (3 years), odd = STS (24 months since .NET 9).', 'The SDK builds, the runtime runs; servers only need the runtime.', 'netstandard2.0 only for libraries still shared with Framework apps.', 'Migrate incrementally: YARP in front, libraries first; WCF and Web Forms are the hard parts.'],
+          f: [
+            ['Why move off .NET Framework?', 'It is supported but gets no new features: no Linux containers, no performance gains, harder hiring. Modern .NET is faster every release, cross-platform and container-friendly.'],
+            ['LTS or STS for an enterprise service?', 'LTS (3 years) for long-lived services. STS now gets 24 months, so it suits teams that upgrade every year.'],
+            ['Framework-dependent vs self-contained vs Native AOT?', 'Framework-dependent is small but needs the runtime installed. Self-contained bundles the runtime per OS/CPU. Native AOT compiles to native code for fast startup but restricts reflection.'],
+            ['.NET 8 support ends on 10 Nov 2026. What is your plan?', 'Inventory apps, move to net10.0, update packages, review breaking changes, run CI tests, roll out in waves.'],
+            ['How do you migrate a large ASP.NET (System.Web) app?', 'Strangler fig: put YARP in front, move routes one at a time to ASP.NET Core, share session and auth with System.Web adapters, multi-target shared libraries first.']
+          ],
+          q: [{ q: 'How long is a .NET STS release supported, starting with .NET 9?', o: ['24 months', '18 months', '12 months', '36 months'], a: 0, e: 'Microsoft extended STS from 18 to 24 months in September 2025, effective from .NET 9. LTS stays at 3 years.' }]
+        },
+    'middleware': {
+          say: 'A middleware gets the HttpContext and next: work before await next(), work after it, or skip next to short-circuit. Use inline Use for small things, Run to end a branch, Map or UseWhen to branch, a convention class for reuse, and IMiddleware when you need scoped constructor dependencies. Global errors: IExceptionHandler plus AddProblemDetails.',
+          k: ['RequestDelegate', 'InvokeAsync', 'Use / Run / Map', 'UseWhen', 'IMiddleware', 'short-circuit', 'IExceptionHandler', 'Response.OnStarting'],
+          p: ['Convention middleware is built once: inject scoped services into InvokeAsync.', 'Not calling next is the short-circuit; set the status code first.', 'Headers after the response has started throw: use Response.OnStarting.', 'Middleware sees raw HttpContext; filters see bound arguments.'],
+          f: [
+            ['Use vs Run vs Map?', 'Use runs and calls next; Run is terminal; Map forks by path and never rejoins (UseWhen rejoins).'],
+            ['Convention-based vs IMiddleware?', 'Convention: one instance for the app, scoped services go into InvokeAsync. IMiddleware: registered in DI and resolved per request, so scoped constructor dependencies are fine.'],
+            ['How do you handle exceptions globally in .NET 8+?', 'AddProblemDetails, AddExceptionHandler<T> with IExceptionHandler.TryHandleAsync, and UseExceptionHandler first in the pipeline. .NET 10 no longer logs handled exceptions for you.'],
+            ['Write a request-timing middleware.', 'Class with a RequestDelegate; Stopwatch.GetTimestamp, await next in try, log method, path, status and elapsed time in finally.'],
+            ['Middleware, MVC filter or endpoint filter?', 'Every request and raw HTTP: middleware. Needs bound arguments or action metadata: MVC filter (controllers) or endpoint filter (minimal APIs).']
+          ],
+          q: [{ q: 'Your convention-based middleware takes a scoped DbContext in its constructor. What happens?', o: ['It becomes a captive dependency: one context for the app (scope validation throws in Development)', 'ASP.NET Core creates a new middleware instance per request', 'The DbContext is disposed after each request and recreated automatically', 'Nothing; middleware constructors are resolved per request'], a: 0, e: 'Convention middleware is constructed once per app. Inject scoped services into InvokeAsync, or use IMiddleware.' }]
+        },
+    'webapi': {
+          say: 'ASP.NET Core APIs use controllers with ApiController or minimal APIs; Microsoft recommends minimal APIs for new work. A request is routed, bound, validated (AddValidation in .NET 10), handled and returned as TypedResults. Errors are RFC 9457 ProblemDetails. OpenAPI is built in, 3.1 by default in .NET 10. Rate limiting and output caching are built in; test with WebApplicationFactory.',
+          k: ['[ApiController]', 'minimal APIs', 'TypedResults', 'AddValidation', 'ProblemDetails / RFC 9457', 'AddOpenApi', 'AddRateLimiter', 'WebApplicationFactory'],
+          p: ['[ApiController]: attribute routing, auto-400, binding inference, ProblemDetails.', 'Route constraints pick routes; a mismatch is 404, not validation.', 'Rate limiter rejects with 503 by default: set RejectionStatusCode to 429.', 'Swashbuckle left the template in .NET 9; use Microsoft.AspNetCore.OpenApi.'],
+          f: [
+            ['Controllers or minimal APIs?', 'Minimal APIs for new services and Native AOT. Controllers when you need custom model binders, OData, application parts, or have a large existing MVC codebase.'],
+            ['What does [ApiController] add?', 'Required attribute routing, automatic 400 ValidationProblemDetails, binding source inference, multipart/form-data inference and ProblemDetails for error status codes.'],
+            ['How is minimal API validation done in .NET 10?', 'builder.Services.AddValidation(): a source generator plus an endpoint filter check DataAnnotations and IValidatableObject and return 400 ProblemDetails.'],
+            ['What changed with OpenAPI in .NET 9 and 10?', '.NET 9: built-in AddOpenApi/MapOpenApi in Microsoft.AspNetCore.OpenApi, Swashbuckle removed from the template. .NET 10: OpenAPI 3.1 by default and YAML output.'],
+            ['How do you integration-test an API?', 'WebApplicationFactory<Program> from Microsoft.AspNetCore.Mvc.Testing runs the real pipeline in memory; .NET 10 generates the public partial Program class.']
+          ],
+          q: [{ q: 'What status code does the built-in ASP.NET Core rate limiter return by default when it rejects a request?', o: ['503 Service Unavailable', '429 Too Many Requests', '400 Bad Request', '403 Forbidden'], a: 0, e: 'RateLimiterOptions.RejectionStatusCode defaults to 503; set it to 429 explicitly.' }]
+        },
+    'mvc': {
+          say: 'MVC routes a request to a controller action, which uses the model and returns a view or other result. Filters run in order: authorization, resource, model binding, action, exception, result. Razor Pages pair each page with a PageModel. Blazor in .NET 8+ has static SSR, Interactive Server, Interactive WebAssembly and Interactive Auto render modes.',
+          k: ['Model-View-Controller', 'filter pipeline', 'action filter', 'tag helpers', 'view components', 'antiforgery', 'Razor Pages / PageModel', 'Blazor render modes'],
+          p: ['Filter order: Authorization, Resource, binding, Action, Exception, Result.', 'Partial view = markup reuse; view component = markup + logic + DI.', 'Razor Pages validate antiforgery automatically; MVC needs ValidateAntiForgeryToken.', 'Blazor default is static SSR; opt into interactivity with @rendermode.'],
+          f: [
+            ['Walk through the MVC filter order.', 'Authorization, resource (before binding), model binding, action filters around the action, exception filters if it threw, result filters around the result; resource filters finish last.'],
+            ['Partial view vs view component?', 'A partial view reuses markup with the parent model. A view component has its own class, logic and DI, like a small controller called from a view.'],
+            ['Razor Pages vs MVC?', 'Same Razor engine and pipeline. Razor Pages: one page with one PageModel and handlers like OnPostAsync. MVC: controllers serve many views; better for large apps.'],
+            ['Blazor Interactive Server vs WebAssembly?', 'Server: UI events over a SignalR circuit, thin client, server memory and latency. WebAssembly: runs in the browser, needs an API, bigger first download.'],
+            ['When would you choose a SPA plus Web API?', 'A separate front-end team, a rich client, or several clients (web and mobile) sharing one API. Cost: two stacks and BFF/token handling.']
+          ],
+          q: [{ q: 'Which MVC filter type runs before model binding and wraps most of the pipeline?', o: ['Resource filter', 'Action filter', 'Result filter', 'Exception filter'], a: 0, e: 'Only authorization filters run before resource filters; OnResourceExecuting runs before model binding and OnResourceExecuted runs last.' }]
+        },
+    'authn-authz': {
+          say: 'Authentication proves who the caller is and builds the ClaimsPrincipal; authorisation decides what they may do. Register schemes with AddAuthentication: cookies for server-rendered apps and BFFs, JWT bearer for APIs, OpenID Connect to sign in through an IdP such as Entra ID. Validate signature, issuer, audience and lifetime, and put rules in named policies with requirement handlers.',
+          k: ['ClaimsPrincipal', 'scheme + handler', 'JWT bearer', 'OpenID Connect', 'policy + requirement', 'IAuthorizationService', 'BFF', '401 vs 403'],
+          p: ['UseAuthentication before UseAuthorization, both after UseRouting.', 'Validate issuer, audience, lifetime and signing key; ClockSkew defaults to 5 minutes.', 'Policies over role checks; resource-based checks via IAuthorizationService.', 'SPA tokens stay server-side (BFF + HttpOnly cookie), never localStorage.'],
+          f: [
+            ['401 vs 403?', '401: not authenticated, the handler challenges. 403: authenticated but not allowed, the handler forbids.'],
+            ['Cookie vs JWT bearer vs OpenID Connect?', 'Cookie for server-rendered apps and BFFs; JWT bearer for APIs; OIDC to sign in through an external IdP, usually followed by a cookie session.'],
+            ['How do you build a custom authorisation rule?', 'An IAuthorizationRequirement plus an AuthorizationHandler that calls context.Succeed, registered in DI and added to a named policy with AddAuthorizationBuilder().AddPolicy.'],
+            ['How do you revoke a JWT?', 'You cannot cheaply: keep access tokens short-lived, revoke refresh tokens, and use introspection or reference tokens only when you must.'],
+            ['What does Microsoft.Identity.Web add?', 'Entra ID integration: AddMicrosoftIdentityWebApi or AddMicrosoftIdentityWebApp, token validation for Entra tokens and token acquisition for downstream APIs.']
+          ],
+          q: [
+            { q: 'A user is signed in but lacks the required claim. What should the API return?', o: ['403 Forbidden', '401 Unauthorized', '404 Not Found', '302 to the login page'], a: 0, e: 'The user is known (authenticated) but not allowed, so the handler forbids with 403. 401 means not authenticated.' },
+            { q: 'Where should a browser SPA keep its access token?', o: ['On the server, behind a BFF with an HttpOnly cookie', 'In localStorage', 'In sessionStorage', 'In a JavaScript global variable'], a: 0, e: 'Browser storage readable by JavaScript is exposed to XSS. A BFF keeps tokens server-side and the browser only holds an HttpOnly cookie.' }
+          ]
+        },
+    'ef-essentials': {
+          say: 'A DbContext is a short-lived, scoped unit of work. The change tracker moves entities through Added, Unchanged, Modified, Deleted and Detached, and SaveChanges writes all changes in one transaction. Configure with the Fluent API, ship migrations as idempotent scripts or bundles, use rowversion for optimistic concurrency, and global query filters for soft delete and tenancy.',
+          k: ['unit of work', 'change tracker', 'entity states', 'SaveChanges transaction', 'migration bundle', 'rowversion', 'global query filter', 'complex types'],
+          p: ['AddDbContext scoped; AddDbContextPool for hot paths; AddDbContextFactory for jobs and Blazor.', 'Eager Include or explicit loading; lazy loading hides N+1.', 'FromSql with interpolation is parameterised; never concatenate SQL.', 'EF 10: named query filters, LeftJoin/RightJoin, complex types as JSON, SQL Server vector type.'],
+          f: [
+            ['What are the entity states?', 'Added, Unchanged, Modified, Deleted and Detached. SaveChanges turns Added, Modified and Deleted into INSERT, UPDATE and DELETE.'],
+            ['Is SaveChanges transactional?', 'Yes, one SaveChanges call runs in one transaction. For several saves use BeginTransactionAsync, wrapped in CreateExecutionStrategy().ExecuteAsync when retries are enabled.'],
+            ['How do you handle two users editing the same row?', 'Optimistic concurrency: a [Timestamp] rowversion column. A stale update throws DbUpdateConcurrencyException; reload and retry, merge, or return 409.'],
+            ['How do you apply migrations in production?', 'Generate an idempotent SQL script or a migration bundle, review it and run it as a pipeline step. Do not call Migrate() at app start-up.'],
+            ['EF Core or Dapper?', 'EF Core for writes, change tracking and migrations; Dapper for hot, hand-tuned reads. Many systems use both, CQRS-style.']
+          ],
+          q: [
+            { q: 'What does a DbUpdateConcurrencyException tell you?', o: ['The row changed since you read it', 'The connection pool is exhausted', 'A migration is pending', 'Two queries ran on one context at once'], a: 0, e: 'With a concurrency token, EF adds it to the WHERE clause. Zero rows affected means someone else changed the row, so EF throws DbUpdateConcurrencyException.' },
+            { q: 'Which EF Core 10 feature lets you disable only the soft-delete filter in one query?', o: ['Named query filters', 'Compiled models', 'Split queries', 'Lazy loading proxies'], a: 0, e: 'EF 10 named query filters can be switched off individually with IgnoreQueryFilters(["Name"]).' }
+          ]
+        },
+    'config-hosting': {
+          say: 'Configuration is a stack of providers and the last one wins: appsettings.json, the environment file, user secrets in Development, environment variables, command line, then anything added later such as Key Vault. Bind sections with the options pattern, validate with ValidateOnStart, run workers as BackgroundService with a scope per unit of work, and expose separate liveness and readiness health checks.',
+          k: ['configuration providers', 'last one wins', 'IOptionsMonitor', 'ValidateOnStart', 'Key Vault + managed identity', 'Generic Host', 'BackgroundService', 'liveness vs readiness'],
+          p: ['IOptions singleton fixed; IOptionsSnapshot scoped per request; IOptionsMonitor singleton live.', 'Environment variables use __ for nesting; Key Vault secret names use --.', 'Hosted services are singletons: use IServiceScopeFactory for scoped services.', 'Liveness has no dependency checks; readiness checks the database and queues.'],
+          f: [
+            ['What is the default configuration order?', 'appsettings.json, appsettings.{Environment}.json, user secrets (Development), environment variables, command line. Later providers override earlier ones.'],
+            ['How do you fail fast on bad configuration?', 'AddOptions().BindConfiguration(...).ValidateDataAnnotations().ValidateOnStart(), or a source-generated [OptionsValidator]. The app fails at start-up instead of on first use.'],
+            ['IHostedService vs BackgroundService?', 'IHostedService gives you StartAsync and StopAsync to implement. BackgroundService implements them and gives you one long-running ExecuteAsync loop with a stopping token.'],
+            ['Where do secrets live?', 'User secrets on a developer machine; Azure Key Vault via the configuration provider and managed identity in the cloud. Never in appsettings or source control.'],
+            ['Liveness vs readiness?', 'Liveness: is the process alive, failure means restart. Readiness: can it serve traffic now, failure means stop routing to it.']
+          ],
+          q: [
+            { q: 'A setting is in appsettings.json, appsettings.Production.json and an environment variable. Which value does a Production app see?', o: ['The environment variable', 'appsettings.json', 'appsettings.Production.json', 'Whichever file changed last'], a: 0, e: 'Environment variables are added after the JSON files, and the last provider wins.' },
+            { q: 'Which options interface can a singleton use to see reloaded values?', o: ['IOptionsMonitor', 'IOptionsSnapshot', 'IOptions', 'IConfigureOptions'], a: 0, e: 'IOptionsMonitor is a singleton with CurrentValue and OnChange. IOptionsSnapshot is scoped, and IOptions never reloads.' }
+          ]
+        },
+    'wcf': {
+          say: 'WCF is the .NET Framework SOAP and RPC stack built on Address, Binding and Contract, with WS-* features and heavy config. The server side is not in modern .NET. CoreWCF ports it to ASP.NET Core so SOAP clients do not change; otherwise move each contract to gRPC for internal RPC, REST for reach, or messaging for one-way calls.',
+          k: ['ABC: address, binding, contract', 'SOAP / WS-*', 'basicHttp, wsHttp, netTcp', 'CoreWCF', 'System.ServiceModel client', 'dotnet-svcutil', 'gRPC-Web / JSON transcoding'],
+          p: ['WCF server is .NET Framework only; the WCF client works on .NET 10.', 'CoreWCF = lift and shift; Microsoft publishes a support policy for it.', 'Decide per contract and consumer, not a big-bang rewrite.', 'Upgrade Assistant is deprecated; use GitHub Copilot app modernization.'],
+          f: [
+            ['What is WCF\'s ABC?', 'Address (where the service lives), Binding (transport, encoding, security) and Contract (operations and data).'],
+            ['How would you migrate a WCF estate?', 'Inventory bindings, features and consumers. Use CoreWCF where clients cannot change, add gRPC or REST endpoints side by side for new consumers, and retire old endpoints by usage.'],
+            ['What replaces a netTcp duplex callback?', 'gRPC bidirectional streaming for service-to-service, or SignalR for real-time pushes to clients.'],
+            ['Can a .NET 10 app call an existing WCF service?', 'Yes: System.ServiceModel.Http or .NetTcp client packages, with a proxy generated by dotnet-svcutil or a ChannelFactory.'],
+            ['Why not gRPC for a public browser API?', 'Browsers cannot speak raw gRPC over HTTP/2. You need gRPC-Web or JSON transcoding, so REST is often simpler for broad reach.']
+          ],
+          q: [{ q: 'You must move WCF services off .NET Framework, and 40 external partners call them over SOAP and cannot change their code. Best first step?', o: ['Host the same contracts on CoreWCF', 'Rewrite them as gRPC services', 'Replace them with REST APIs', 'Move the calls to a message queue'], a: 0, e: 'CoreWCF keeps the SOAP contracts and bindings, so partner clients keep working while the host moves to modern .NET.' }]
+        },
+    'modern-dotnet': {
+          say: 'Pick a few features per release and the problem each solves. C# 12 and .NET 8: primary constructors, collection expressions, TimeProvider, FrozenDictionary, keyed DI. C# 13 and .NET 9: params collections, the Lock type, Task.WhenEach, built-in OpenAPI; HybridCache went GA in 2025. C# 14 and .NET 10: the field keyword, extension members, file-based apps and minimal API validation.',
+          k: ['primary constructors', 'collection expressions', 'TimeProvider', 'Lock type', 'Task.WhenEach', 'HybridCache', 'field keyword', 'extension members'],
+          p: ['C# 12 = .NET 8, C# 13 = .NET 9, C# 14 = .NET 10.', 'HybridCache is a NuGet package, GA in 9.3.0 (March 2025).', 'OpenAPI generation is built in since ASP.NET Core 9; 3.1 by default in 10.', 'Always pair a feature with a real use: "TimeProvider removed our flaky tests".'],
+          f: [
+            ['What is new in C# 14?', 'The field keyword for property accessors, extension members (extension properties and static extensions), null-conditional assignment, and more implicit Span conversions.'],
+            ['Primary constructor parameter vs readonly field?', 'The parameter is captured and mutable, and it is not a property except in records. Assign it to a readonly field if you need immutability.'],
+            ['How do you test code that depends on time?', 'Inject TimeProvider and use FakeTimeProvider in tests, advancing time instead of sleeping.'],
+            ['What does Task.WhenEach give you?', 'An IAsyncEnumerable you await foreach over, yielding each task as it completes, instead of looping on Task.WhenAny.'],
+            ['What are file-based apps?', '.NET 10 lets you run a single .cs file with dotnet run app.cs, adding packages with #:package; they publish as Native AOT by default.']
+          ],
+          q: [{ q: 'Which feature arrived with C# 13 / .NET 9?', o: ['params collections and the System.Threading.Lock type', 'The field keyword and extension members', 'Primary constructors for classes', 'File-based apps with dotnet run app.cs'], a: 0, e: 'params collections and Lock came in C# 13 / .NET 9. field and extension members are C# 14, primary constructors C# 12, file-based apps .NET 10.' }]
+        }
   }
 };
