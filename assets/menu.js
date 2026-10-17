@@ -58,11 +58,14 @@
     closed = ctxs.filter(function (c) { return !c.open; }).map(function (c) { return c.dataset.name; });
     try { localStorage.setItem(CTX_KEY, JSON.stringify(closed)); } catch (e) {}
   }
+  /* Each context group has a colour theme (style.css [data-theme]), keyed by its first word: "APIs & integration" -> "apis". */
+  function theme(g) { return String(g).split(/[^A-Za-z]/)[0].toLowerCase(); }
   var ctx = null, ctxBody = null;
   data.forEach(function (p) {
     if (!ctx || ctx.dataset.name !== p.g) {
       ctx = el('details', 'side-ctx');
       ctx.dataset.name = p.g;
+      ctx.dataset.theme = theme(p.g);
       ctx.open = closed.indexOf(p.g) < 0;
       var cs = el('summary');
       cs.appendChild(el('span', 'side-ctx-t', p.g));
@@ -77,7 +80,7 @@
     var count = ctx.querySelector('.side-ctx-n');
     count.textContent = String(+count.textContent + 1);
     var g = el('details', 'side-grp');
-    if (p.f === here) { g.open = true; g.classList.add('current'); ctx.open = true; ctx.classList.add('has-current'); document.body.classList.add('in-menu'); }
+    if (p.f === here) { g.open = true; g.classList.add('current'); ctx.open = true; ctx.classList.add('has-current'); document.body.classList.add('in-menu'); document.body.dataset.theme = theme(p.g); }
     var sum = el('summary');
     var a = el('a', 'side-page');
     a.href = p.f;
@@ -100,6 +103,15 @@
   });
   side.appendChild(list);
   document.body.insertBefore(side, document.body.firstChild);
+  /* Roadmap cards and learning-path chips ("05 Caching") take their page's group colour. */
+  document.querySelectorAll('a.sec-card').forEach(function (a) {
+    var p = data.filter(function (x) { return x.f === a.getAttribute('href'); })[0];
+    if (p) a.dataset.theme = theme(p.g);
+  });
+  document.querySelectorAll('#path .flow .n').forEach(function (n) {
+    var p = data.filter(function (x) { return n.textContent.indexOf(x.n + ' ') === 0; })[0];
+    if (p) n.dataset.theme = theme(p.g);
+  });
 
   var shade = el('div', 'side-shade');
   document.body.appendChild(shade);
