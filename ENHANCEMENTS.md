@@ -6,10 +6,11 @@ The assistant should read [AGENTS.md](AGENTS.md) first. It has the site rules, p
 
 ## Content: topics mentioned but without their own section
 Each of these appears inside other sections, but has no dedicated concept section yet. Search the site first so a new section links to, rather than repeats, the existing mentions.
-- [ ] Kafka and event streaming deep dive: partitions, consumer groups, ordering, exactly-once, compaction (page 10)
-- [ ] GraphQL: schema, resolvers, N+1 and DataLoader, federation, when not to use it (page 08)
-- [ ] Chaos engineering and game days: hypotheses, blast radius, steady state (page 13)
-- [ ] Platform engineering and internal developer platforms: golden paths, platform as a product (page 13 or 24)
+- [x] Kafka and event streaming (10.9)
+- [x] GraphQL (8.8)
+- [x] Chaos engineering and game days (13.16)
+- [x] Platform engineering and internal developer platforms (24.9)
+- [x] FinOps and cloud cost optimisation (21.14)
 - [ ] ISO 20022 message basics for payments (page 16)
 
 ## Content: more practice
@@ -30,15 +31,6 @@ Each of these appears inside other sections, but has no dedicated concept sectio
 - [ ] Accessibility pass: colour contrast, keyboard focus on diagram frame buttons and menu toggles, alt text and aria labels on hand-made SVGs.
 - [ ] Learning path on `index.html`: the last row (25–28) wraps at desktop width and leaves a dangling arrow. Split it into balanced rows in `tools/build-index.ps1`.
 - [ ] Trim the behavioural answers that run past about 330 words (some on pages 26–28).
-
-## Content fixes reported while writing the revise data
-- [ ] 03, section 3.8: the "see 06 API performance" and "see 04 Caching" links point at the wrong pages (API design is 08, caching is 05).
-- [ ] 04, sections 4.1 to 4.3: "see 3.10" should be 3.11 (CAP), and "consistency models in 3.11" should be 3.12 (PACELC).
-- [ ] 01, section 1.5: "memory is about 1,000x faster than a network hop" disagrees with the page's own table (about 5,000x).
-- [ ] 18: the hero kicker says "Section 15", and the 18.1 journey tags use old section numbers (S04 Caching, S10 IAM and others).
-- [ ] 24, section 24.1: Thoughtworks renamed the radar ring "Hold" to "Caution" (Volume 34, April 2026).
-- [ ] 27 and 28: some stories are told as "architect" or "principal engineer" (27: Q4, Q28, Q29; 28: Q24, Q26, Q31, Q33). Reword them for the page's role.
-- [ ] 16, section 16.5: recheck the card surcharge ban date (1 October 2026) online.
 
 ## Maintenance
 - [ ] When .NET 11 ships (expected November 2026), recheck the `.dotnet` boxes:

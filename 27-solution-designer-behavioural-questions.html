@@ -206,7 +206,7 @@
   </div>
   <div class="star">
     <div class="st-s"><span class="k">S</span><p><b>Situation:</b> I was designing an <b>event-sourced</b> customer system for a bank serving customers in several countries. Every change was stored as an immutable event, which the business loved for audit. No requirement mentioned deletion.</p></div>
-    <div class="st-t"><span class="k">T</span><p><b>Task:</b> As solution architect I owned the design, and had to judge whether a missing requirement was a real risk or a distraction.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> As the solution designer I owned this design end to end, and had to judge whether a missing requirement was a real risk or a distraction.</p></div>
     <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I spotted the clash early and kept the fix small.</p><ul>
       <li>Privacy laws such as the GDPR <b>right to erasure</b> (Article 17) can require personal data to be deleted, but events are never changed.</li>
       <li>I weighed three options: rewrite history (breaks audit), keep personal data outside events (joins everywhere), or <b>crypto-shredding</b>.</li>
@@ -981,7 +981,7 @@
   </div>
   <div class="star">
     <div class="st-s"><span class="k">S</span><p><b>Situation:</b> Five teams shared one pipeline for a payments platform. The main branch <b>green rate</b> was about 60%. Engineers re-ran builds until they passed, and a real regression had slipped into test environments twice that quarter.</p></div>
-    <div class="st-t"><span class="k">T</span><p><b>Task:</b> As principal engineer I owned engineering standards, but I had no line authority over the five teams.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> As the solution designer for the platform I owned its quality requirements, but I had no line authority over the five teams building it.</p></div>
     <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I measured first, then changed the incentives.</p><ul>
       <li>The data showed about 120 tests caused nearly all failures, and just 15 caused half.</li>
       <li>I introduced a <b>quarantine lane</b>: a flaky test leaves the blocking path within a day, but still runs and is tracked.</li>
@@ -1003,7 +1003,7 @@
   </div>
   <div class="star">
     <div class="st-s"><span class="k">S</span><p><b>Situation:</b> Two weeks before go-live of a new customer onboarding service at a bank, our load test failed at about 60% of expected peak. Response times spiked and requests began timing out.</p></div>
-    <div class="st-t"><span class="k">T</span><p><b>Task:</b> As lead architect I had to find the cause, choose a fix, and advise the steering group on whether we could still launch.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> As the solution designer for the service I had to find the cause, choose a design fix, and advise the steering group on whether we could still launch.</p></div>
     <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I diagnosed fast, then turned the problem into a decision.</p><ul>
       <li>With tracing on, I found <b>connection-pool exhaustion</b>. A vendor SDK wrapper used <b>sync-over-async</b>, blocking threads while it waited, so threads and connections piled up.</li>
       <li>I gave the steering group three options: delay four weeks, launch as is and hope, or <b>defer one non-critical feature</b> (document pre-fill, the heaviest user of that SDK path).</li>
@@ -1025,7 +1025,7 @@
   </div>
   <div class="star">
     <div class="st-s"><span class="k">S</span><p><b>Situation:</b> Our integration platform had 37 TLS certificates renewed by hand, and all 37 expired in the same quarter. In the past year two expired certificates had caused partner outages, and one near-miss was caught with four hours to spare.</p></div>
-    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I owned the platform architecture. My first request to automate renewals had been rejected as "not a feature".</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I was the solution designer for the integration platform. My first request to automate renewals had been rejected as "not a feature".</p></div>
     <div class="st-a"><span class="k">A</span><div><p><b>Action:</b> I rebuilt the case in business terms.</p><ul>
       <li>I priced the effort: each renewal took about 3 hours of senior engineer time plus a change window, roughly 110 hours a year.</li>
       <li>I listed the <b>interest paid</b>: two outages (one stopped a partner's payment files for 3 hours) and the near-misses.</li>

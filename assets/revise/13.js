@@ -154,6 +154,17 @@
           ['How do you measure change lead time?', 'Median of production deploy time minus commit time for the commits that deploy shipped.']],
       q: [{ q: 'Which DORA metric was added in 2024?', o: ['Deployment frequency', 'Change lead time', 'Change fail rate', 'Deployment rework rate'], a: 3, e: 'Rework rate counts unplanned deploys made to fix production incidents.' },
           { q: 'What does DORA research say about speed vs stability?', o: ['You must trade one for the other', 'They move together; top performers do well on both', 'Stability matters only for banks', 'Speed always increases failures'], a: 1, e: 'Small batches improve both throughput and stability.' }]
+    },
+    chaos: {
+      say: 'Chaos engineering injects real failures in a controlled experiment to prove resilience. Define steady state, write a hypothesis, inject one fault with the smallest useful blast radius and automated abort conditions such as an SLO burn-rate alarm. Start in staging, then production. Game days add people: on-call responds with real alerts and runbooks. Experiments spend error budget, so no budget means no chaos.',
+      k: ['steady state', 'hypothesis', 'blast radius', 'abort conditions', 'game day', 'error budget', 'Azure Chaos Studio / AWS FIS', 'Polly chaos strategies'],
+      p: ['Hypothesis first; without it, it is just an outage.', 'Common faults: latency, dependency failure, instance/zone loss, resource exhaustion.', 'Use the SLO burn rate as an automatic abort condition.', 'Polly v8 chaos strategies are on as soon as added: gate them with config.'],
+      f: [['What are the parts of a chaos experiment?', 'Steady state (measurable normal), a hypothesis, a fault with a limited blast radius, abort conditions and a duration, then learn and fix.'],
+          ['Chaos experiment vs game day?', 'An experiment tests a technical hypothesis and can be automated. A game day is a team exercise where on-call responds with real alerts and runbooks, followed by a blameless review.'],
+          ['How does chaos link to error budgets?', 'Experiments spend error budget on purpose. Run them only while budget remains, and abort when the burn rate passes an agreed threshold.'],
+          ['Which Polly APIs inject chaos in .NET?', '<code>AddChaosFault</code>, <code>AddChaosLatency</code>, <code>AddChaosOutcome</code> and <code>AddChaosBehavior</code> from Polly.Core, placed last in the resilience pipeline.']],
+      q: [{ q: 'When should you NOT run a chaos experiment yet?', o: ['After adding retries and failover', 'Before a peak trading event', 'When there is no observability to see the impact', 'When on-call needs practice'], a: 2, e: 'Without SLIs and alerts you cannot tell whether the hypothesis held or when to abort.' },
+          { q: 'Where should Polly chaos strategies go in a resilience pipeline?', o: ['First, before retry', 'Last, closest to the real call', 'In a separate HttpClient', 'Only in unit tests'], a: 1, e: 'Placed last, the retry and timeout strategies further out must handle the injected faults.' }]
     }
   }
 };

@@ -22,6 +22,7 @@
     <a href="#performance">API performance</a>
     <a href="#ratelimit">Rate limit algorithms</a>
     <a href="#idempotency" class="added">Idempotency</a>
+    <a href="#graphql" class="added">GraphQL: when and how</a>
   </div>
 </header>
 
@@ -630,12 +631,137 @@ app.MapPost("/payments", CreatePayment).RequireRateLimiting("per-api-key");</cod
 </div>
   </section>
 
+<!-- GRAPHQL -->
+<section class="concept" id="graphql">
+  <h2><span class="num">8.8</span> GraphQL: when and how <span class="tag-added">Added</span></h2>
+  <p class="oneliner"><b>GraphQL</b> is a typed query language over <b>one endpoint</b>: the client asks for exactly the fields it needs, and the server resolves them from a <b>schema</b>.</p>
+  <p class="tip">How it compares with REST, gRPC and events is in <a href="#styles">8.1</a>. This is the deep dive.</p>
+  <h3>How it works</h3>
+  <div class="grid">
+    <div class="box blue"><h4>Schema (SDL)</h4><p>The contract. <b>Object</b>, <b>scalar</b>, <b>enum</b>, <b>input</b>, <b>interface</b> and <b>union</b> types. <code>!</code> means non-null.</p></div>
+    <div class="box purple"><h4>Three operations</h4><p><b>Query</b> = read. <b>Mutation</b> = write (runs in order). <b>Subscription</b> = server push over WebSocket or SSE.</p></div>
+    <div class="box green"><h4>Resolvers</h4><p>One function <b>per field</b>, called as the engine walks the query.</p></div>
+    <div class="box amber"><h4>Errors</h4><p>Usually <b>HTTP 200</b> with an <code>errors</code> array. Alert on it, not the status.</p></div>
+  </div>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"The N+1 problem and DataLoader","interval":3200,
+ "frames":[
+  {"label":"Naive","caption":"1 query for 10 accounts, then 1 query <b>per account</b> for its owner = <b>11</b> DB calls.","rows":[
+   [{"t":"accounts(first: 10)","c":"blue"},{"k":"arrow","g":"→"},{"t":"1 query","c":"teal"}],
+   [{"t":"account.owner","sub":"× 10 resolvers","c":"purple"},{"k":"arrow","g":"→"},{"t":"10 queries","c":"red","big":true}]]},
+  {"label":"DataLoader","caption":"Each resolver calls <code>LoadAsync(id)</code>. Keys are <b>collected, deduped</b> and fetched in <b>one batch</b> = <b>2</b> DB calls.","ms":3800,"rows":[
+   [{"t":"accounts(first: 10)","c":"blue"},{"k":"arrow","g":"→"},{"t":"1 query","c":"teal"}],
+   [{"t":"account.owner","sub":"× 10 resolvers","c":"purple"},{"k":"arrow","g":"→","t":"batch"},{"t":"7 unique ids","c":"amber"},{"k":"arrow","g":"→"},{"t":"1 IN query","c":"green","big":true}]]}
+ ]}
+</script></figure>
+  <h3>Run it safely</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Risk</th><th>Fix</th></tr>
+    <tr><td><b>N+1 queries</b></td><td><b>DataLoader</b>: batch and dedupe keys per request</td></tr>
+    <tr><td><b>Huge or deep queries</b></td><td><b>Cost analysis</b>, depth limit, page-size caps, timeouts</td></tr>
+    <tr><td><b>Unknown queries</b></td><td><b>Persisted (trusted) operations</b>: only registered hashes run</td></tr>
+    <tr><td><b>Caching</b></td><td>No per-URL cache. Persisted ops over GET + CDN; client normalised cache</td></tr>
+    <tr><td><b>Schema exposure</b></td><td>Disable <b>introspection</b> in production for private APIs</td></tr>
+    <tr><td><b>Versioning</b></td><td>No /v2: add fields, mark old ones <code>@deprecated</code></td></tr>
+  </table></div>
+  <h3>Federation: one graph, many teams</h3>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Gateway over subgraphs","actors":[{"t":"Client","c":"blue"},{"t":"Gateway","c":"purple"},{"t":"Accounts","c":"teal"},{"t":"Payments","c":"green"}],"colW":190,"rowH":46,"stepMs":950,
+ "steps":[
+  {"from":0,"to":1,"t":"one query","sub":"account + payments","c":"blue"},
+  {"from":1,"to":1,"t":"query plan","c":"purple"},
+  {"from":1,"to":2,"t":"account(id)"},
+  {"from":2,"to":1,"t":"name, balance","dash":true,"c":"teal"},
+  {"from":1,"to":3,"t":"payments(accountId)"},
+  {"from":3,"to":1,"t":"last 5 payments","dash":true,"c":"green"},
+  {"from":1,"to":0,"t":"one merged response","c":"green"}
+ ]}
+</script></figure>
+  <ul>
+    <li><b>Subgraph</b> = one team's GraphQL service. <b>Supergraph</b> = the composed schema that clients see.</li>
+    <li><b>Entities</b> (e.g. Account by <code>id</code>) are shared by key. The gateway <b>plans</b> calls and merges results.</li>
+    <li><b>Compose in CI</b>, so breaking changes fail the build. Specs: Apollo Federation, GraphQL <b>Composite Schemas</b> (draft).</li>
+  </ul>
+  <h3>When to use / when not</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Use GraphQL when</th><th>Avoid it when</th></tr>
+    <tr><td>Many clients need different shapes (web, mobile)</td><td>Simple CRUD with one client</td></tr>
+    <tr><td>A UI aggregates several services (BFF)</td><td>Public partner APIs that rely on HTTP caching</td></tr>
+    <tr><td>Front ends change fast; fewer round trips</td><td>Files, big downloads, bulk export</td></tr>
+    <tr><td>You want a typed contract and tooling</td><td>Service-to-service calls: use gRPC or events</td></tr>
+  </table></div>
+  <div class="remember"><ul>
+    <li>The <b>client</b> writes the query, so the server must <b>defend</b> itself: cost, depth and page limits.</li>
+    <li><b>DataLoader</b> is not optional. Without it, nested fields cause N+1.</li>
+    <li>First-party apps: <b>persisted operations</b>. Partner or public: <b>cost analysis</b>.</li>
+    <li>Authorize <b>per field / per object</b>, not just at the endpoint. BOLA still applies.</li>
+    <li>Federation pays off only with <b>many teams</b>. Start with one server.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Need</th><th>Package</th><th>Notes</th></tr>
+    <tr><td><b>GraphQL server</b></td><td><code>HotChocolate.AspNetCore</code> (16.6.x, MIT)</td><td>ChilliCream. Targets net10.0. Cost analysis is on by default</td></tr>
+    <tr><td><b>Source generator</b></td><td><code>HotChocolate.Types.Analyzers</code></td><td><code>[QueryType]</code>, <code>[ObjectType&lt;T&gt;]</code>, <code>[DataLoader]</code></td></tr>
+    <tr><td><b>EF Core paging, filters</b></td><td><code>HotChocolate.Data.EntityFramework</code></td><td>Cursor paging, filtering, sorting, projections</td></tr>
+    <tr><td><b>Persisted operations</b></td><td><code>HotChocolate.PersistedOperations.FileSystem</code> / <code>.Redis</code></td><td>Look up operations by hash</td></tr>
+    <tr><td><b>Subscriptions, many nodes</b></td><td><code>HotChocolate.Subscriptions.Redis</code></td><td>The default in-memory pub/sub works on one node only</td></tr>
+    <tr><td><b>Federation gateway</b></td><td><code>HotChocolate.Fusion.AspNetCore</code></td><td>Composes subgraphs (Composite Schemas spec) via the Nitro CLI or Aspire</td></tr>
+    <tr><td><b>Typed .NET client</b></td><td><code>StrawberryShake.Server</code></td><td>Generates a typed client from <code>.graphql</code> files</td></tr>
+    <tr><td><b>Alternative server</b></td><td><code>GraphQL.Server.Transports.AspNetCore</code> (graphql-dotnet, 8.3.x)</td><td>Less common in new .NET projects</td></tr>
+  </table>
+<pre class="code"><code>[assembly: DataLoaderModule("BankDataLoaders")]
+
+builder.Services.AddBankDataLoaders();           // generated from [DataLoader] methods
+builder.Services
+    .AddGraphQLServer()
+    .AddTypes()                                  // generated from [QueryType], [ObjectType&lt;T&gt;]
+    .ModifyCostOptions(o =&gt; { o.MaxFieldCost = 2_000; o.MaxTypeCost = 5_000; });
+app.MapGraphQL();                                // POST /graphql
+
+[QueryType]
+public static partial class AccountQueries
+{
+    public static IQueryable&lt;Account&gt; GetAccounts(BankDb db) =&gt; db.Accounts.OrderBy(a =&gt; a.Id);
+}
+
+[ObjectType&lt;Account&gt;]
+public static partial class AccountNode
+{
+    public static Task&lt;Customer?&gt; GetOwnerAsync(
+        [Parent] Account account, ICustomerByIdDataLoader byId, CancellationToken ct)
+        =&gt; byId.LoadAsync(account.CustomerId, ct);   // batched: no N+1
+}
+
+internal static class CustomerDataLoaders
+{
+    [DataLoader]
+    public static Task&lt;Dictionary&lt;int, Customer&gt;&gt; GetCustomerByIdAsync(
+        IReadOnlyList&lt;int&gt; ids, BankDb db, CancellationToken ct)
+        =&gt; db.Customers.Where(c =&gt; ids.Contains(c.Id)).ToDictionaryAsync(c =&gt; c.Id, ct);
+}</code></pre>
+  <p class="warn">Keep every <code>HotChocolate.*</code> package on the <b>same version</b>. 16.6.x is the stable line; 16.7 builds are <span class="pill preview">preview</span>.</p>
+</div>
+  <div class="post">
+    <p>GraphQL is not "REST but better". It's a trade 🔄</p>
+    <p>✅ Clients get exactly the fields they need, in one round trip.</p>
+    <p>⚠️ But the client now writes the query, so the server must defend itself: cost limits, depth limits, page caps.</p>
+    <p>🐢 Nested fields cause N+1 queries. DataLoader batches them into one.</p>
+    <p>🧊 One POST endpoint means no easy HTTP caching. Persisted operations help.</p>
+    <p>🧩 Federation joins many teams' subgraphs into one supergraph, but only pays off at scale.</p>
+    <p>My rule: GraphQL for rich UIs and BFFs, REST for partners, gRPC or events inside. Where do you draw the line?</p>
+    <p>#GraphQL #APIDesign #SolutionArchitecture #DotNet</p>
+  </div>
+</section>
+
 <div class="qa-wrap">
   <h2>⚡ Quick-fire Q&amp;A</h2>
   <details class="qa"><summary>API key vs OAuth token?</summary><p>An API key identifies the calling app and never expires unless rotated. An OAuth token is short-lived, scoped, can represent a user, and is issued by a trusted authorization server.</p></details>
   <details class="qa"><summary>Which grant type for a nightly batch job calling an API?</summary><p>Client Credentials, ideally with a certificate or private_key_jwt, or a managed identity, instead of a client secret.</p></details>
   <details class="qa"><summary>How do you rate limit across 10 gateway nodes?</summary><p>Use a shared counter store (Redis) with atomic operations, or a gateway feature with synchronised counters. Accept slight approximation for speed.</p></details>
   <details class="qa"><summary>401 vs 403?</summary><p>401: we don't know who you are (missing or invalid token). 403: we know who you are, but you're not allowed.</p></details>
+  <details class="qa"><summary>How do you stop a client sending a huge, deeply nested GraphQL query?</summary><p>Cost analysis (reject before execution when field or type cost is over budget), a depth limit, page-size caps and an execution timeout. For your own apps, go further with persisted (trusted) operations, so only pre-registered queries run.</p></details>
+  <details class="qa"><summary>Why is caching harder with GraphQL than REST?</summary><p>Everything is a POST to one URL, so browsers, CDNs and gateways can't cache by URL. Use persisted operations over GET (cacheable by hash), a normalised client cache (Apollo, Relay), and DataLoader plus data-layer caching on the server.</p></details>
 </div>
 
 <div class="pager"><a href="07-data-governance-privacy.html">← 07 · Data Governance &amp; Privacy</a><a class="next" href="09-apim.html">09 · API Management →</a></div>

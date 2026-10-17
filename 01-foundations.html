@@ -349,7 +349,7 @@ public sealed class ReportWorker(Channel&lt;ReportJob&gt; queue) : BackgroundSer
     </div>
   </div>
   <div class="remember"><ul>
-    <li>Memory is about 1,000× faster than a network hop, and a network hop within a region is about 100× faster than going across the world. That's <b>why caching and data locality matter</b>.</li>
+    <li>Memory is <b>thousands of times</b> faster than a network hop (~100 ns vs ~0.5 ms), and a hop inside a data centre is <b>hundreds of times</b> faster than going across the world (~0.5 ms vs ~150 ms). That's <b>why caching and data locality matter</b>.</li>
     <li>Round your numbers. Interviewers care about orders of magnitude, not decimals.</li>
   </ul></div>
 <div class="dotnet">

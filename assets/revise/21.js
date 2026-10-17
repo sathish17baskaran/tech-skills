@@ -159,6 +159,17 @@
         ['Multi-cloud vs hybrid?', 'Multi-cloud uses several public clouds for the best service or leverage; hybrid keeps some systems on-prem, managed from one control plane like Azure Arc.']
       ],
       q: [{ q: 'Which multi-cloud split is usually best?', o: ['Front end in one cloud, database in another', 'Each workload with its data in one cloud', 'Alternate clouds per environment', 'Random by team preference'], a: 1, e: 'Splitting by workload avoids per-call egress and cross-cloud latency.' }]
+    },
+    finops: {
+      say: 'FinOps makes engineering, finance and product share ownership of cloud spend, in a loop: Inform, Optimise, Operate. I start with tagging and showback, track unit cost such as cost per payment, then delete idle resources, rightsize, autoscale, commit to the steady baseline and use spot for restartable work. Budgets and anomaly alerts keep it running.',
+      k: ['Inform / Optimise / Operate', 'tagging', 'showback / chargeback', 'unit economics', 'rightsizing', 'commitment discounts', 'spot', 'egress'],
+      p: ['No tags, no allocation, no accountability.', 'Rightsize first, then commit only to the proven baseline.', 'Egress and log ingestion are the hidden costs.', 'Budgets alert; they do not stop spend unless you automate it.'],
+      f: [['What are the three FinOps phases?', 'Inform (visibility, allocation, unit cost), Optimise (cut waste, buy smarter) and Operate (guardrails, budgets, alerts, regular reviews). It is a loop.'],
+          ['Showback vs chargeback?', 'Showback reports cost to teams for awareness; chargeback bills it to their budget. Start with showback until tagging and shared-cost rules are trusted.'],
+          ['What is unit economics in FinOps?', 'Cost divided by a business volume, such as cost per 1,000 payments or per active customer. The trend shows whether efficiency improves as you grow.'],
+          ['Name the native cost tools on each cloud.', 'Azure: Microsoft Cost Management (cost analysis, budgets, anomaly alerts). AWS: Cost Explorer, AWS Budgets, Cost Anomaly Detection. GCP: Cloud Billing reports, budgets and alerts.']],
+      q: [{ q: 'In what order should you usually optimise cloud cost?', o: ['Buy 3-year commitments first, then rightsize', 'Move everything to spot first', 'Delete idle and rightsize, then commit to the baseline', 'Archive all storage first'], a: 2, e: 'Committing before rightsizing locks in waste.' },
+          { q: 'Which workload suits spot / preemptible VMs?', o: ['A single primary database', 'Checkpointed batch jobs and CI runners', 'A stateful payment switch', 'The only instance of a login service'], a: 1, e: 'Spot capacity can be reclaimed at short notice, so it fits restartable work.' }]
     }
   }
 };

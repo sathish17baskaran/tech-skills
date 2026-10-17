@@ -9,6 +9,11 @@ There's no framework and no build step. Every page is a hand-written HTML file t
 - Ideas and backlog: [ENHANCEMENTS.md](ENHANCEMENTS.md).
 
 ## Content rules
+- The site is for **last-minute interview prep**: keywords, key points, how to approach a question and the steps to answer. Keep new prose short (about 250–350 words per section before the `.dotnet` box) and prefer tables, boxes and visuals.
+- Pages render interview-first at runtime; the HTML stays as written:
+  - `assets/revise.js` puts a "🎤 Say this" card (the section's `say` and keywords from `assets/revise/NN.js`) under each section's one-liner.
+  - `assets/app.js` folds every `.dotnet` box and `.post` into a one-line `details.fold` expander. Folds open for printing and when a link targets something inside them.
+  - On behavioural pages, each `article.bq` shows the psychology note, a "STAR in 30 seconds" box (the question's flashcard back) and the power words. The philosophy and full STAR answer go into a fold.
 - Write plain, simple English: short sentences, dot points and small tables. Bold the key words.
 - Each concept section has:
   - a one-line definition (`p.oneliner`)

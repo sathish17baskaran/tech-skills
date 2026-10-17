@@ -133,6 +133,21 @@
       q: [
         { q: 'What should you do first in an architecture kata?', o: ['Draw the deployment diagram', 'Pick the top three architecture characteristics', 'Choose a cloud provider', 'Estimate cost'], a: 1, e: 'Characteristics drive every later choice; picking them before drawing keeps the design anchored.' }
       ]
+    },
+    platform: {
+      say: 'An internal developer platform is a product whose customers are developers. A platform team offers golden paths, templates, environments and pipelines as self-service, starting from the thinnest viable platform. A portal like Backstage adds a software catalog and scorecards. I measure adoption, lead time, DORA and developer satisfaction, and avoid mandated or ticket-ops platforms.',
+      k: ['platform as a product', 'golden path', 'paved road', 'self-service', 'thinnest viable platform', 'Backstage', 'software catalog', 'cognitive load'],
+      p: ['Golden paths are the easiest route, not the only route.', 'Platform team serves stream-aligned teams X-as-a-Service and removes extraneous load.', 'Measure adoption, lead time, DORA metrics and developer satisfaction.', 'Anti-patterns: a mandated platform nobody wants, a portal that just files tickets.'],
+      f: [
+        ['What is a golden path?', 'An opinionated, supported route for a common task, e.g. a new API, with security, logging, pipelines and policy built in. Optional, but the easiest way.'],
+        ['What is the thinnest viable platform?', 'The smallest set of APIs, docs and tools that speeds teams up, sometimes just a wiki page and a template. Grow it from real demand.'],
+        ['What does Backstage give you?', 'An open-source developer portal (CNCF incubating): software catalog of services and owners, software templates, TechDocs, and scorecards via plugins.'],
+        ['How do you build a .NET golden-path template?', 'A <code>dotnet new</code> template package: <code>.template.config/template.json</code> with shortName and sourceName, packed with PackageType Template; optionally an Aspire AppHost for local dev.']
+      ],
+      q: [
+        { q: 'Developers fill in a portal form that creates a ticket for the infra team. What is this?', o: ['A golden path', 'Ticket-ops dressed up as self-service', 'The thinnest viable platform', 'X-as-a-Service'], a: 1, e: 'Self-service means APIs, templates and pipelines that act immediately; a form that queues a ticket keeps the hand-off.' },
+        { q: 'Which measure best shows an internal developer platform is succeeding?', o: ['Number of platform features shipped', 'Size of the platform team', 'Voluntary adoption and shorter lead time', 'Number of tools in the portal'], a: 2, e: 'Platforms are products: adoption, lead time, DORA and developer satisfaction show real value.' }
+      ]
     }
   }
 };

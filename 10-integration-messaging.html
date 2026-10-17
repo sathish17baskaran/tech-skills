@@ -23,6 +23,7 @@
     <a href="#eip" class="added">Messaging patterns (EIP)</a>
     <a href="#orch" class="added">Orchestration vs Choreography</a>
     <a href="#batch" class="added">Batch &amp; file integration</a>
+    <a href="#kafka" class="added">Event streaming &amp; Kafka</a>
   </div>
 </header>
 
@@ -525,6 +526,133 @@ foreach (var file in sftp.ListDirectory("/inbound").Where(f =&gt; f.Name.EndsWit
 </div>
   </section>
 
+<!-- KAFKA -->
+<section class="concept" id="kafka">
+  <h2><span class="num">10.9</span> Event streaming and Kafka <span class="tag-added">Added</span></h2>
+  <p class="oneliner"><b>Kafka</b> is a distributed, append-only <b>log</b>: producers write events to <b>topics</b>, and each <b>consumer group</b> reads them at its own pace and can <b>replay</b> them.</p>
+  <p class="tip">Queue vs pub/sub vs streaming basics: <a href="#queue-event">10.3</a>. Delivery guarantees: <a href="#guarantees">10.4</a>.</p>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Partitions, consumer groups and offsets","interval":3000,
+ "frames":[
+  {"label":"Keys","caption":"<b>hash(key)</b> picks the partition. Same key, same partition, so events for one account stay <b>in order</b>.","rows":[
+   [{"t":"Producer","c":"blue"},{"k":"arrow","g":"→","t":"hash(key)"},{"t":"P0","sub":"acct-42 ×3","c":"purple"},{"t":"P1","sub":"acct-07","c":"purple"},{"t":"P2","sub":"acct-19","c":"purple"}]]},
+  {"label":"Group","caption":"In one <b>consumer group</b>, each partition goes to <b>one</b> consumer.","rows":[
+   [{"t":"P0","c":"purple"},{"t":"P1","c":"purple"},{"k":"arrow","g":"→"},{"t":"Consumer A","c":"green"}],
+   [{"t":"P2","c":"purple"},{"k":"arrow","g":"→"},{"t":"Consumer B","c":"green"}]]},
+  {"label":"Rebalance","caption":"C joins, so partitions move. <b>Max parallelism = partition count</b>.","rows":[
+   [{"t":"P0","c":"purple"},{"k":"arrow","g":"→"},{"t":"Consumer A","c":"green"}],
+   [{"t":"P1","c":"purple"},{"k":"arrow","g":"→"},{"t":"Consumer C","c":"amber","big":true}],
+   [{"t":"P2","c":"purple"},{"k":"arrow","g":"→"},{"t":"Consumer B","c":"green"}]]},
+  {"label":"Offsets","caption":"The group <b>commits</b> offset 3 on P0. After a crash it resumes from 3, so events 3+ may be <b>seen again</b>.","ms":3600,"rows":[
+   {"label":"P0","items":[{"t":"0","c":"slate"},{"t":"1","c":"slate"},{"t":"2","c":"slate"},{"t":"3","sub":"committed","c":"green","big":true},{"t":"4","c":"off"},{"t":"5","c":"off"}]}]}
+ ]}
+</script></figure>
+  <h3>How it works</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Concept</th><th>Key point</th></tr>
+    <tr><td><b>Topic</b></td><td>Named stream of events, split into partitions</td></tr>
+    <tr><td><b>Partition</b></td><td>Ordered log; unit of <b>ordering</b> and <b>parallelism</b></td></tr>
+    <tr><td><b>Key</b></td><td>Same key, same partition, same order</td></tr>
+    <tr><td><b>Consumer group</b></td><td>One consumer per partition inside a group</td></tr>
+    <tr><td><b>Rebalance</b></td><td>Partitions move when consumers join or leave</td></tr>
+    <tr><td><b>Offset</b></td><td>Read position per partition, committed by the group</td></tr>
+    <tr><td><b>Replication</b></td><td>e.g. 3 replicas; <code>acks=all</code> waits for in-sync ones</td></tr>
+  </table></div>
+  <h3>Commit strategy = delivery semantics</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Strategy</th><th>Result</th></tr>
+    <tr><td>Commit, then process</td><td><b>At-most-once</b>: may lose</td></tr>
+    <tr><td>Process, then commit ⭐</td><td><b>At-least-once</b>: may duplicate, so consumers are idempotent</td></tr>
+    <tr><td>Idempotent producer + transactions + <code>read_committed</code></td><td><b>Exactly-once inside Kafka</b> (read-process-write)</td></tr>
+  </table></div>
+  <div class="grid">
+    <div class="box blue"><h4>Retention (delete)</h4><p>Keep events for a <b>time or size</b> (e.g. 7 days): a <b>replay window</b>.</p></div>
+    <div class="box purple"><h4>Log compaction</h4><p>Keep the <b>latest value per key</b>; a <b>tombstone</b> (null) deletes it. Current state.</p></div>
+    <div class="box teal"><h4>Schema registry</h4><p>Avro, Protobuf or JSON Schema. Enforces <b>compatibility</b> (e.g. BACKWARD) so producers can't break consumers.</p></div>
+    <div class="box red"><h4>Dead-letter topic</h4><p>No built-in DLQ. Retry, then publish to <code>payments.DLT</code> with error headers and commit.</p></div>
+  </div>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Poison event: park it, don't block the partition","actors":[{"t":"payments","c":"purple"},{"t":"Consumer","c":"blue"},{"t":"Ledger DB","c":"teal"},{"t":"payments.DLT","c":"red"}],"colW":190,"rowH":46,"stepMs":950,
+ "steps":[
+  {"from":0,"to":1,"t":"event @ offset 41"},
+  {"from":1,"to":2,"t":"write","c":"blue"},
+  {"from":2,"to":1,"t":"fails ×3","dash":true,"c":"red"},
+  {"from":1,"to":3,"t":"publish + error headers","c":"red"},
+  {"from":1,"to":0,"t":"commit 42","c":"green"},
+  {"note":"ops fix it, then replay from the DLT","over":[2,3],"c":"amber"}
+ ]}
+</script></figure>
+  <h3>Streaming or a queue? (when to use / when not)</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Pick Kafka (streaming) when</th><th>Pick a queue when</th></tr>
+    <tr><td>Many consumers read the same events</td><td>One worker per task (commands)</td></tr>
+    <tr><td>You need replay or history</td><td>You want per-message ack, retry, DLQ built in</td></tr>
+    <tr><td>High volume, ordered per key</td><td>Delayed or scheduled messages</td></tr>
+    <tr><td>CDC, analytics, event sourcing</td><td>Low volume, small team, simple ops</td></tr>
+  </table></div>
+  <p><b>Managed options:</b> Azure Event Hubs (Kafka endpoint), Amazon MSK, Confluent Cloud. Check feature support per tier (e.g. transactions, compaction).</p>
+  <div class="remember"><ul>
+    <li>Order is <b>per partition only</b>. Key by the entity whose order matters (e.g. account ID).</li>
+    <li>Partitions cap parallelism: extra consumers sit <b>idle</b>. A hot key makes a <b>hot partition</b>.</li>
+    <li>Default: <b>at-least-once + idempotent consumers</b>. Exactly-once is Kafka-to-Kafka only.</li>
+    <li>Watch <b>consumer lag</b>: the main health and autoscale signal.</li>
+    <li>Adding partitions remaps keys. Size them up front.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Need</th><th>Package / API</th><th>Notes</th></tr>
+    <tr><td><b>Producer, consumer, admin</b></td><td><code>Confluent.Kafka</code> (2.16.x, Apache-2.0)</td><td>Wraps librdkafka. Supports idempotence, transactions, cooperative rebalancing</td></tr>
+    <tr><td><b>Schema registry</b></td><td><code>Confluent.SchemaRegistry.Serdes.Avro</code> / <code>.Protobuf</code> / <code>.Json</code></td><td>Same version line as Confluent.Kafka</td></tr>
+    <tr><td><b>Azure Event Hubs</b></td><td>Same <code>Confluent.Kafka</code> client</td><td>Bootstrap <code>&lt;namespace&gt;.servicebus.windows.net:9093</code>, SASL_SSL</td></tr>
+    <tr><td><b>Hosting</b></td><td><span class="pill builtin">built-in</span> <code>BackgroundService</code></td><td><code>Consume</code> blocks, so give the loop its own thread</td></tr>
+  </table>
+<pre class="code"><code>using var producer = new ProducerBuilder&lt;string, string&gt;(new ProducerConfig
+{
+    BootstrapServers = servers,
+    Acks = Acks.All,
+    EnableIdempotence = true          // librdkafka default is false: set it explicitly
+}).Build();
+
+await producer.ProduceAsync("payments",
+    new Message&lt;string, string&gt; { Key = accountId, Value = json });   // key = ordering scope
+
+using var consumer = new ConsumerBuilder&lt;string, string&gt;(new ConsumerConfig
+{
+    BootstrapServers = servers,
+    GroupId = "ledger-service",
+    EnableAutoCommit = false,         // process, then commit = at-least-once
+    PartitionAssignmentStrategy = PartitionAssignmentStrategy.CooperativeSticky
+}).Build();
+consumer.Subscribe("payments");
+
+while (!ct.IsCancellationRequested)
+{
+    var r = consumer.Consume(ct);
+    try { await HandleIdempotentlyAsync(r.Message, ct); }
+    catch (Exception ex) when (ex is not OperationCanceledException)
+    {
+        await producer.ProduceAsync("payments.DLT", new Message&lt;string, string&gt;
+        {
+            Key = r.Message.Key, Value = r.Message.Value,
+            Headers = new Headers { { "error", Encoding.UTF8.GetBytes(ex.Message) } }
+        }, ct);                       // park it, don't block the partition
+    }
+    consumer.Commit(r);
+}</code></pre>
+</div>
+  <div class="post">
+    <p>Kafka isn't a queue. It's a log you can rewind ⏪</p>
+    <p>📜 Events are appended to partitions and kept for days, not deleted on read.</p>
+    <p>🔑 Same key, same partition, same order. Pick the key carefully (account ID, not random).</p>
+    <p>👥 A consumer group splits partitions between its members. More consumers than partitions? They sit idle.</p>
+    <p>🔁 Process, then commit. Expect duplicates and make consumers idempotent.</p>
+    <p>☠️ No built-in DLQ: park poison events in a dead-letter topic so one bad message doesn't stall a partition.</p>
+    <p>Queue for tasks, Kafka for facts many teams need to replay. Which do you reach for first?</p>
+    <p>#Kafka #EventStreaming #Integration #SolutionArchitecture</p>
+  </div>
+</section>
+
 <div class="qa-wrap">
   <h2>⚡ Quick-fire Q&amp;A</h2>
   <details class="qa"><summary>Service Bus or Event Hubs?</summary><p>Service Bus for enterprise messaging (commands, transactions, sessions, DLQ, ordered workflows). Event Hubs for high-throughput event streaming and telemetry with replay.</p></details>
@@ -532,6 +660,8 @@ foreach (var file in sftp.ListDirectory("/inbound").Where(f =&gt; f.Name.EndsWit
   <details class="qa"><summary>How do you handle duplicates with at-least-once delivery?</summary><p>Idempotent consumers: deduplicate by message ID or business key, use upserts, and use version checks.</p></details>
   <details class="qa"><summary>What is back-pressure, and how do you apply it?</summary><p>The consumer signals that it is full, so the producer slows down instead of overwhelming it. Use bounded queues with a clear "when full" rule (block, drop or reject), rate limits that return 429/503 with Retry-After, pull-based or credit-based consumption, and autoscaling on consumer lag.</p></details>
   <details class="qa"><summary>Why is an unbounded queue dangerous?</summary><p>It hides overload. The queue grows until memory or storage runs out, and latency climbs silently because messages wait for hours. A bound turns a hidden, late failure into an early, visible signal you can act on.</p></details>
+  <details class="qa"><summary>How do you keep Kafka events for one account in order?</summary><p>Use the account ID as the message key, so all its events land on the same partition, and one consumer in the group reads that partition. Enable the idempotent producer so retries don't duplicate or reorder events. There is no order across partitions.</p></details>
+  <details class="qa"><summary>Kafka consumer lag keeps growing. What do you check?</summary><p>A slow or failing handler (poison events blocking the partition: send them to a dead-letter topic), then scale consumers up to the partition count, process in batches, and look for a hot key. Adding partitions helps throughput but changes which partition each key maps to.</p></details>
 </div>
 
 <div class="pager"><a href="09-apim.html">← 09 · API Management</a><a class="next" href="11-architecture-patterns.html">11 · Architecture Patterns →</a></div>

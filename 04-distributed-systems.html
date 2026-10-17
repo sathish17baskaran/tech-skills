@@ -55,7 +55,7 @@
 </script></figure>
   <div class="grid">
     <div class="box red"><h4>💥 Partial failure</h4><p>One node, link or dependency fails while the rest keep running. A timeout tells you <b>nothing</b> about whether the work happened.</p></div>
-    <div class="box amber"><h4>✂ Network partition</h4><p>Nodes are alive but can't reach each other. Each side may think the other is dead. This is the "P" in CAP (see <a href="03-scalability-reliability.html#cap">3.10</a>).</p></div>
+    <div class="box amber"><h4>✂ Network partition</h4><p>Nodes are alive but can't reach each other. Each side may think the other is dead. This is the "P" in CAP (see <a href="03-scalability-reliability.html#cap">3.11</a>).</p></div>
     <div class="box purple"><h4>🪖 Two generals problem</h4><p>Two generals must attack together but can only send messengers who may be captured. No finite number of messages makes both <b>certain</b>. Lesson: over an unreliable network you can't get guaranteed agreement, only good-enough protocols.</p></div>
     <div class="box blue"><h4>🐢 Slow = dead?</h4><p>A GC pause, a busy disk or a noisy neighbour looks exactly like a crash from outside. Failure detection is always a guess based on timeouts.</p></div>
   </div>
@@ -138,7 +138,7 @@
     <li><b>Read-your-writes</b>: you don't see your own update. Fix: read from the leader after a write, or use session tokens.</li>
     <li><b>Monotonic reads</b>: you see new data, refresh, then see older data (two different followers). Fix: pin a user to one replica.</li>
     <li><b>Consistent prefix</b>: you see an answer before the question. Fix: keep related writes in the same partition.</li>
-    <li>These map to the consistency models in <a href="03-scalability-reliability.html#pacelc">3.11</a>.</li>
+    <li>These map to the consistency models in <a href="03-scalability-reliability.html#pacelc">3.12</a>.</li>
   </ul>
   <div class="remember"><ul>
     <li>Single-leader is the default. Pick multi-leader or leaderless only when you need multi-region writes or extreme availability, and have a conflict plan.</li>
@@ -227,7 +227,7 @@ builder.Services.AddDbContext&lt;BankReadDb&gt;(o =&gt; o.UseSqlServer(readOnlyC
     </ul></div>
     <div><h3>In real products</h3><ul>
       <li><b>Cassandra / ScyllaDB</b>: N = replication factor per keyspace. Pick W and R per query: <code>ONE</code>, <code>QUORUM</code>, <code>LOCAL_QUORUM</code> (majority in your data centre), <code>ALL</code>.</li>
-      <li><b>Cosmos DB</b>: you <b>don't</b> set N, W or R. Each partition has a 4-replica set; writes commit to a local majority (3 of 4), Strong and Bounded Staleness read from 2 replicas, the other levels read from 1. You choose a <b>consistency level</b> instead (<a href="03-scalability-reliability.html#pacelc">3.11</a>).</li>
+      <li><b>Cosmos DB</b>: you <b>don't</b> set N, W or R. Each partition has a 4-replica set; writes commit to a local majority (3 of 4), Strong and Bounded Staleness read from 2 replicas, the other levels read from 1. You choose a <b>consistency level</b> instead (<a href="03-scalability-reliability.html#pacelc">3.12</a>).</li>
       <li><b>Raft / Paxos systems</b> (etcd, ZooKeeper) use majority quorums too (4.4).</li>
     </ul></div>
   </div>

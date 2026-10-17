@@ -80,6 +80,17 @@
       f: [['How do you make POST /payments safe to retry?', 'Require an Idempotency-Key, claim it atomically, store the response for about 24 hours scoped per client, and replay it on retries. Back it with a unique index on (ClientId, IdempotencyKey) in the payment transaction.'],
           ['What is the idempotent receiver pattern?', 'A message consumer inserts the message ID into a processed-messages table with a unique key, in the same transaction as the business change, so duplicates are skipped.']],
       q: [{ q: 'Two identical payment requests with the same Idempotency-Key arrive at the same millisecond. What prevents a double charge?', o: ['Checking the cache before processing', 'An atomic claim of the key (Redis SET NX or a unique index) before processing', 'A longer TTL', 'Returning 202 Accepted'], a: 1, e: 'A plain check-then-act races; both requests see no key. An atomic claim lets only one proceed.' }]
+    },
+    graphql: {
+      say: 'GraphQL is a typed schema behind one endpoint: clients ask for exactly the fields they need through queries, mutations and subscriptions, and resolvers fetch each field. The costs are N+1 queries, so use DataLoader; expensive queries, so add cost and depth limits or persisted operations; and harder HTTP caching. It suits rich UIs and BFFs. Federation joins subgraphs into a supergraph.',
+      k: ['schema / SDL', 'query / mutation / subscription', 'resolver', 'N+1 + DataLoader', 'cost analysis', 'persisted operations', 'supergraph / subgraph', 'Hot Chocolate'],
+      p: ['The client writes the query, so the server must cap cost, depth and page size.', 'DataLoader batches and dedupes keys per request.', 'One POST URL: no per-URL HTTP or CDN caching.', 'Federation pays off only with many teams and clear domains.'],
+      f: [['How does DataLoader fix N+1 in GraphQL?', 'Resolvers call LoadAsync(key) instead of querying. The DataLoader collects and dedupes the keys from all resolvers in that tick, then runs one batched query (e.g. WHERE id IN ...).'],
+          ['Persisted operations vs cost analysis?', 'Persisted (trusted) operations allow only pre-registered query hashes, which suits your own apps. Cost analysis scores any query and rejects it if it is over budget, which suits partner or public APIs.'],
+          ['What are a supergraph and subgraphs?', 'Subgraphs are team-owned GraphQL services. Composition merges them into one supergraph schema, and a gateway plans each query across subgraphs and merges the results.'],
+          ['When would you not use GraphQL?', 'Simple CRUD with one client, public APIs that rely on HTTP caching, file or bulk transfer, and service-to-service calls where gRPC or events fit better.']],
+      q: [{ q: 'A GraphQL query for 50 orders and each order\'s customer makes 51 database calls. What is the standard fix?', o: ['Add a depth limit', 'Use a DataLoader to batch the customer lookups', 'Switch on HTTP response caching', 'Split the query into two mutations'], a: 1, e: 'This is N+1. A DataLoader collects the 50 customer keys and loads them in one batched query.' },
+          { q: 'Your own mobile app is the only GraphQL client. What is the strongest guard against arbitrary expensive queries?', o: ['Disable mutations', 'Persisted (trusted) operations', 'A bigger database', 'Schema stitching'], a: 1, e: 'With trusted documents the server only runs operations registered at build time, so ad-hoc queries are rejected.' }]
     }
   }
 };

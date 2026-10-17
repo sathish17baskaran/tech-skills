@@ -17,6 +17,32 @@ document.querySelectorAll('.post').forEach(function (post) {
   post.appendChild(btn);
 });
 
+// Interview-first pages: fold the .NET implementation box and the LinkedIn post behind a one-line summary.
+function fold(box, cls, summary) {
+  var d = document.createElement('details');
+  d.className = 'fold ' + cls;
+  d.innerHTML = '<summary>' + summary + '</summary>';
+  box.parentNode.insertBefore(d, box);
+  d.appendChild(box);
+}
+document.querySelectorAll('main .dotnet').forEach(function (box) {
+  var head = box.querySelector('.dotnet-head');
+  var title = head ? head.innerHTML : '<span class="dotnet-logo">.NET 10</span> How to implement it';
+  if (head) head.remove();
+  fold(box, 'fold-dotnet', title + ' <small>packages &amp; code</small>');
+});
+document.querySelectorAll('main .post').forEach(function (box) {
+  fold(box, 'fold-post', '📣 LinkedIn post <small>ready to copy</small>');
+});
+// Open everything when printing, and open a fold that a link points into.
+window.addEventListener('beforeprint', function () { document.querySelectorAll('details').forEach(function (d) { d.open = true; }); });
+function openTarget() {
+  var t = location.hash && document.getElementById(decodeURIComponent(location.hash.slice(1)));
+  for (var p = t && t.parentElement; p; p = p.parentElement) if (p.tagName === 'DETAILS') p.open = true;
+}
+window.addEventListener('hashchange', openTarget);
+openTarget();
+
 // Mobile: label table cells with their column header so tables can stack into cards on small screens.
 document.querySelectorAll('main table').forEach(function (table) {
   var rows = table.rows;

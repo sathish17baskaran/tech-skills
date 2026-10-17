@@ -29,6 +29,7 @@
     <a href="#monitoring" class="added">Monitoring &amp; IaC</a>
     <a href="#devops" class="added">DevOps</a>
     <a href="#choose" class="added">Choosing a cloud</a>
+    <a href="#finops" class="added">FinOps &amp; cost</a>
   </div>
 </header>
 
@@ -773,6 +774,114 @@ string gcpPwd = ver.Payload.Data.ToStringUtf8();</code></pre>
   </div>
 </section>
 
+<!-- FINOPS -->
+<section class="concept" id="finops">
+  <h2><span class="num">21.14</span> FinOps and cloud cost optimisation <span class="tag-added">Added</span></h2>
+  <p class="oneliner">FinOps makes engineering, finance and product share ownership of cloud spend, so cost becomes an engineering metric measured per unit of business value.</p>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"The FinOps lifecycle: a loop, not a project","interval":2800,
+ "frames":[
+  {"label":"Inform","caption":"See and allocate every dollar: who spends what, and per what unit of business.","rows":[
+   [{"t":"Inform","c":"blue","big":true}],[{"k":"arrow","g":"↓"}],
+   [{"t":"Tag &amp; allocate","c":"blue"},{"t":"Showback","c":"blue"},{"t":"Unit cost","c":"blue"}]]},
+  {"label":"Optimise","caption":"Cut waste first, then buy smarter.","rows":[
+   [{"t":"Optimise","c":"green","big":true}],[{"k":"arrow","g":"↓"}],
+   [{"t":"Rightsize","c":"green"},{"t":"Commit baseline","c":"green"},{"t":"Spot &amp; tiering","c":"green"}]]},
+  {"label":"Operate","caption":"Make it routine: guardrails, alerts and a regular review. Then back to Inform.","ms":3200,"rows":[
+   [{"t":"Operate","c":"purple","big":true}],[{"k":"arrow","g":"↓"}],
+   [{"t":"Budgets &amp; alerts","c":"purple"},{"t":"Policy","c":"purple"},{"t":"Monthly review","c":"purple"}]]}
+ ]}
+</script></figure>
+
+  <h3>How it works</h3>
+  <div class="tablewrap"><table style="font-size:13px">
+    <tr><th>Lever</th><th>What to do</th><th>Watch out</th></tr>
+    <tr><td><b>Tagging</b></td><td>Required tags: owner, cost centre, app, env. Enforce with policy</td><td>Shared costs need a split rule</td></tr>
+    <tr><td><b>Showback / chargeback</b></td><td>Showback reports cost to teams; chargeback bills it to their budget</td><td>Start with showback</td></tr>
+    <tr><td><b>Unit economics</b></td><td>Cost ÷ business volume, e.g. cost per 1,000 payments</td><td>The trend matters more than the number</td></tr>
+    <tr><td><b>Rightsizing</b></td><td>Match size to real p95 use; delete idle resources</td><td>Check memory, not just CPU</td></tr>
+    <tr><td><b>Autoscaling, scale to zero</b></td><td>Scale on demand; serverless and container apps scale to zero; dev off at night</td><td>Cold starts</td></tr>
+    <tr><td><b>Commitments</b></td><td>Azure Reservations, savings plan for compute · AWS Savings Plans, RIs · GCP CUDs</td><td>Commit only to the proven baseline, after rightsizing</td></tr>
+    <tr><td><b>Spot</b></td><td>Azure Spot VMs · EC2 Spot · GCP Spot VMs</td><td>Can be reclaimed: restartable work only</td></tr>
+    <tr><td><b>Storage tiering</b></td><td>Hot → cool/cold → archive with lifecycle rules</td><td>Minimum days and retrieval fees</td></tr>
+    <tr><td><b>Egress</b></td><td>Keep compute next to data; cache at the edge; avoid chatty cross-region calls</td><td>Internet, cross-region and (on AWS) cross-zone traffic is billed per GB</td></tr>
+    <tr><td><b>Budgets, anomalies</b></td><td>Alerts at % of budget and on forecast; anomaly detection</td><td>Budgets alert; they don't stop spend unless you automate it</td></tr>
+  </table></div>
+
+  <h3>Order of attack</h3>
+  <div class="flow">
+    <div class="n">Delete idle</div><div class="ar">→</div>
+    <div class="n p">Rightsize</div><div class="ar">→</div>
+    <div class="n a">Scale &amp; schedule</div><div class="ar">→</div>
+    <div class="n t">Commit baseline</div><div class="ar">→</div>
+    <div class="n g">Spot for burst</div>
+  </div>
+
+  <h3>Native cost tools (checked Oct 2026)</h3>
+  <div class="tablewrap"><table style="font-size:13px">
+    <tr><th>Need</th><th>Azure</th><th>AWS</th><th>GCP</th></tr>
+    <tr><td><b>Explore costs</b></td><td>Microsoft Cost Management (cost analysis)</td><td>AWS Cost Explorer</td><td>Cloud Billing reports</td></tr>
+    <tr><td><b>Budgets</b></td><td>Cost Management budgets</td><td>AWS Budgets</td><td>Cloud Billing budgets and alerts</td></tr>
+    <tr><td><b>Anomalies</b></td><td>Cost anomaly alerts</td><td>AWS Cost Anomaly Detection</td><td>Cost anomaly detection</td></tr>
+    <tr><td><b>Recommendations</b></td><td>Azure Advisor</td><td>Cost Optimization Hub</td><td>Recommender (Active Assist)</td></tr>
+    <tr><td><b>Raw export</b></td><td>Cost Management exports (incl. FOCUS)</td><td>Data Exports (CUR 2.0, FOCUS)</td><td>Billing export to BigQuery</td></tr>
+  </table></div>
+  <p class="tip"><b>FOCUS</b> (FinOps Open Cost and Usage Specification) is one schema for billing data from every cloud, so multi-cloud showback doesn't need custom mapping.</p>
+
+  <h3>Trade-offs</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Choice</th><th>Gain</th><th>Cost</th></tr>
+    <tr><td><b>Chargeback</b> over showback</td><td>Strong ownership</td><td>Disputes over shared costs</td></tr>
+    <tr><td><b>3-year commitment</b></td><td>Deepest discount</td><td>Lock-in if the design changes</td></tr>
+    <tr><td><b>Spot</b></td><td>Cheapest compute</td><td>Evictions; needs checkpointing</td></tr>
+    <tr><td><b>Scale to zero</b></td><td>Pay nothing when idle</td><td>Cold-start latency</td></tr>
+    <tr><td><b>Archive tier</b></td><td>Cheapest storage</td><td>Hours to read, early-delete fees</td></tr>
+  </table></div>
+
+  <div class="remember"><ul>
+    <li>FinOps is a loop: <b>Inform → Optimise → Operate</b>, owned by engineering, finance and product together.</li>
+    <li>No tags, no allocation. No allocation, no accountability.</li>
+    <li>Report <b>unit cost</b> (per payment, per customer), not just the total bill.</li>
+    <li>Rightsize first, then commit to the steady baseline; spot only for restartable work.</li>
+    <li>Egress and log ingestion are the hidden costs. Design data placement early.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Cloud</th><th>Packages</th><th>Use them for</th></tr>
+    <tr><td><b>Azure</b></td><td><code>Azure.ResourceManager.CostManagement</code> (1.0.x), <code>Azure.Identity</code></td><td>Query cost by tag or service; budgets, exports, alerts</td></tr>
+    <tr><td><b>AWS</b></td><td><code>AWSSDK.CostExplorer</code>, <code>AWSSDK.Budgets</code></td><td>Cost and usage queries, forecasts; create budgets</td></tr>
+    <tr><td><b>Google Cloud</b></td><td><code>Google.Cloud.Billing.Budgets.V1</code></td><td>Manage budgets; query costs via the BigQuery billing export</td></tr>
+    <tr><td><b>Any</b></td><td><span class="pill builtin">built-in</span> <code>System.Diagnostics.Metrics</code> + OpenTelemetry</td><td>Count business units (payments) so cost ÷ volume becomes a dashboard</td></tr>
+  </table>
+<pre class="code"><code>// Month-to-date actual cost per "app" tag, for a showback report
+var arm = new ArmClient(new DefaultAzureCredential());   // needs Cost Management Reader
+var scope = new ResourceIdentifier($"/subscriptions/{subscriptionId}");
+
+var dataset = new QueryDataset();
+dataset.Aggregation["totalCost"] = new QueryAggregation("PreTaxCost", FunctionType.Sum);
+dataset.Grouping.Add(new QueryGrouping(QueryColumnType.TagKey, "app"));
+
+var query = new QueryDefinition(ExportType.ActualCost, TimeframeType.MonthToDate, dataset);
+QueryResult result = (await arm.UsageQueryAsync(scope, query)).Value;
+
+// Column names are in result.Columns; divide by payments processed for unit cost
+foreach (var row in result.Rows)
+    Console.WriteLine(string.Join(" | ", row));</code></pre>
+  <p class="warn">Cost data lags by hours (often up to a day), so use it for daily reports and alerts, not real-time decisions. Query rates are throttled (HTTP 429): cache results.</p>
+</div>
+  <div class="post">
+    <p>The cloud bill isn't a finance problem. It's a design problem &#x1F4B8;</p>
+    <p>&#x1F3F7;&#xFE0F; Tag everything: no tags, no ownership</p>
+    <p>&#x1F4CA; Track cost per payment or per customer, not just the total</p>
+    <p>&#x2702;&#xFE0F; Delete idle, rightsize, then commit to the baseline</p>
+    <p>&#x1F3B2; Spot for restartable work; scale to zero for quiet services</p>
+    <p>&#x1F310; Egress is the hidden tax: keep compute next to data</p>
+    <p>Does your team know its cost per transaction?</p>
+    <p>#FinOps #CloudCost #Azure #AWS #GoogleCloud</p>
+  </div>
+</section>
+
 <div class="qa-wrap">
   <h2>⚡ Quick-fire Q&amp;A</h2>
   <details class="qa"><summary>What's the biggest networking difference between the three clouds?</summary><p>A GCP VPC is global, with regional subnets, so one network can span regions. Azure VNets and AWS VPCs are regional, so multi-region designs need peering or a hub (Virtual WAN, Transit Gateway).</p></details>
@@ -781,6 +890,8 @@ string gcpPwd = ver.Payload.Data.ToStringUtf8();</code></pre>
   <details class="qa"><summary>What is the AWS or GCP equivalent of Azure Service Bus?</summary><p>There is no exact twin. On AWS: SQS (FIFO for ordering) plus SNS for topics, or Amazon MQ if you need AMQP/JMS. On GCP: Pub/Sub with ordering keys and dead-letter topics, or Cloud Tasks for simple work queues. Check sessions, transactions and ordering needs.</p></details>
   <details class="qa"><summary>Which old service names should you stop using in interviews?</summary><p>Azure AD (now Microsoft Entra ID), Azure Cognitive Services (Foundry Tools), Azure AI Foundry (Microsoft Foundry), Vertex AI (Gemini Enterprise Agent Platform), Cloud Functions (Cloud Run functions), Container Registry (Artifact Registry), Dataproc (Managed Service for Apache Spark) and Deployment Manager (retired; use Infrastructure Manager or Terraform).</p></details>
   <details class="qa"><summary>Why is egress so important in multi-cloud designs?</summary><p>Data going into a cloud is mostly free, but data leaving it is billed per GB. An app in one cloud that reads a database in another pays on every call and adds latency. Keep each workload and its data in the same cloud and region.</p></details>
+  <details class="qa"><summary>What is FinOps, and where do you start?</summary><p>A practice where engineering, finance and product share ownership of cloud spend, run as a loop: Inform (tag, allocate, show unit cost), Optimise (delete idle, rightsize, commit to the baseline, spot, storage tiers) and Operate (budgets, anomaly alerts, policy, regular reviews). Start with tagging and showback: you can't optimise what nobody owns.</p></details>
+  <details class="qa"><summary>Showback vs chargeback?</summary><p>Showback reports each team's cloud cost to them for awareness. Chargeback actually bills that cost to the team's budget. Chargeback drives stronger ownership but needs trusted tagging and agreed rules for shared costs, so most organisations start with showback.</p></details>
 </div>
 
 <div class="pager"><a href="20-dotnet-system-design-use-cases.html">← 20 · Top 10 .NET Use Cases</a><a class="next" href="22-dotnet-engineering-deep-dive.html">22 · .NET Engineering Deep Dive →</a></div>

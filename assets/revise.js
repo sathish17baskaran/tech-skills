@@ -21,6 +21,8 @@
     if (onClick) b.addEventListener('click', onClick);
     return b;
   }
+  // STAR skeletons are written on one line ('<b>S</b> … <b>T</b> …'); start each letter on a new line.
+  function starLines(s) { return String(s).replace(/\s*(<b>(?:T|A|R\+?)<\/b>)/g, '<br>$1'); }
   function shuffle(a) {
     a = a.slice();
     for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; }
@@ -101,7 +103,7 @@
       }
       var c = deck[i];
       front.innerHTML = '<div class="rv-fc-tag">' + c.tag + (known[c.key] ? ' · ✓ known' : '') + '</div><div class="rv-fc-q">' + c.q + '</div><div class="rv-fc-tip">Tap to reveal</div>';
-      back.innerHTML = '<div class="rv-fc-tag">Answer</div><div class="rv-fc-a">' + c.a.replace(/\s*(<b>(?:T|A|R\+?)<\/b>)/g, '<br>$1') + '</div>' + (c.href ? '<a class="rv-fc-link" href="' + c.href + '">Read the topic →</a>' : '');
+      back.innerHTML = '<div class="rv-fc-tag">Answer</div><div class="rv-fc-a">' + starLines(c.a) + '</div>' + (c.href ? '<a class="rv-fc-link" href="' + c.href + '">Read the topic →</a>' : '');
       count.textContent = 'Card ' + (i + 1) + ' of ' + deck.length + ' · ' + n + ' known';
     }
     function flip(e) { if (e && e.target.closest('a')) return; if (deck.length) card.classList.toggle('flipped'); }
@@ -245,13 +247,13 @@
     });
   }
 
-  /* ---------- Revise-mode card inside each section ---------- */
+  /* ---------- Interview card at the top of each section (key points show only in revise mode) ---------- */
   function sectionCards(nn) {
     ids(nn).forEach(function (id) {
       var sec = document.getElementById(id), s = R[nn].sections[id];
       if (!sec || sec.querySelector('.rv-card')) return;
       var c = el('div', 'rv-card');
-      if (s.say) el('p', 'rv-card-say', '🎤 ' + s.say, c);
+      if (s.say) el('p', 'rv-card-say', '<span class="rv-card-h">🎤 Say this</span>' + s.say, c);
       if (s.k && s.k.length) {
         var chips = el('div', 'rv-chips', null, c);
         el('span', 'rv-chips-h', 'Keywords', chips);
@@ -261,8 +263,27 @@
         var ul = el('ul', 'rv-card-pts', null, c);
         s.p.forEach(function (t) { el('li', null, t, ul); });
       }
-      var h2 = sec.querySelector('h2');
-      if (h2) h2.insertAdjacentElement('afterend', c); else sec.insertBefore(c, sec.firstChild);
+      var at = sec.querySelector(':scope > p.oneliner') || sec.querySelector('h2');
+      if (at) at.insertAdjacentElement('afterend', c); else sec.insertBefore(c, sec.firstChild);
+    });
+  }
+
+  /* ---------- Behavioural question cards: what they test, STAR in 30 seconds, power words; full answer folded ---------- */
+  function questionCards(nn) {
+    var skel = {};
+    cardsOf(nn).forEach(function (c) { var m = /^Q(\d+)\./.exec(c.q); if (m) skel[m[1]] = c.a; });
+    document.querySelectorAll('article.bq').forEach(function (art) {
+      var n = (art.id || '').replace(/^q/, ''), why = art.querySelector('.bq-why'), star = art.querySelector('.star');
+      if (!skel[n] || !why || !star || art.querySelector('.bq-skel')) return;
+      var box = el('div', 'bq-skel', '<h5>⭐ STAR in 30 seconds</h5><p>' + starLines(skel[n]) + '</p>');
+      var fold = el('details', 'fold fold-star', '<summary>📖 Full answer: STAR, reflection and philosophy</summary>');
+      var phi = art.querySelector('.bq-phi');
+      if (phi) { fold.appendChild(phi); why.classList.add('solo'); }
+      fold.appendChild(star);
+      why.insertAdjacentElement('afterend', box);
+      var keys = art.querySelector('.bq-keys');
+      if (keys) box.insertAdjacentElement('afterend', keys);
+      (keys || box).insertAdjacentElement('afterend', fold);
     });
   }
 
@@ -311,6 +332,7 @@
     var pill = btn('rv-pill', '⚡ Revise mode on · show full text', document.body, function () { setMode(false); });
     pill.title = 'Turn revise mode off';
     sectionCards(nn);
+    questionCards(nn);
     setMode(!!load('tcp-rv-mode', 0));
     if (!d.approach) wrap.querySelector('[data-tab="answer"]').hidden = true;
   }

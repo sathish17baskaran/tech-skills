@@ -30,6 +30,7 @@
     <a href="#incident" class="added">Incident management</a>
     <a href="#sre" class="added">SRE practices</a>
     <a href="#dora" class="added">DORA metrics</a>
+    <a href="#chaos" class="added">Chaos &amp; game days</a>
   </div>
 </header>
 
@@ -1246,7 +1247,7 @@ using (logger.BeginScope(new Dictionary&lt;string, object&gt; { ["CorrelationId"
   </div>
 
   <h3>Game days</h3>
-  <p>Planned exercises that inject a real failure (zone outage, slow dependency, expired certificate) while the on-call team responds as if it were live. They test runbooks, alerts and people, not just code. Chaos principles and tools are in <a href="#testing">13.3</a>.</p>
+  <p>Planned exercises that inject a real failure (zone outage, slow dependency, expired certificate) while the on-call team responds as if it were live. They test runbooks, alerts and people, not just code. How to run them, plus chaos principles and tools, is in <a href="#chaos">13.16</a>.</p>
   <div class="remember"><ul>
     <li>SLOs and error budgets turn "features vs reliability" into an agreed, data-driven rule.</li>
     <li>Agree the error budget policy in advance, not in the middle of an incident.</li>
@@ -1416,6 +1417,131 @@ record DeploymentEvent(string Service, string Result, DateTimeOffset DeployedAt,
   </div>
 </section>
 
+<!-- CHAOS -->
+<section class="concept" id="chaos">
+  <h2><span class="num">13.16</span> Chaos engineering and game days <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Break things on purpose, in a controlled experiment, to prove that the system and the team cope the way you think they do.</p>
+  <p class="tip">The short version is in <a href="#testing">13.3</a>. SLOs, error budgets and the error budget policy are in <a href="#sre">13.14</a>. This section is the how-to.</p>
+
+  <h3>The experiment loop</h3>
+  <div class="flow">
+    <div class="n">Steady state<small>normal SLIs</small></div><div class="ar">→</div>
+    <div class="n p">Hypothesis<small>"p99 stays &lt; 500 ms"</small></div><div class="ar">→</div>
+    <div class="n a">Inject fault<small>small blast radius</small></div><div class="ar">→</div>
+    <div class="n t">Observe<small>abort if SLO burns</small></div><div class="ar">→</div>
+    <div class="n g">Fix &amp; repeat<small>then automate</small></div>
+  </div>
+<figure class="viz" data-viz="lanes"><script type="application/json">
+{"title":"Experiment: +2 s latency on the FX API, aborted on burn rate","max":10,"labelW":90,"width":760,"rowH":38,"dur":5500,"axis":"minutes →",
+ "markers":[{"at":1,"t":"inject","c":"amber"},{"at":4.5,"t":"abort","c":"red"}],
+ "rows":[
+  {"label":"Fault","blocks":[{"s":1,"e":4.5,"t":"+2 s latency","c":"amber"}]},
+  {"label":"Errors","blocks":[{"s":0,"e":2,"t":"0.1%","c":"green"},{"s":2,"e":4.5,"t":"5% timeouts","c":"red"},{"s":4.5,"e":10,"t":"0.1%","c":"green"}]},
+  {"label":"Burn rate","blocks":[{"s":2.5,"e":4.5,"t":"14x","c":"red"}]},
+  {"label":"Team","blocks":[{"s":4.5,"e":6,"t":"stop","c":"blue"},{"s":6,"e":10,"t":"fix timeout","c":"purple"}]}
+ ]}
+</script></figure>
+
+  <h3>How it works</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Part</th><th>What it means</th></tr>
+    <tr><td><b>Steady state</b></td><td>Measurable "normal": success rate, p99, payments per minute</td></tr>
+    <tr><td><b>Hypothesis</b></td><td>"If X fails, steady state holds." Written down <b>before</b> you start</td></tr>
+    <tr><td><b>Blast radius</b></td><td>Who can get hurt: one pod, 1% of traffic, one tenant, one zone</td></tr>
+    <tr><td><b>Abort conditions</b></td><td>Agreed stop rules: burn rate, error %, a stop button. Automate them</td></tr>
+    <tr><td><b>Duration</b></td><td>Faults switch off on their own when time runs out or on abort</td></tr>
+  </table></div>
+
+  <h3>Common experiments</h3>
+  <div class="grid">
+    <div class="box amber"><h4>&#x1F422; Latency</h4><p>Add 1-3 s to a dependency. Do timeouts fire, and do retries make it worse?</p></div>
+    <div class="box red"><h4>&#x1F50C; Dependency failure</h4><p>Return 503s, drop the cache, block DNS. Does the fallback or circuit breaker work?</p></div>
+    <div class="box purple"><h4>&#x1F5A5;&#xFE0F; Instance / zone loss</h4><p>Kill pods or VMs, take a zone down, fail over the database. Does traffic move?</p></div>
+    <div class="box teal"><h4>&#x1F4C8; Resource exhaustion</h4><p>CPU or memory pressure, full disk, a drained connection pool. Does autoscaling or shedding kick in?</p></div>
+  </div>
+
+  <h3>Non-production first, then production</h3>
+  <ul>
+    <li><b>Code and CI</b>: in-process faults (Polly chaos) in integration tests.</li>
+    <li><b>Staging</b>: platform faults with production-like load.</li>
+    <li><b>Production</b>: off-peak, tiny blast radius, people watching, abort automated. Only production shows the real config, traffic and dependencies.</li>
+    <li><b>Continuous</b>: proven experiments run on a schedule or in the pipeline.</li>
+  </ul>
+
+  <h3>Game days and the error budget</h3>
+  <ul>
+    <li><b>Game day</b>: a planned exercise. A facilitator injects the fault; on-call responds with the <b>real alerts and runbooks</b>; a scribe times detection and mitigation.</li>
+    <li>Afterwards: blameless review, fix the runbooks and alerts, add action items.</li>
+    <li><b>Error budget</b>: experiments spend it on purpose. No budget left? No chaos. Use the burn rate as the abort condition.</li>
+  </ul>
+
+  <h3>Tools</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Where</th><th>Tool</th></tr>
+    <tr><td><b>Azure</b></td><td>Azure Chaos Studio (Workspaces <span class="pill preview">preview</span>; Experiments classic)</td></tr>
+    <tr><td><b>AWS</b></td><td>AWS Fault Injection Service: scenario library, CloudWatch alarm stop conditions</td></tr>
+    <tr><td><b>Kubernetes</b></td><td>Chaos Mesh, LitmusChaos</td></tr>
+    <tr><td><b>In code</b></td><td>Polly chaos strategies (below)</td></tr>
+  </table></div>
+
+  <h3>When to use / when not</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Use it when</th><th>Not yet when</th></tr>
+    <tr><td>Critical journeys have SLOs and alerts</td><td>No observability: you can't see the impact</td></tr>
+    <tr><td>You added retries, failover or multi-zone and need proof</td><td>The weakness is already known: fix it first</td></tr>
+    <tr><td>Before a peak event or a DR claim to a regulator</td><td>The error budget is gone, or a change freeze is on</td></tr>
+    <tr><td>On-call needs practice on rare failures</td><td>There's no way to abort quickly</td></tr>
+  </table></div>
+
+  <div class="remember"><ul>
+    <li>Steady state + hypothesis first. Without them, it's just an outage.</li>
+    <li>Smallest blast radius that teaches you something; automated abort conditions.</li>
+    <li>Non-production first, but only production proves production.</li>
+    <li>Game days test people, alerts and runbooks, not just code.</li>
+    <li>Chaos spends error budget. No budget, no experiments.</li>
+  </ul></div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Package / API</th><th>Use it for</th></tr>
+    <tr><td><code>Polly.Core</code> (8.8)</td><td>Built-in chaos strategies: <code>AddChaosFault</code>, <code>AddChaosLatency</code>, <code>AddChaosOutcome</code>, <code>AddChaosBehavior</code></td></tr>
+    <tr><td><code>Microsoft.Extensions.Http.Resilience</code> (10.x)</td><td><code>AddResilienceHandler</code> on an <code>HttpClient</code>: retry, timeout, then chaos in the same pipeline</td></tr>
+    <tr><td><code>Microsoft.Extensions.Resilience</code> (10.x)</td><td>Enriches Polly telemetry; brings <code>Polly.Extensions</code> (<code>AddResiliencePipeline</code>) for non-HTTP calls</td></tr>
+    <tr><td><span class="pill builtin">built-in</span> <code>IConfiguration</code></td><td>Switch chaos on per environment or game day</td></tr>
+  </table>
+<pre class="code"><code>// Chaos on one dependency, off unless config turns it on (staging or a game day)
+bool chaosOn = builder.Configuration.GetValue&lt;bool&gt;("Chaos:Enabled");
+
+builder.Services.AddHttpClient&lt;FxRatesClient&gt;(c =&gt; c.BaseAddress = new Uri("https://fx.example.com"))
+    .AddResilienceHandler("fx", pipeline =&gt;
+    {
+        // 1. Normal resilience: this is what the experiment tests
+        pipeline.AddRetry(new HttpRetryStrategyOptions { MaxRetryAttempts = 3 });
+        pipeline.AddTimeout(TimeSpan.FromSeconds(2));          // per try
+
+        // 2. Chaos goes last, closest to the real call
+        if (chaosOn)
+        {
+            pipeline.AddChaosLatency(0.10, TimeSpan.FromSeconds(3));   // 10% of calls +3 s
+            pipeline.AddChaosOutcome(0.05, () =&gt;
+                new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)); // 5% get a 503
+        }
+    });
+// Hypothesis: retries + a 2 s per-try timeout keep FX success above 99.5%</code></pre>
+  <p class="warn">Polly v8 chaos strategies are <b>on as soon as you add them</b>. Gate them with config, or use <code>EnabledGenerator</code> / <code>InjectionRateGenerator</code> to target test users only. Watch the <code>Chaos.OnLatency</code> and <code>Chaos.OnOutcome</code> telemetry events.</p>
+</div>
+  <div class="post">
+    <p>Your retries have never been tested. Not really &#x1F9EA;</p>
+    <p>&#x1F4CF; Define steady state: success rate, p99, payments per minute</p>
+    <p>&#x1F914; Write the hypothesis before you break anything</p>
+    <p>&#x1F3AF; Smallest blast radius, automatic abort on SLO burn rate</p>
+    <p>&#x1F3AE; Game days test people, alerts and runbooks, not just code</p>
+    <p>&#x1F4B8; Chaos spends error budget. No budget, no experiments</p>
+    <p>When did your team last fail over a zone on purpose?</p>
+    <p>#ChaosEngineering #SRE #Resilience #GameDay #DevOps</p>
+  </div>
+</section>
+
 <div class="qa-wrap">
   <h2>⚡ Quick-fire Q&amp;A</h2>
   <details class="qa"><summary>Blue-green vs canary?</summary><p>Blue-green switches all traffic at once between two full environments, with instant rollback and double cost. Canary shifts traffic gradually and validates on real users with a smaller blast radius, but needs strong monitoring.</p></details>
@@ -1434,6 +1560,8 @@ record DeploymentEvent(string Service, string Result, DateTimeOffset DeployedAt,
   <details class="qa"><summary>What goes into a blameless postmortem?</summary><p>Summary, impact, a timestamped timeline, contributing factors (not a person to blame), what went well, badly and where we got lucky, and action items with owners and due dates. The goal is to fix the system so the same failure can't recur.</p></details>
   <details class="qa"><summary>What are the DORA metrics today?</summary><p>Five since 2024: change lead time, deployment frequency and failed deployment recovery time (throughput), plus change fail rate and deployment rework rate (instability). The 2025 report replaced the elite/high/medium/low clusters with per-metric benchmarks and seven team archetypes.</p></details>
   <details class="qa"><summary>How can DORA metrics be misused?</summary><p>By ranking teams, tying them to individual performance reviews, or setting them as top-down targets. Teams then game them, for example by splitting deploys or not recording incidents. Use them for a team's own improvement over time, together with SLOs and well-being signals (SPACE).</p></details>
+  <details class="qa"><summary>How do you run a chaos experiment safely in production?</summary><p>Define steady state (success rate, p99) and write a hypothesis first. Prove it in staging. Then run in production off-peak with the smallest useful blast radius (one pod, 1% of traffic, one tenant), automated abort conditions such as an SLO burn-rate alarm, people watching, and only while error budget remains.</p></details>
+  <details class="qa"><summary>Chaos experiment vs game day?</summary><p>A chaos experiment tests a technical hypothesis and can be automated and repeated in a pipeline. A game day is a planned team exercise: a failure is injected and on-call responds with the real alerts and runbooks, so it tests people and process too, followed by a blameless review.</p></details>
 </div>
 
 <div class="pager"><a href="12-security-iam.html">← 12 · Security &amp; IAM</a><a class="next" href="14-rag-genai.html">14 · RAG &amp; GenAI →</a></div>

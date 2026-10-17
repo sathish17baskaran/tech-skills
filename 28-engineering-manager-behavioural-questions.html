@@ -804,7 +804,7 @@
   </div>
   <div class="star">
     <div class="st-s"><span class="k">S</span><p><b>Situation:</b> Two strong leads were stuck for 3 weeks on a new loan-status flow. One wanted events on a streaming platform, the other wanted synchronous REST APIs. Both were partly right, and the team had split behind them.</p></div>
-    <div class="st-t"><span class="k">T</span><p><b>Task:</b> As architect, get a decision without creating a winner and a loser.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> As their engineering manager, get a decision without creating a winner and a loser.</p></div>
     <div class="st-a"><span class="k">A</span><div><p><b>Action:</b></p><ul>
       <li>I met each of them privately first. The events lead worried about coupling and scale; the API lead worried about debugging and consistency for the broker portal.</li>
       <li>I ran an <b>"argue the other side"</b> session, where each presented the other's option at its best. The tension dropped straight away.</li>
@@ -843,14 +843,14 @@
 <article class="bq" id="q26">
   <div class="bq-q"><span class="qnum">Q26</span><span>How do you lead and influence without authority across teams?</span></div>
   <div class="bq-why">
-    <div class="bq-psy"><h5>&#x1F9E0; Psychology: what they're really testing</h5><p>Will people follow you when they don't have to? Architects rarely own the teams they need. Red flags: escalating to get a mandate, or "I published a standard". A senior <b>creates pull</b>: they show value in the other team's context, make it easy and use <b>social proof</b>.</p></div>
+    <div class="bq-psy"><h5>&#x1F9E0; Psychology: what they're really testing</h5><p>Will people follow you when they don't have to? Managers rarely own all the teams they need. Red flags: escalating to get a mandate, or "I published a standard". A senior <b>creates pull</b>: they show value in the other team's context, make it easy and use <b>social proof</b>.</p></div>
     <div class="bq-phi"><h5>&#x1F9ED; Philosophy: the principle behind a strong answer</h5><p>People adopt what solves their problem, not what they're told to adopt. <b>Show, don't tell.</b> Everett Rogers' <b>diffusion of innovations</b> shows how early adopters pull others along. Make adoption cheap.</p></div>
   </div>
   <div class="star">
-    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> Across 12 teams, incidents took hours to diagnose because nobody could trace a request across services. I wanted every team to adopt <b>distributed tracing</b> with OpenTelemetry, but I didn't own any of their backlogs.</p></div>
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> Across 12 teams, incidents took hours to diagnose because nobody could trace a request across services. I wanted every team to adopt <b>distributed tracing</b> with OpenTelemetry, but I managed only one of those teams and owned none of the other backlogs.</p></div>
     <div class="st-t"><span class="k">T</span><p><b>Task:</b> Get broad adoption without a mandate.</p></div>
     <div class="st-a"><span class="k">A</span><div><p><b>Action:</b></p><ul>
-      <li>I instrumented one end-to-end flow myself, with a team that volunteered.</li>
+      <li>My own team instrumented one end-to-end flow first, with a neighbouring team that volunteered.</li>
       <li>I started a weekly 20-minute <b>"trace of the week"</b> show-and-tell. Each one showed a real slow hop in someone's flow, such as a 1.8-second config lookup on every request.</li>
       <li>I always gave <b>shared credit</b> to the team that fixed it, and never shamed anyone.</li>
       <li>I made it cheap: a shared library and a 1-page guide, so setup took under an hour.</li>
@@ -874,7 +874,7 @@
     <p>🧰 Setup took under an hour: a shared library and a 1-page guide</p>
     <p>📣 Early adopters did the selling for me</p>
     <p>Influence without authority is just making the right thing visible and easy. How do you get teams to adopt a standard?</p>
-    <p>#Leadership #Influence #Observability #EngineeringCulture #SolutionArchitect</p>
+    <p>#Leadership #Influence #Observability #EngineeringCulture #EngineeringManagement</p>
   </div>
 </section>
 
@@ -1061,7 +1061,7 @@
   </div>
   <div class="star">
     <div class="st-s"><span class="k">S</span><p><b>Situation:</b> On a weekday morning, customers stopped getting payment notifications. Alerts showed consumer lag growing on one partition of the notifications topic, and complaints appeared on social media within 15 minutes.</p></div>
-    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I was the on-call architect and took the <b>incident commander</b> role: coordinate, decide and keep stakeholders informed.</p></div>
+    <div class="st-t"><span class="k">T</span><p><b>Task:</b> I was the on-call engineering manager that week and took the <b>incident commander</b> role: coordinate, decide and keep stakeholders informed.</p></div>
     <div class="st-a"><span class="k">A</span><div><p><b>Action:</b></p><ul>
       <li>I opened a bridge and assigned roles: an ops lead to fix, and a comms lead to post updates every 15 minutes to the service desk and executives. I stayed off the keyboard.</li>
       <li>We found one malformed <b>poison message</b> that failed to deserialise. The consumer retried it forever and blocked the partition.</li>
@@ -1101,20 +1101,20 @@
   <div class="bq-q"><span class="qnum">Q33</span><span>Tell me about an incident caused by your own design or decision.</span></div>
   <div class="bq-why">
     <div class="bq-psy"><h5>&#x1F9E0; Psychology: what they're really testing</h5><p>This tests <b>ownership, honesty and learning</b>, and it's the hardest answer to fake. Red flags: blaming the partner, playing it down, or "a junior misconfigured it". A senior names their own mistake plainly, fixes the system, and turns the lesson into a <b>standard</b> so others don't repeat it.</p></div>
-    <div class="bq-phi"><h5>&#x1F9ED; Philosophy: the principle behind a strong answer</h5><p>A blameless culture needs leaders who go first. When the architect owns a mistake publicly, others feel safe to do the same (Amy Edmondson's <b>psychological safety</b>). And retries are selfish: without backoff, jitter and budgets, they <b>amplify outages</b>.</p></div>
+    <div class="bq-phi"><h5>&#x1F9ED; Philosophy: the principle behind a strong answer</h5><p>A blameless culture needs leaders who go first. When the manager owns a mistake publicly, others feel safe to do the same (Amy Edmondson's <b>psychological safety</b>). And retries are selfish: without backoff, jitter and budgets, they <b>amplify outages</b>.</p></div>
   </div>
   <div class="star">
-    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> I designed the integration pattern for calls to an external credit-bureau partner. My policy was 3 immediate retries, with no backoff and no jitter. When the partner had a 4-minute blip, all our instances retried in lockstep.</p></div>
+    <div class="st-s"><span class="k">S</span><p><b>Situation:</b> My team built the integration with an external credit-bureau partner, and I signed off its retry policy: 3 immediate retries, with no backoff and no jitter. When the partner had a 4-minute blip, all our instances retried in lockstep.</p></div>
     <div class="st-t"><span class="k">T</span><p><b>Task:</b> The <b>retry storm</b> roughly quadrupled the load on the partner, stretched their outage to about 25 minutes and exhausted our own thread pool. I had to help resolve it and own the cause.</p></div>
     <div class="st-a"><span class="k">A</span><div><p><b>Action:</b></p><ul>
       <li>During the incident, I proposed switching retries off through config, which let the partner recover.</li>
-      <li>The first line of my postmortem said: "The retry policy was my design, and it amplified the outage." I didn't hedge.</li>
+      <li>The first line of my postmortem said: "I approved the retry policy, and it amplified the outage." I didn't hedge.</li>
       <li>I studied established guidance: exponential backoff with jitter (Marc Brooker, AWS Architecture Blog) and retry budgets (Google SRE book).</li>
-      <li>I wrote a resilience standard: capped exponential backoff with <b>full jitter</b>, a <b>circuit breaker</b>, a per-client <b>retry budget</b> (retries under about 10% of calls) and timeouts shorter than the caller's.</li>
-      <li>I paired with two teams to apply it and added a chaos test that injects partner failures.</li>
+      <li>With my tech lead, I wrote a resilience standard: capped exponential backoff with <b>full jitter</b>, a <b>circuit breaker</b>, a per-client <b>retry budget</b> (retries under about 10% of calls) and timeouts shorter than the caller's.</li>
+      <li>I gave two teams sprint capacity to apply it, and we added a chaos test that injects partner failures.</li>
     </ul></div></div>
     <div class="st-r"><span class="k">R</span><p><b>Result:</b> Six weeks later the partner went down again. It lasted 3 minutes, and we recovered automatically with no retry spike. Nine services adopted the standard within a quarter. Two engineers told me my postmortem made them comfortable owning their own mistakes.</p></div>
-    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> Now every design review I run asks "what happens when this dependency is down?", and I start with my own designs.</p></div>
+    <div class="st-l"><span class="k">R+</span><p><b>Reflection:</b> Now every design review in my teams asks "what happens when this dependency is down?", and I start with the decisions I signed off.</p></div>
   </div>
   <p class="bq-keys"><b>Power words to land:</b> I owned it · retry storm · jittered backoff · circuit breaker · retry budget · psychological safety</p>
 </article>
@@ -1147,13 +1147,13 @@
     <li>Quantify prevention and on-call health (headroom found, pages per week), or the work stays invisible.</li>
   </ul></div>
   <div class="post">
-    <p>The most useful postmortem I ever wrote started with: "This was my design." 🧯</p>
+    <p>The most useful postmortem I ever wrote started with: "I approved this." 🧯</p>
     <p>🔁 3 instant retries, no jitter, felt safe. It turned a 4-minute blip into a retry storm</p>
     <p>🙋 Owning it first made it safe for others to own theirs</p>
     <p>📏 The fix became a standard: backoff + jitter, circuit breaker, retry budget</p>
     <p>🧪 And a chaos test, so we prove it, not hope it</p>
     <p>Blameless doesn't mean nobody is accountable. It means leaders go first. What's the best postmortem habit you've seen?</p>
-    <p>#IncidentManagement #SRE #Leadership #Resilience #SoftwareArchitecture</p>
+    <p>#IncidentManagement #SRE #Leadership #Resilience #EngineeringManagement</p>
   </div>
 </section>
 

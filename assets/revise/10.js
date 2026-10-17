@@ -85,6 +85,17 @@
       f: [['How do you avoid processing a half-written file?', 'The sender writes to a .tmp name and renames when done, or drops a .done marker file; only pick up files that are complete.'],
           ['How do you make a batch job safe to rerun?', 'Process in chunks with checkpoints, make loads idempotent (upserts or keyed inserts), and archive or mark files once processed.']],
       q: [{ q: 'How do you prove a received file is complete and correct before loading?', o: ['Check the file name', 'Verify the checksum and control totals (record count and amount sum)', 'Load it and look for errors', 'Compare the file size with yesterday'], a: 1, e: 'Checksums detect corruption and control totals confirm every record and the total value arrived.' }]
+    },
+    kafka: {
+      say: 'Kafka is a replayable, partitioned log. Producers write keyed events to topics; the key picks the partition, so order holds per key. Each consumer group splits partitions between its members and commits offsets. Process then commit gives at-least-once, so consumers are idempotent; transactions give exactly-once only inside Kafka. Add a schema registry and a dead-letter topic, and watch consumer lag.',
+      k: ['topic / partition', 'message key', 'consumer group', 'rebalance', 'offset commit', 'idempotent producer', 'log compaction', 'schema registry'],
+      p: ['Order is per partition only: key by account ID.', 'Consumers beyond the partition count sit idle.', 'Retention keeps a time window; compaction keeps the latest value per key.', 'No built-in DLQ: park poison events in a dead-letter topic.'],
+      f: [['How do you get ordering in Kafka?', 'Give related events the same key (e.g. account ID) so they go to one partition, which one consumer in the group reads in order. There is no global order across partitions.'],
+          ['What delivery do you get by default, and how do you get exactly-once?', 'Process then commit gives at-least-once, so consumers must be idempotent. Exactly-once needs the idempotent producer, transactions, SendOffsetsToTransaction and read_committed consumers, and covers Kafka-to-Kafka only.'],
+          ['Retention vs log compaction?', 'Retention deletes events after a time or size limit, giving a replay window. Compaction keeps the latest value per key, with tombstones for deletes, to hold current state.'],
+          ['Kafka or a queue?', 'Kafka when many consumers need the same events, replay or high ordered throughput (CDC, analytics). A queue for one-worker tasks with built-in per-message ack, retry, DLQ and delays.']],
+      q: [{ q: 'A topic has 6 partitions. You scale the consumer group from 6 to 10 instances. What happens?', o: ['Throughput rises by two thirds', '4 consumers sit idle', 'Kafka adds 4 partitions automatically', 'Messages are shared round-robin across all 10'], a: 1, e: 'Each partition is read by one consumer in a group, so parallelism is capped at the partition count.' },
+          { q: 'One malformed event makes your consumer throw every time, and the partition stops moving. What is the usual fix?', o: ['Restart the consumer', 'Turn on auto-commit', 'Retry a few times, publish it to a dead-letter topic, then commit and move on', 'Delete the topic'], a: 2, e: 'Kafka has no built-in DLQ, so you park the poison event in a dead-letter topic to unblock the partition and replay it later.' }]
     }
   }
 };
