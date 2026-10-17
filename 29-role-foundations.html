@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>29 · Role Foundations | Tech Concepts Prep</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<nav class="top"><a href="28-engineering-manager-behavioural-questions.html">← Engineering Manager Questions</a><span class="here">29 · Role Foundations</span><a href="index.html">🏠 Roadmap</a></nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">Section 29 · Interview</div>
+  <h1>Role foundations: architect, designer, manager, principal engineer</h1>
+  <p>What each of the four roles <b>is</b>, what it <b>owns</b>, how it is <b>measured</b> and what interviewers <b>test</b>: Solution Architect, Solution Designer, Engineering Manager and Principal Software Engineer. Each role section links to the site topics to master. Use it to tune your stories to the role, then answer "what does a good X do?" with confidence.</p>
+  <div class="toc">
+    <a href="#compare" class="added">Roles at a glance</a>
+    <a href="#solution-architect" class="added">Solution architect</a>
+    <a href="#solution-designer" class="added">Solution designer</a>
+    <a href="#engineering-manager" class="added">Engineering Manager</a>
+    <a href="#principal-engineer" class="added">Principal Engineer</a>
+    <a href="#collaboration" class="added">Roles working together</a>
+  </div>
+</header>
+
+<!-- THE FOUR ROLES AT A GLANCE -->
+<section class="concept" id="compare">
+  <h2><span class="num">29.1</span> The four roles at a glance <span class="tag-added">Added</span></h2>
+  <p class="oneliner">The four roles differ mainly in <b>altitude</b> (how high above the code they work), <b>time horizon</b> and <b>what they produce</b>: decisions, designs, teams or code and technical direction.</p>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Altitude: where each role spends most of its time","interval":2600,
+ "frames":[
+  {"label":"Architect","caption":"Mostly <b>solution</b> level, reaching up to portfolio and enterprise standards","rows":[
+   [{"t":"Enterprise","sub":"strategy, standards","c":"purple"}],[{"t":"Portfolio","sub":"roadmaps","c":"purple"}],[{"t":"Solution","sub":"end to end","c":"purple","big":true}],[{"t":"Team","c":"off"}],[{"t":"Codebase","c":"off"}]]},
+  {"label":"Designer","caption":"<b>Solution</b> detail: turns the architecture into buildable designs for teams","rows":[
+   [{"t":"Enterprise","c":"off"}],[{"t":"Portfolio","c":"off"}],[{"t":"Solution","sub":"detailed design","c":"teal","big":true}],[{"t":"Team","sub":"handover","c":"teal"}],[{"t":"Codebase","c":"off"}]]},
+  {"label":"Eng Manager","caption":"<b>Team</b> level: people, delivery and ways of working","rows":[
+   [{"t":"Enterprise","c":"off"}],[{"t":"Portfolio","sub":"capacity, plans","c":"green"}],[{"t":"Solution","c":"off"}],[{"t":"Team","sub":"people, delivery","c":"green","big":true}],[{"t":"Codebase","c":"off"}]]},
+  {"label":"Principal","caption":"<b>Codebase</b> up to cross-team technical direction","rows":[
+   [{"t":"Enterprise","c":"off"}],[{"t":"Portfolio","sub":"tech strategy","c":"amber"}],[{"t":"Solution","sub":"cross-team design","c":"amber"}],[{"t":"Team","c":"off"}],[{"t":"Codebase","sub":"hands-on","c":"amber","big":true}]]}
+ ]}
+</script></figure>
+<figure class="viz" data-viz="lanes"><script type="application/json">
+{"title":"Time horizon (months)","max":36,"labelW":100,"width":520,"axis":"months ahead","rowH":40,
+ "ticks":[{"at":0,"t":"now"},{"at":3,"t":"3"},{"at":12,"t":"12"},{"at":24,"t":"24"},{"at":36,"t":"36"}],
+ "rows":[
+  {"label":"Architect","blocks":[{"s":3,"e":36,"t":"target state","c":"purple"}]},
+  {"label":"Designer","blocks":[{"s":0,"e":6,"t":"release","c":"teal"}]},
+  {"label":"Eng Manager","blocks":[{"s":0,"e":4,"t":"sprints","c":"green"},{"s":4,"e":12,"t":"hiring, plans","c":"green"}]},
+  {"label":"Principal","blocks":[{"s":0,"e":3,"t":"code","c":"amber"},{"s":3,"e":24,"t":"tech strategy","c":"amber"}]}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table style="font-size:13.5px">
+    <tr><th>Dimension</th><th>Solution Architect</th><th>Solution Designer</th><th>Eng Manager</th><th>Principal Engineer</th></tr>
+    <tr><td><b>Altitude</b></td><td>Solution, up to enterprise</td><td>Solution detail</td><td>Team</td><td>Code up to cross-team</td></tr>
+    <tr><td><b>Horizon</b></td><td>3–36 months</td><td>Weeks to a release</td><td>Sprint to a year</td><td>Today to 2 years</td></tr>
+    <tr><td><b>Primary output</b></td><td>Options, ACD/HLD, ADRs</td><td>LLD, interfaces, data flows</td><td>A healthy team that delivers</td><td>Code, RFCs, standards</td></tr>
+    <tr><td><b>Decisions owned</b></td><td>Solution shape, build vs buy</td><td>Interfaces, mappings, detail</td><td>People, priorities, process</td><td>Tech approach, quality bar</td></tr>
+    <tr><td><b>Influences</b></td><td>Execs, risk, business</td><td>Engineers, testers, vendors</td><td>Team, product, peers</td><td>Engineers across teams</td></tr>
+    <tr><td><b>Measured by</b></td><td>Fit, risk, reuse, cost</td><td>Rework, defects, clarity</td><td>DORA, retention, delivery</td><td>Tech outcomes, others' growth</td></tr>
+    <tr><td><b>Interview stresses</b></td><td>Trade-offs, NFRs, stakeholders</td><td>Requirements to design</td><td>People and delivery stories</td><td>Depth, design, influence</td></tr>
+  </table></div>
+  <p class="tip"><b>Titles vary.</b> A solution architect in one company is an enterprise architect in another (who works on <b>portfolio and capability</b>, not one solution). Some companies rank <b>staff above principal</b>, others the reverse. Read the <b>job description</b>, not the title.</p>
+  <h3>Which role are you interviewing for? Tune your answers</h3>
+  <div class="grid">
+    <div class="box purple"><h4>🏛️ Solution Architect</h4><p>Lead with <b>business outcome</b>, options and <b>trade-offs</b>. Name NFRs, risk and the ADR you wrote.</p></div>
+    <div class="box teal"><h4>📐 Solution Designer</h4><p>Show <b>requirements to design</b>: interfaces, data mapping, edge cases and a clean handover.</p></div>
+    <div class="box green"><h4>👥 Engineering Manager</h4><p>Talk <b>people and flow</b>: hiring, coaching, hard conversations, predictable delivery.</p></div>
+    <div class="box amber"><h4>🧭 Principal Engineer</h4><p>Prove <b>depth</b>, then <b>leverage</b>: RFCs, standards and engineers you levelled up.</p></div>
+  </div>
+  <div class="remember"><ul>
+    <li><b>Altitude</b>: enterprise, portfolio, solution, team, codebase. Know where your role sits.</li>
+    <li>Architect owns the <b>shape</b>, designer the <b>detail</b>, manager the <b>team</b>, principal the <b>technical bar</b>.</li>
+    <li>Higher altitude means a <b>longer horizon</b> and more influence without authority.</li>
+    <li>Titles vary: <b>read the job description</b> and mirror its words.</li>
+    <li>Tune every story to the role's <b>primary output</b>.</li>
+  </ul></div>
+  <div class="post">
+    <p>Four roles. Same project. Very different jobs 👇</p>
+    <p>🏛️ Solution Architect: decides the shape. Options, trade-offs, ADRs.</p>
+    <p>📐 Solution Designer: makes it buildable. Interfaces, mappings, edge cases.</p>
+    <p>👥 Engineering Manager: builds the team that builds it. People, flow, delivery.</p>
+    <p>🧭 Principal Engineer: sets the technical bar across teams, and still codes.</p>
+    <p>The difference is altitude and time horizon, not seniority. And titles vary by company, so read the job description first.</p>
+    <p>Which of the four is closest to what you do today?</p>
+    <p>#SolutionArchitecture #EngineeringManagement #StaffEngineer #CareerGrowth #InterviewPrep</p>
+  </div>
+</section>
+
+<!-- SOLUTION ARCHITECT FOUNDATIONS -->
+<section class="concept" id="solution-architect">
+  <h2><span class="num">29.2</span> Solution Architect foundations <span class="tag-added">Added</span></h2>
+  <p class="oneliner">A solution architect turns business strategy into a <b>target state, a roadmap and guardrails</b> that many teams can deliver safely. They own the cross-cutting decisions, not the code.</p>
+
+  <h3>1 · The role and its altitude</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Altitude</th><th>Horizon</th><th>Core question</th></tr>
+    <tr><td><b>Portfolio / solution</b>, across many teams</td><td><b>6–36 months</b></td><td>"Are we building the <b>right thing</b>, the right way, for the business?"</td></tr>
+  </table></div>
+
+  <h3>2 · What you own</h3>
+  <div class="grid">
+    <div class="box blue"><h4>🧭 Responsibilities</h4><p><b>Target state</b> and roadmap, <b>NFRs</b>, risk, standards, alignment of teams and vendors.</p></div>
+    <div class="box purple"><h4>⚖️ Decisions</h4><p><b>Build / buy / reuse</b>, cloud and <b>integration strategy</b>, patterns, AI use-case approval.</p></div>
+    <div class="box teal"><h4>📄 Artefacts</h4><p><a href="17-architecture-documents.html#hld">HLD</a>, <a href="17-architecture-documents.html#adr">ADRs</a>, <a href="17-architecture-documents.html#c4">C4</a> context views, roadmaps, risk register.</p></div>
+  </div>
+
+  <h3>3 · Core competencies</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Competency</th><th>Good looks like</th><th>Evidence to bring</th></tr>
+    <tr><td><b>Business alignment</b></td><td>Tech tied to an outcome</td><td>Roadmap linked to a KPI</td></tr>
+    <tr><td><b>Trade-off judgement</b></td><td>Options, criteria, decision</td><td>ADR with rejected options</td></tr>
+    <tr><td><b>NFRs and risk</b></td><td>Quantified and tested</td><td>RTO/RPO set and proven</td></tr>
+    <tr><td><b>Cloud and integration</b></td><td>Patterns fit the context</td><td>A standard teams adopted</td></tr>
+    <tr><td><b>AI governance</b></td><td>Safe, useful adoption</td><td>A GenAI use-case gate</td></tr>
+    <tr><td><b>Influence</b></td><td>Consensus without authority</td><td>A decision you turned around</td></tr>
+  </table></div>
+
+  <h3>4 · Foundation topics to master</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Topic</th><th>Why it matters</th></tr>
+    <tr><td><a href="24-architecture-practice.html#ea">EA toolkit</a> · <a href="24-architecture-practice.html#quality">quality attributes</a></td><td>Target state, trade-offs</td></tr>
+    <tr><td><a href="17-architecture-documents.html#nfr">NFRs</a> · <a href="17-architecture-documents.html#adr">ADR</a></td><td>Decisions on record</td></tr>
+    <tr><td><a href="17-architecture-documents.html#buildbuy">Build vs buy</a> · <a href="17-architecture-documents.html#softskills">stakeholders</a></td><td>Investment and influence</td></tr>
+    <tr><td><a href="11-architecture-patterns.html#styles">Patterns</a> · <a href="11-architecture-patterns.html#strangler">Strangler Fig</a></td><td>Styles, safe migration</td></tr>
+    <tr><td><a href="03-scalability-reliability.html#availability">Availability</a> · <a href="03-scalability-reliability.html#dr">DR</a></td><td>Resilience targets</td></tr>
+    <tr><td><a href="21-cloud-cheat-sheet.html#choose">Choosing a cloud</a> · <a href="24-architecture-practice.html#migration">7 Rs</a></td><td>Cloud strategy</td></tr>
+    <tr><td><a href="10-integration-messaging.html#styles">Integration styles</a></td><td>Integration strategy</td></tr>
+    <tr><td><a href="12-security-iam.html#zerotrust">Zero Trust</a></td><td>Security posture</td></tr>
+    <tr><td><a href="14-rag-genai.html#responsible">Responsible AI</a></td><td>AI governance</td></tr>
+    <tr><td><a href="18-system-design-playbook.html#tradeoffs">Trade-off cheat sheet</a></td><td>Design rounds</td></tr>
+  </table></div>
+
+  <h3>5 · Frameworks and vocabulary</h3>
+  <ul>
+    <li><b>TOGAF ADM</b>: baseline → target → gap → roadmap. <a href="17-architecture-documents.html#frameworks">See 17</a>.</li>
+    <li><b>Capability map</b>, <b>C4</b> context and container views, <b>ADRs</b>.</li>
+    <li><b>ISO/IEC 25010</b> quality attributes; <b>Well-Architected</b> pillars; <b>ATAM</b> for trade-off reviews.</li>
+    <li><b>NIST AI RMF</b> and <b>ISO/IEC 42001</b> for AI governance.</li>
+  </ul>
+
+  <h3>6 · How you are measured</h3>
+  <ul>
+    <li><b>Reuse</b>: fewer duplicate platforms, legacy retired.</li>
+    <li><b>NFRs met in production</b>; few design-gap incidents.</li>
+    <li><b>Decision lead time</b>; roadmap delivery; run cost vs forecast.</li>
+  </ul>
+
+  <h3>7 · What the interview tests</h3>
+  <p>Rounds: hiring manager, <b>design kata</b>, <b>case presentation</b>, stakeholder panel and <a href="26-solution-architect-behavioural-questions.html">behavioural</a>.</p>
+  <p><b>How to answer "What does a good solution architect do?"</b></p>
+  <ol>
+    <li>Start with the <b>business outcome</b>, not technology.</li>
+    <li>Name the <b>altitude</b>: many teams, a multi-year horizon.</li>
+    <li>Three verbs: <b>shape</b> the target, <b>decide</b> trade-offs, <b>guard</b> NFRs and risk.</li>
+    <li>Give one story with a metric.</li>
+  </ol>
+
+  <h3>8 · First 30-60-90 days</h3>
+<figure class="viz" data-viz="lanes"><script type="application/json">
+{"title":"Solution architect: first 90 days","max":90,"labelW":90,"dur":5000,
+ "rows":[
+  {"label":"Listen","blocks":[{"s":0,"e":30,"t":"stakeholders","c":"blue"}]},
+  {"label":"Map","blocks":[{"s":10,"e":45,"t":"baseline + risks","c":"purple"}]},
+  {"label":"Decide","blocks":[{"s":30,"e":60,"t":"quick-win ADRs","c":"amber"}]},
+  {"label":"Shape","blocks":[{"s":50,"e":90,"t":"target + roadmap","c":"teal"}]},
+  {"label":"Govern","blocks":[{"s":60,"e":90,"t":"light review","c":"green"}]}
+ ],
+ "markers":[{"at":30,"t":"Listen","c":"blue"},{"at":60,"t":"Decide","c":"amber"},{"at":90,"t":"plan","c":"green"}],
+ "ticks":[{"at":0,"t":"Day 0"},{"at":30,"t":"30"},{"at":60,"t":"60"},{"at":90,"t":"90"}]}
+</script></figure>
+
+  <h3>9 · Pitfalls interviewers notice</h3>
+  <ul>
+    <li><b>Ivory tower</b>: diagrams with no run cost.</li>
+    <li><b>Tech first</b>: products before the problem.</li>
+    <li><b>Governance as a gate</b>, not a paved road.</li>
+    <li><b>Too deep</b>: designing every interface (the designer's job).</li>
+    <li>No <b>exit plan</b> for vendors or AI models.</li>
+  </ul>
+
+  <div class="remember"><ul>
+    <li>Altitude is <b>portfolio</b>: many teams, multi-year.</li>
+    <li>Own the <b>target state, roadmap, NFRs and risk</b>, not the code.</li>
+    <li>Every big call gets an <b>ADR</b> with rejected options.</li>
+    <li>Influence comes from <b>evidence and trust</b>, not authority.</li>
+    <li>Treat AI as a <b>governed capability</b>: use-case gate, evaluation, exit plan.</li>
+  </ul></div>
+
+  <div class="post">
+    <p>A solution architect isn't the person who draws the best boxes 🧭</p>
+    <p>🎯 They start from the business outcome, not the product catalogue</p>
+    <p>⚖️ They make trade-offs visible: options, criteria, an ADR</p>
+    <p>🛡️ They turn "fast and secure" into numbers: RTO, p99, error budgets</p>
+    <p>🛣️ They build paved roads so governance feels like help</p>
+    <p>🤝 They lead without authority, through evidence and trust</p>
+    <p>Good architecture is a set of decisions that still make sense in three years. Which of yours would pass that test?</p>
+    <p>#SolutionArchitecture #EnterpriseArchitecture #TechLeadership #InterviewPrep</p>
+  </div>
+</section>
+
+<!-- SOLUTION DESIGNER FOUNDATIONS -->
+<section class="concept" id="solution-designer">
+  <h2><span class="num">29.3</span> Solution Designer foundations <span class="tag-added">Added</span></h2>
+  <p class="oneliner">A solution designer takes <b>one solution</b> from requirements to a build-ready <b>HLD and LLD</b>, detailed enough that developers and testers can act without guessing.</p>
+
+  <h3>1 · The role and its altitude</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Altitude</th><th>Horizon</th><th>Core question</th></tr>
+    <tr><td><b>Solution</b>: one change, in depth</td><td><b>Weeks to months</b></td><td>"Exactly <b>how</b> will this work, and fail?"</td></tr>
+  </table></div>
+  <div class="tablewrap"><table>
+    <tr><th></th><th>Solution architect</th><th>Solution designer</th></tr>
+    <tr><td><b>Focus</b></td><td>Breadth, strategy</td><td>Depth, detail</td></tr>
+    <tr><td><b>Scope</b></td><td>Many teams</td><td>One solution</td></tr>
+    <tr><td><b>Output</b></td><td>Target state, ADRs</td><td>LLD, contracts, mappings</td></tr>
+    <tr><td><b>Works with</b></td><td>Business, EA, risk</td><td>BAs, devs, testers</td></tr>
+  </table></div>
+
+  <h3>2 · What you own</h3>
+<figure class="viz" data-viz="journey"><script type="application/json">
+{"title":"From requirement to build-ready design","stepMs":1100,
+ "steps":[
+  {"icon":"📋","t":"Requirements","d":"With BAs: flows, rules, NFRs","c":"blue"},
+  {"icon":"🧱","t":"HLD","d":"Components and options","c":"purple"},
+  {"icon":"🔬","t":"LLD","d":"Contracts, data, sequences","c":"teal"},
+  {"icon":"🧪","t":"Build and test","d":"Answer questions, trace tests","c":"amber"},
+  {"icon":"✅","t":"Design review","d":"Sign-off and handover","c":"green"}
+ ]}
+</script></figure>
+  <div class="grid">
+    <div class="box blue"><h4>🧭 Responsibilities</h4><p>Requirements to design, <b>traceability</b>, build and test support.</p></div>
+    <div class="box purple"><h4>⚖️ Decisions</h4><p><b>API contracts</b>, integration pattern, data model, error handling, controls.</p></div>
+    <div class="box teal"><h4>📄 Artefacts</h4><p><a href="17-architecture-documents.html#lld">LLD</a>, OpenAPI specs, <b>sequence diagrams</b>, field mappings, traceability matrix.</p></div>
+  </div>
+
+  <h3>3 · Core competencies</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Competency</th><th>Good looks like</th><th>Evidence to bring</th></tr>
+    <tr><td><b>Requirements analysis</b></td><td>Gaps found early</td><td>A rule you clarified</td></tr>
+    <tr><td><b>API and contracts</b></td><td>Versioned, idempotent</td><td>A spec teams built from</td></tr>
+    <tr><td><b>Data and mapping</b></td><td>Every field sourced</td><td>A mapping with edge cases</td></tr>
+    <tr><td><b>Failure design</b></td><td>Retries, timeouts, DLQs</td><td>An unhappy path you designed</td></tr>
+    <tr><td><b>Security controls</b></td><td>Threats mapped to controls</td><td>A threat model you ran</td></tr>
+    <tr><td><b>Collaboration</b></td><td>Devs and testers unblocked</td><td>Fewer SIT defects</td></tr>
+  </table></div>
+
+  <h3>4 · Foundation topics to master</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Topic</th><th>Why it matters</th></tr>
+    <tr><td><a href="08-api-design.html#rest">REST design</a> · <a href="08-api-design.html#idempotency">idempotency</a></td><td>Contracts</td></tr>
+    <tr><td><a href="08-api-design.html#auth">API auth</a> · <a href="12-security-iam.html#authn-authz">AuthN vs AuthZ</a></td><td>Controls</td></tr>
+    <tr><td><a href="09-apim.html#versions">APIM versions</a> · <a href="09-apim.html#policies">policies</a></td><td>Exposure and change</td></tr>
+    <tr><td><a href="10-integration-messaging.html#eip">EIP</a> · <a href="10-integration-messaging.html#guarantees">delivery guarantees</a></td><td>Integration and retries</td></tr>
+    <tr><td><a href="06-databases-data.html#sql-nosql">SQL vs NoSQL</a> · <a href="06-databases-data.html#migration">data migration</a></td><td>Data models</td></tr>
+    <tr><td><a href="17-architecture-documents.html#lld">LLD</a> · <a href="17-architecture-documents.html#adr">ADR</a> · <a href="17-architecture-documents.html#nfr">NFRs</a></td><td>Design documents</td></tr>
+    <tr><td><a href="17-architecture-documents.html#threat">Threat model</a></td><td>Security by design</td></tr>
+    <tr><td><a href="19-design-case-studies.html#ledger">Payment ledger</a></td><td>Worked depth</td></tr>
+    <tr><td><a href="23-software-design-coding.html#principles">Design principles</a> · <a href="23-software-design-coding.html#solid">SOLID</a></td><td>Code-level design</td></tr>
+    <tr><td><a href="13-devops-deployment-observability.html#testing">Testing strategy</a></td><td>Testable design</td></tr>
+  </table></div>
+
+  <h3>5 · Frameworks and vocabulary</h3>
+  <ul>
+    <li><b>C4</b> container and component views; <b>UML sequence</b> and state diagrams.</li>
+    <li><b>OpenAPI</b> for REST, <b>AsyncAPI</b> for events, <b>RFC 9457</b> problem details for errors.</li>
+    <li><b>Enterprise Integration Patterns</b>; <b>DDD</b> bounded contexts.</li>
+    <li><b>STRIDE</b> threats; <b>Given/When/Then</b> criteria; a <b>traceability matrix</b>.</li>
+  </ul>
+
+  <h3>6 · How you are measured</h3>
+  <ul>
+    <li><b>Design defects</b>, especially interface defects in SIT.</li>
+    <li><b>Rework</b> after review; developers blocked on questions.</li>
+    <li><b>Traceability coverage</b>; NFRs met; on-time sign-off.</li>
+  </ul>
+
+  <h3>7 · What the interview tests</h3>
+  <p>Rounds: technical deep dive, <b>API or integration design exercise</b>, LLD walkthrough and <a href="27-solution-designer-behavioural-questions.html">behavioural</a>.</p>
+  <p><b>How to answer "What does a good solution designer do?"</b></p>
+  <ol>
+    <li>Contrast with the architect: <b>depth, not breadth</b>.</li>
+    <li>Walk the chain: requirement → HLD → LLD → test.</li>
+    <li>Stress the <b>unhappy paths</b>: errors, retries, security.</li>
+    <li>Prove it with a story: fewer defects or faster build.</li>
+  </ol>
+
+  <h3>8 · First 30-60-90 days</h3>
+<figure class="viz" data-viz="lanes"><script type="application/json">
+{"title":"Solution designer: first 90 days","max":90,"labelW":90,"dur":5000,
+ "rows":[
+  {"label":"Learn","blocks":[{"s":0,"e":30,"t":"domain + systems","c":"blue"}]},
+  {"label":"Partner","blocks":[{"s":10,"e":90,"t":"BAs, devs, testers","c":"purple"}]},
+  {"label":"Design","blocks":[{"s":25,"e":65,"t":"first LLD","c":"teal"}]},
+  {"label":"Review","blocks":[{"s":60,"e":75,"t":"sign-off","c":"amber"}]},
+  {"label":"Improve","blocks":[{"s":70,"e":90,"t":"templates","c":"green"}]}
+ ],
+ "markers":[{"at":30,"t":"Learn","c":"blue"},{"at":60,"t":"Ship","c":"amber"},{"at":90,"t":"own","c":"green"}],
+ "ticks":[{"at":0,"t":"Day 0"},{"at":30,"t":"30"},{"at":60,"t":"60"},{"at":90,"t":"90"}]}
+</script></figure>
+
+  <h3>9 · Pitfalls interviewers notice</h3>
+  <ul>
+    <li><b>Happy path only</b>: no timeouts or compensation.</li>
+    <li><b>Vague contracts</b>: "returns customer data", no schema.</li>
+    <li><b>Strategy talk</b>: an architect's answer to a designer question.</li>
+    <li>Designing <b>alone</b>, then throwing it over the wall.</li>
+  </ul>
+
+  <div class="remember"><ul>
+    <li>Altitude is <b>one solution, in depth</b>.</li>
+    <li>Architect = <b>breadth and strategy</b>; designer = <b>depth and detail</b>.</li>
+    <li>Own <b>contracts, data mappings, sequences and error handling</b>.</li>
+    <li>Design the <b>unhappy paths</b> first.</li>
+    <li>Every requirement <b>traces</b> to a design element and a test.</li>
+  </ul></div>
+
+  <div class="post">
+    <p>A design is finished when a developer can build it without guessing 🔬</p>
+    <p>📋 Every requirement traces to a component and a test</p>
+    <p>📜 Every API has a contract: schema, errors, versioning, idempotency</p>
+    <p>🗺️ Every field has a source, a rule and an edge case</p>
+    <p>💥 Every call has a timeout, a retry and a plan for failure</p>
+    <p>🤝 BAs, testers and developers shape it with you</p>
+    <p>Architects decide where we're going. Designers make sure we get there. What's the first unhappy path you design?</p>
+    <p>#SolutionDesign #APIDesign #SystemIntegration #InterviewPrep</p>
+  </div>
+</section>
+
+<!-- ENGINEERING MANAGER -->
+<section class="concept" id="engineering-manager">
+  <h2><span class="num">29.4</span> Engineering Manager foundations <span class="tag-added">Added</span></h2>
+  <p class="oneliner">An Engineering Manager builds a <b>team that delivers</b>: the right people, healthy ways of working and <b>predictable, reliable outcomes</b>. You succeed through the team, not your own commits.</p>
+
+  <h3>1 · The role and its altitude</h3>
+  <div class="grid">
+    <div class="box blue"><h4>🎯 One line</h4><p>Hire, grow and lead engineers who ship the <b>right things, sustainably</b>.</p></div>
+    <div class="box teal"><h4>🧭 Altitude</h4><p><b>Team(s) and people</b>: 1–3 teams, 5–15 engineers.</p></div>
+    <div class="box amber"><h4>⏳ Horizon</h4><p>This sprint to <b>2–4 quarters</b>.</p></div>
+  </div>
+
+  <h3>2 · What you own</h3>
+  <div class="grid">
+    <div class="box green"><h4>📋 Responsibilities</h4><ul><li><b>Hiring</b>, onboarding</li><li><b>1:1s</b>, feedback, performance</li><li>Career growth, team health</li><li>Delivery, incidents</li><li><b>AI-assisted engineering</b></li></ul></div>
+    <div class="box purple"><h4>⚖️ Decisions</h4><ul><li>Who to hire</li><li><b>Capacity split</b>: features, debt, ops</li><li>Performance, promotions</li><li>When to <b>say no</b></li></ul></div>
+    <div class="box blue"><h4>📄 Artefacts</h4><ul><li>Team charter</li><li><b>OKRs</b>, roadmap</li><li>Capacity plan, budget</li><li>Hiring plan, growth plans</li></ul></div>
+  </div>
+
+  <h3>3 · Core competencies</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Competency</th><th>Good looks like</th><th>Evidence</th></tr>
+    <tr><td><b>People</b></td><td>Specific feedback, no review surprises</td><td>A promotion you enabled</td></tr>
+    <tr><td><b>Hiring</b></td><td>Structured loop, clear bar</td><td>Hires retained</td></tr>
+    <tr><td><b>Delivery</b></td><td>Small batches, forecast ranges</td><td>Predictability gain</td></tr>
+    <tr><td><b>Operations</b></td><td>SLOs, blameless postmortems</td><td>Repeat incidents down</td></tr>
+    <tr><td><b>Stakeholders</b></td><td>Bad news early, in business terms</td><td>A scope trade-off won</td></tr>
+    <tr><td><b>Change</b></td><td>Pilot, measure, scale</td><td>AI rollout with results</td></tr>
+  </table></div>
+
+  <h3>4 · Foundation topics to master</h3>
+  <div class="grid">
+    <div class="box teal"><h4>🚀 Delivery &amp; ops</h4><ul><li><a href="13-devops-deployment-observability.html#dora">DORA metrics</a></li><li><a href="13-devops-deployment-observability.html#incident">Incident management</a></li><li><a href="13-devops-deployment-observability.html#sre">SRE practices</a></li><li><a href="03-scalability-reliability.html#sla">SLA / SLO / SLI</a></li><li><a href="13-devops-deployment-observability.html#branching">Branching &amp; review</a></li></ul></div>
+    <div class="box purple"><h4>🧩 Teams &amp; cost</h4><ul><li><a href="24-architecture-practice.html#teams">Team &amp; org architecture</a></li><li><a href="24-architecture-practice.html#platform">Platform engineering</a></li><li><a href="03-scalability-reliability.html#capacity">Capacity &amp; FinOps</a></li><li><a href="14-rag-genai.html#responsible">Responsible AI</a></li></ul></div>
+    <div class="box green"><h4>🎤 Interview</h4><ul><li><a href="25-interview-readiness.html#star">STAR(R) method</a></li><li><a href="28-engineering-manager-behavioural-questions.html#people">Hiring &amp; performance</a></li><li><a href="28-engineering-manager-behavioural-questions.html#delivery">Delivery under pressure</a></li></ul></div>
+  </div>
+
+  <h3>5 · Frameworks and vocabulary</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Framework</th><th>Say it like this</th></tr>
+    <tr><td><b>Team Topologies</b></td><td>Stream-aligned, platform, enabling, complicated-subsystem; limit <b>cognitive load</b></td></tr>
+    <tr><td><b>DORA</b></td><td>Lead time, deploy frequency, change fail rate, recovery time, rework rate</td></tr>
+    <tr><td><b>SPACE</b></td><td>Satisfaction, Performance, Activity, Communication, Efficiency; never activity alone</td></tr>
+    <tr><td><b>OKRs</b></td><td>Objective plus 3–5 measurable Key Results</td></tr>
+    <tr><td><b>Situational leadership</b></td><td>Direct, coach, support or delegate, per person and task</td></tr>
+  </table></div>
+  <p class="tip">Also: <b>psychological safety</b> (Edmondson), error budget, WIP limits, Conway's law.</p>
+
+  <h3>6 · How you are measured</h3>
+  <ul>
+    <li><b>Outcomes</b>: OKRs, say/do ratio, DORA trends.</li>
+    <li><b>Reliability</b>: SLOs met, on-call load.</li>
+    <li><b>People</b>: regretted attrition, engagement, promotions.</li>
+    <li><b>Money</b>: on budget, capacity on priorities.</li>
+  </ul>
+
+  <h3>7 · What the interview tests</h3>
+  <p>Rounds: <b>hiring manager</b>, <b>people behavioural</b>, <b>delivery</b>, a lighter <b>system design</b>, a product or peer panel.</p>
+  <div class="box green"><h4>🗣️ "What does a good EM do?"</h4><ol>
+    <li>One line: builds a team that <b>delivers sustainably</b>.</li>
+    <li>Pillars: <b>people, delivery, operations</b>.</li>
+    <li>One practice per pillar.</li>
+    <li>Measures: DORA, SPACE, retention.</li>
+    <li>A story with a number.</li>
+  </ol></div>
+
+  <h3>8 · First 30-60-90 days</h3>
+<figure class="viz" data-viz="lanes"><script type="application/json">
+{"title":"EM: listen, stabilise, then improve","max":90,"labelW":90,"axis":"days","dur":6000,
+ "rows":[
+  {"label":"People","blocks":[{"s":0,"e":30,"t":"1:1s, skip-levels","c":"blue"},{"s":30,"e":60,"t":"growth plans","c":"blue"},{"s":60,"e":90,"t":"hiring plan","c":"blue"}]},
+  {"label":"Delivery","blocks":[{"s":0,"e":30,"t":"observe flow","c":"purple"},{"s":30,"e":60,"t":"fix 1 bottleneck","c":"purple"},{"s":60,"e":90,"t":"forecast ranges","c":"purple"}]},
+  {"label":"Ops","blocks":[{"s":0,"e":30,"t":"read incidents","c":"teal"},{"s":30,"e":90,"t":"SLOs + postmortems","c":"teal"}]},
+  {"label":"Partners","blocks":[{"s":0,"e":30,"t":"meet them","c":"amber"},{"s":30,"e":60,"t":"agree priorities","c":"amber"},{"s":60,"e":90,"t":"OKRs","c":"green"}]}
+ ],
+ "markers":[{"at":30,"t":"baseline","c":"slate"},{"at":60,"t":"quick win","c":"green"},{"at":90,"t":"plan","c":"purple"}],
+ "ticks":[{"at":0,"t":"0"},{"at":30,"t":"30"},{"at":60,"t":"60"},{"at":90,"t":"90"}]}
+</script></figure>
+
+  <h3>9 · Pitfalls interviewers notice</h3>
+  <ul>
+    <li><b>Hero coder</b>: the team waits on you.</li>
+    <li><b>Metrics as targets</b>: ranking teams on DORA.</li>
+    <li><b>Surprise feedback</b> at review time.</li>
+    <li>AI tools <b>mandated</b> without guardrails.</li>
+  </ul>
+
+  <div class="remember"><ul>
+    <li>Altitude: <b>team and people</b>. The team's output is yours.</li>
+    <li>Pillars: <b>people, delivery, operational health</b>.</li>
+    <li>Use <b>DORA + SPACE</b> as team trends, never to rank people.</li>
+    <li>Match style to person and task (<b>situational leadership</b>).</li>
+    <li>Share bad news early; protect capacity for debt and ops.</li>
+  </ul></div>
+
+  <div class="post">
+    <p>The best engineering managers I've seen write the least code on the team. On purpose. 👇</p>
+    <p>👥 People: weekly 1:1s, specific feedback, no surprises at review time</p>
+    <p>🚀 Delivery: small batches, forecasts as ranges, honest trade-offs with stakeholders</p>
+    <p>🛟 Operations: SLOs, blameless postmortems, an on-call rota people can live with</p>
+    <p>📏 Measures: DORA and SPACE trends for the team, never a leaderboard of individuals</p>
+    <p>🤖 AI tools: pilot, measure, add guardrails, then scale</p>
+    <p>Your output is the team's output. What did your best manager do that others didn't?</p>
+    <p>#EngineeringManagement #Leadership #DORA #TeamTopologies #InterviewPrep</p>
+  </div>
+</section>
+
+<!-- PRINCIPAL SOFTWARE ENGINEER -->
+<section class="concept" id="principal-engineer">
+  <h2><span class="num">29.5</span> Principal Software Engineer foundations <span class="tag-added">Added</span></h2>
+  <p class="oneliner">A Principal Engineer is a <b>hands-on technical leader</b> across teams: sets direction, solves the <b>hardest problems</b> and raises the bar for everyone. A <b>multiplier</b>, not a lone hero.</p>
+
+  <h3>1 · The role and its altitude</h3>
+  <div class="grid">
+    <div class="box blue"><h4>🎯 One line</h4><p>Set technical direction, solve what others can't, <b>make engineers better</b>.</p></div>
+    <div class="box teal"><h4>🧭 Altitude</h4><p><b>Codebase and systems across teams</b>.</p></div>
+    <div class="box amber"><h4>⏳ Horizon</h4><p><b>6–24 months</b> for strategy; hours in a P1.</p></div>
+  </div>
+
+  <h3>2 · What you own</h3>
+  <div class="grid">
+    <div class="box green"><h4>📋 Responsibilities</h4><ul><li><b>Technical strategy</b></li><li><b>Performance, reliability, scale</b></li><li>Engineering standards</li><li>Design and code review</li><li>Mentoring seniors</li></ul></div>
+    <div class="box purple"><h4>⚖️ Decisions</h4><ul><li>Cross-team patterns (via <b>RFC</b>)</li><li>Which <b>tech debt</b> to pay</li><li>Build, adopt or retire</li></ul></div>
+    <div class="box blue"><h4>📄 Artefacts</h4><ul><li><b>RFCs</b>, ADRs</li><li>Strategy doc</li><li>Golden-path templates</li><li>Prototypes, benchmarks</li></ul></div>
+  </div>
+
+  <h3>3 · Core competencies</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Competency</th><th>Good looks like</th><th>Evidence</th></tr>
+    <tr><td><b>Depth</b></td><td>Debugs to runtime and OS</td><td>A fix, before/after</td></tr>
+    <tr><td><b>Design</b></td><td>Trade-offs, failure modes</td><td>A design doc you wrote</td></tr>
+    <tr><td><b>Influence</b></td><td>RFCs adopted without authority</td><td>A cross-team standard</td></tr>
+    <tr><td><b>Execution</b></td><td>Lands big migrations</td><td>One finished, not abandoned</td></tr>
+    <tr><td><b>Multiplier</b></td><td>Others grow</td><td>A mentee promoted</td></tr>
+  </table></div>
+
+  <h3>4 · Foundation topics to master</h3>
+  <div class="grid">
+    <div class="box teal"><h4>⚙️ Fundamentals</h4><ul><li><a href="01-foundations.html#locks">Races, locks &amp; deadlocks</a></li><li><a href="01-foundations.html#data-structures">Data structures</a></li><li><a href="01-foundations.html#os">OS essentials</a></li><li><a href="03-scalability-reliability.html#performance">Performance</a></li><li><a href="04-distributed-systems.html#fallacies">Why distributed is hard</a></li></ul></div>
+    <div class="box purple"><h4>🔬 .NET &amp; code</h4><ul><li><a href="22-dotnet-engineering-deep-dive.html#perf">High-performance .NET</a></li><li><a href="22-dotnet-engineering-deep-dive.html#async">async/await internals</a></li><li><a href="23-software-design-coding.html#cleancode">Clean code &amp; review</a></li><li><a href="13-devops-deployment-observability.html#observability">Observability</a></li></ul></div>
+    <div class="box green"><h4>🧱 Design rounds</h4><ul><li><a href="18-system-design-playbook.html#framework">Interview framework</a></li><li><a href="18-system-design-playbook.html#tradeoffs">Trade-off cheat sheet</a></li><li><a href="19-design-case-studies.html#ledger">Payment ledger case</a></li></ul></div>
+  </div>
+
+  <h3>5 · Frameworks and vocabulary</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Idea</th><th>Say it like this</th></tr>
+    <tr><td><b>Staff archetypes</b></td><td>Will Larson, <i>Staff Engineer</i>: Tech Lead, Architect, Solver, Right Hand</td></tr>
+    <tr><td><b>RFC / design doc</b></td><td>Context, goals, <b>non-goals</b>, options, decision, risks; then an ADR</td></tr>
+    <tr><td><b>Technical strategy</b></td><td>Rumelt's kernel: diagnosis, guiding policy, coherent actions</td></tr>
+    <tr><td><b>Staff Engineer's Path</b></td><td>Tanya Reilly: big picture, execution, <b>levelling up</b> others</td></tr>
+  </table></div>
+
+  <h3>6 · How you are measured</h3>
+  <ul>
+    <li><b>Outcomes</b>: latency, cost, availability gains.</li>
+    <li><b>Adoption</b>: RFCs and standards used beyond your team.</li>
+    <li><b>Risk</b>: repeat incidents down, migrations done.</li>
+    <li><b>People</b>: engineers grown. Not lines of code.</li>
+  </ul>
+
+  <h3>7 · What the interview tests</h3>
+  <p>Rounds: <b>system design</b>, a <b>deep dive</b> three levels into your systems, sometimes <b>coding</b>, and <b>influence</b> stories.</p>
+  <div class="box green"><h4>🗣️ "What does a good principal do?"</h4><ol>
+    <li>Direction, hardest problems, multiplier.</li>
+    <li>Name your <b>archetype</b>.</li>
+    <li>Examples: an RFC, a fix, a mentee.</li>
+    <li>Partner: <b>architect</b> on big picture, <b>EM</b> on people.</li>
+    <li>End with a number.</li>
+  </ol></div>
+  <div class="tablewrap"><table>
+    <tr><th>Behavioural prompt</th><th>Tests</th></tr>
+    <tr><td>A cross-team decision you drove without authority?</td><td>Influence</td></tr>
+    <tr><td>The hardest production bug you debugged?</td><td>Depth, method</td></tr>
+    <tr><td>When did you change your mind?</td><td>Evidence over ego</td></tr>
+    <tr><td>How did you grow a senior engineer?</td><td>Multiplier</td></tr>
+  </table></div>
+
+  <h3>8 · First 30-60-90 days</h3>
+<figure class="viz" data-viz="lanes"><script type="application/json">
+{"title":"Principal: learn the system, earn trust, set direction","max":90,"labelW":90,"axis":"days","dur":6000,
+ "rows":[
+  {"label":"Systems","blocks":[{"s":0,"e":30,"t":"code, SLOs, incidents","c":"blue"},{"s":30,"e":90,"t":"map hotspots","c":"blue"}]},
+  {"label":"People","blocks":[{"s":0,"e":30,"t":"EMs, architects","c":"amber"},{"s":30,"e":90,"t":"pair, review, mentor","c":"amber"}]},
+  {"label":"Problems","blocks":[{"s":15,"e":60,"t":"fix 1 hard problem","c":"red"}]},
+  {"label":"Strategy","blocks":[{"s":30,"e":60,"t":"diagnosis","c":"purple"},{"s":60,"e":90,"t":"RFC / strategy","c":"green"}]}
+ ],
+ "markers":[{"at":30,"t":"listen","c":"slate"},{"at":60,"t":"credibility","c":"red"},{"at":90,"t":"plan","c":"green"}],
+ "ticks":[{"at":0,"t":"0"},{"at":30,"t":"30"},{"at":60,"t":"60"},{"at":90,"t":"90"}]}
+</script></figure>
+
+  <h3>9 · Pitfalls interviewers notice</h3>
+  <ul>
+    <li><b>Ivory tower</b>: designs with no code.</li>
+    <li><b>Hero bottleneck</b>: nobody else learns.</li>
+    <li><b>Shiny tech</b> for the CV.</li>
+    <li>Winning arguments, not <b>alignment</b>.</li>
+  </ul>
+
+  <div class="remember"><ul>
+    <li>Altitude: <b>codebase and systems across teams</b>; stay hands-on.</li>
+    <li>Three jobs: <b>direction, hardest problems, multiplier</b>.</li>
+    <li>Influence through <b>RFCs, reviews and prototypes</b>.</li>
+    <li>Know your <b>archetype</b>.</li>
+    <li>Prove depth with <b>numbers</b>.</li>
+  </ul></div>
+
+  <div class="post">
+    <p>A principal engineer isn't the best coder on the team. It's the engineer who makes every team better. 🧭</p>
+    <p>📝 Direction: RFCs and a written strategy people actually follow</p>
+    <p>🔬 Depth: the p99 spike, the deadlock, the migration nobody else could land</p>
+    <p>👀 Standards: reviews that teach, not just approve</p>
+    <p>🌱 Multiplier: senior engineers who grow into staff</p>
+    <p>🤝 Partnership: architects on the big picture, managers on people and delivery</p>
+    <p>Will Larson's archetypes: Tech Lead, Architect, Solver, Right Hand. Which one are you?</p>
+    <p>#StaffEngineer #PrincipalEngineer #SoftwareEngineering #TechLeadership #InterviewPrep</p>
+  </div>
+</section>
+
+<!-- HOW THE FOUR ROLES WORK TOGETHER -->
+<section class="concept" id="collaboration">
+  <h2><span class="num">29.6</span> How the four roles work together <span class="tag-added">Added</span></h2>
+  <p class="oneliner">One initiative passes through all four roles: the <b>architect</b> shapes it, the <b>designer</b> details it, the <b>principal</b> makes it technically sound, and the <b>manager</b> gets a team to deliver and run it. Clear handoffs and artefacts stop work falling between them.</p>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"One initiative moving through the roles","stepMs":1100,
+ "actors":[{"t":"Business","c":"slate"},{"t":"Architect","c":"purple"},{"t":"Designer","c":"teal"},{"t":"Principal","c":"amber"},{"t":"Eng Mgr","c":"green"}],
+ "steps":[
+  {"from":0,"to":1,"t":"idea + case"},
+  {"from":1,"to":3,"t":"spike options?","dash":true},
+  {"from":3,"to":1,"t":"spike result","c":"amber"},
+  {"from":1,"to":2,"t":"ACD/HLD + ADRs","c":"purple"},
+  {"from":2,"to":4,"t":"LLD + estimate","c":"teal"},
+  {"note":"scope vs date","over":[2,4],"c":"red"},
+  {"from":4,"to":3,"t":"build with team","c":"green"},
+  {"from":3,"to":4,"t":"release ready","c":"amber"},
+  {"note":"run: runbook, incidents","over":[3,4],"c":"slate"},
+  {"from":4,"to":1,"t":"debt + lessons","dash":true,"c":"green"}
+ ]}
+</script></figure>
+  <h3>RACI across the lifecycle</h3>
+  <p><b>R</b> does the work · <b>A</b> owns the outcome (one per row) · <b>C</b> consulted · <b>I</b> informed. The <b>product or business owner</b> is accountable for the business case.</p>
+  <div class="tablewrap"><table style="font-size:13.5px">
+    <tr><th>Stage</th><th>Architect</th><th>Designer</th><th>Eng Mgr</th><th>Principal</th></tr>
+    <tr><td><b>Idea / business case</b></td><td>R (feasibility)</td><td>I</td><td>C (capacity)</td><td>C</td></tr>
+    <tr><td><b>Architecture &amp; options</b></td><td><b>A</b> / R</td><td>C</td><td>C</td><td>R (spikes)</td></tr>
+    <tr><td><b>Detailed design</b></td><td>C (conformance)</td><td><b>A</b> / R</td><td>C</td><td>C</td></tr>
+    <tr><td><b>Build</b></td><td>I</td><td>C (queries)</td><td><b>A</b></td><td>R (with team)</td></tr>
+    <tr><td><b>Test / release</b></td><td>I</td><td>C</td><td><b>A</b></td><td>R</td></tr>
+    <tr><td><b>Run / incident</b></td><td>I</td><td>I</td><td><b>A</b></td><td>R (deep fixes)</td></tr>
+    <tr><td><b>Improve</b></td><td><b>A</b> (target state)</td><td>C</td><td>R (team practices)</td><td>R (tech debt)</td></tr>
+  </table></div>
+  <p class="tip">RACI varies by company. In an interview, say <b>who you'd confirm it with</b> in your first weeks, not that it's fixed.</p>
+  <h3>Friction points and how strong candidates handle them</h3>
+  <div class="tablewrap"><table style="font-size:13.5px">
+    <tr><th>Friction</th><th>Root cause</th><th>Strong move</th></tr>
+    <tr><td><b>Architect vs principal</b> on tech choice</td><td>Standards vs local fit</td><td>Write <b>both options</b> in an ADR against agreed NFRs; time-boxed spike decides</td></tr>
+    <tr><td><b>Designer vs manager</b> on scope and dates</td><td>Design detail vs capacity</td><td>Slice scope into a <b>thin first release</b>; make the trade-off visible to the product owner</td></tr>
+    <tr><td><b>Manager vs architect</b> on standards vs autonomy</td><td>Consistency vs team speed</td><td><b>Paved road</b> plus guardrails; exceptions via ADR, not by silence</td></tr>
+  </table></div>
+  <h3>Handoff artefacts</h3>
+  <div class="grid">
+    <div class="box purple"><h4>Architect → all</h4><p><a href="17-architecture-documents.html#acd">ACD</a>, <a href="17-architecture-documents.html#hld">HLD</a>, <a href="17-architecture-documents.html#nfr">NFRs</a></p></div>
+    <div class="box teal"><h4>Designer → team</h4><p><a href="17-architecture-documents.html#lld">LLD</a>: interfaces, mappings, sequences</p></div>
+    <div class="box amber"><h4>Anyone → record</h4><p><a href="17-architecture-documents.html#adr">ADRs</a>: decision, options, consequences</p></div>
+    <div class="box green"><h4>Team → operations</h4><p><a href="17-architecture-documents.html#runbook">Runbooks</a> and alerts before go-live</p></div>
+  </div>
+  <div class="remember"><ul>
+    <li>Architect <b>shapes</b>, designer <b>details</b>, principal <b>de-risks</b>, manager <b>delivers and runs</b>.</li>
+    <li><b>One A per stage</b>; ambiguity about who decides causes most friction.</li>
+    <li>Settle technical disagreements with an <b>ADR and evidence</b>, not seniority.</li>
+    <li>Fix scope-vs-date tension by <b>slicing scope</b>, not by cutting quality.</li>
+    <li>Handoffs are <b>conversations backed by artefacts</b>, not documents thrown over a wall.</li>
+  </ul></div>
+  <div class="post">
+    <p>Most delivery pain isn't technical. It's a handoff between roles 👇</p>
+    <p>🏛️ Architect to designer: an HLD with no NFRs means the designer guesses.</p>
+    <p>📐 Designer to manager: an LLD with no slicing means one huge, late release.</p>
+    <p>🧭 Principal vs architect: settle tech choices with an ADR and a spike, not rank.</p>
+    <p>👥 Manager vs architect: paved roads beat both mandates and free-for-alls.</p>
+    <p>Agree one accountable owner per stage, and write decisions down.</p>
+    <p>Where does work fall between the cracks in your organisation?</p>
+    <p>#SolutionArchitecture #EngineeringLeadership #RACI #ADR #DeliveryExcellence</p>
+  </div>
+</section>
+
+<div class="qa-wrap">
+  <h2>⚡ Quick-fire Q&amp;A</h2>
+  <details class="qa"><summary>How is a solution architect different from a principal engineer?</summary><p>The architect works at <b>solution altitude</b> (options, NFRs, build vs buy, ADRs) across business and risk stakeholders. The principal works from the <b>codebase up</b>: technical approach, quality bar and cross-team standards, and still writes code.</p></details>
+  <details class="qa"><summary>How is a solution designer different from a solution architect?</summary><p>The architect decides the <b>shape</b> of the solution and its trade-offs; the designer turns that into <b>buildable detail</b>: interfaces, data mappings, sequences and edge cases in an LLD.</p></details>
+  <details class="qa"><summary>What does a solution architect own that a delivery team doesn't?</summary><p>The <b>cross-team decisions</b>: target state, roadmap, NFRs, build/buy/reuse, integration and cloud strategy, and the risks between systems. Teams own how they build inside those guardrails.</p></details>
+  <details class="qa"><summary>How does a solution architect lead without authority?</summary><p>Through <b>evidence and trust</b>: involve teams early, show options and criteria in an ADR, prove ideas with a spike, and make the standard the easiest path (a paved road).</p></details>
+  <details class="qa"><summary>Solution architect vs solution designer: where is the line?</summary><p>The architect works in <b>breadth</b> (many teams, strategy, target state). The designer works in <b>depth</b> on one solution: LLD, API contracts, data mappings, sequences and error handling.</p></details>
+  <details class="qa"><summary>When is a low-level design "done"?</summary><p>When a developer can build it and a tester can test it <b>without guessing</b>: contracts and errors are specified, every field is mapped, failure paths are designed and every requirement traces to a test.</p></details>
+  <details class="qa"><summary>How should an Engineering Manager use DORA and SPACE?</summary><p>As team-level trends for improvement, read together: DORA for delivery speed and stability, SPACE for satisfaction, collaboration and flow. Never rank teams or judge individuals on them, or they get gamed.</p></details>
+  <details class="qa"><summary>What is situational leadership?</summary><p>Hersey and Blanchard's model: adapt your style (directing, coaching, supporting, delegating) to a person's competence and commitment on a specific task. A strong senior may need delegating on design but coaching on stakeholder work.</p></details>
+  <details class="qa"><summary>What are the staff engineer archetypes?</summary><p>From Will Larson's book <i>Staff Engineer</i>: Tech Lead (guides one team's execution), Architect (owns direction for a critical area), Solver (goes deep on the hardest problems) and Right Hand (extends a senior leader's reach across the org).</p></details>
+  <details class="qa"><summary>How does a principal engineer differ from an architect and an EM?</summary><p>The principal stays hands-on in the code and systems across teams. The architect owns the wider solution or enterprise picture and governance. The EM owns people and delivery. The principal partners with both and leads through RFCs, reviews and prototypes.</p></details>
+  <details class="qa"><summary>A principal engineer disagrees with your architecture standard. What do you do?</summary><p>Write both options in an <b>ADR</b> against the agreed NFRs, run a time-boxed spike if evidence is missing, decide, and record the consequences. Allow an exception if local fit justifies it.</p></details>
+  <details class="qa"><summary>Who is accountable during build and run?</summary><p>Usually the <b>engineering manager</b> is accountable; the principal and team are responsible for the work, and the architect and designer are consulted or informed. Confirm the local RACI early.</p></details>
+</div>
+
+<div class="pager"><a href="28-engineering-manager-behavioural-questions.html">← 28 · Engineering Manager Behavioural Questions</a><a class="next" href="index.html">🏠 Back to Roadmap</a></div>
+</main>
+<footer>Tech Concepts Prep · Section 29</footer>
+<script src="assets/menu-data.js"></script>
+<script src="assets/menu.js"></script>
+<script src="assets/revise/29.js"></script>
+<script src="assets/revise.js"></script>
+<script src="assets/app.js"></script>
+<script src="assets/viz.js"></script>
+</body>
+</html>

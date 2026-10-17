@@ -40,7 +40,7 @@ There's no framework and no build step. Every page is a hand-written HTML file t
 | Path | What it is |
 |---|---|
 | `index.html` | Roadmap: hero, learning path, section cards, LinkedIn kit |
-| `NN-name.html` | One page per section (01–28). The number is the page order |
+| `NN-name.html` | One page per section (01–29). The number is the page order; the menu groups pages by context (page 29, Role foundations, sits in Interview prep next to 25) |
 | `26-leadership-behavioural-questions.html` | Redirect stub to `26-solution-architect-behavioural-questions.html`. Keep it so old links work |
 | `assets/style.css` | All styles. Later rules override earlier ones, so append overrides at the end |
 | `assets/viz.js` | Animated diagram renderer for `figure.viz` |

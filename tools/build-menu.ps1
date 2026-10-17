@@ -49,7 +49,7 @@ $groups = @(
   @('AI & GenAI', @('14', '15')),
   @('Domain & system design practice', @('16', '18', '19')),
   @('Engineering & .NET', @('20', '22', '23')),
-  @('Interview prep', @('25', '26', '27', '28')))
+  @('Interview prep', @('25', '29', '26', '27', '28')))
 $grouped = @()
 foreach ($g in $groups) {
   foreach ($p in $menu | Where-Object { $g[1] -contains $_.n }) { $p.g = $g[0]; $grouped += $p }

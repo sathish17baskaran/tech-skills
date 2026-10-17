@@ -34,7 +34,8 @@ $cards = @(
  @('25-interview-readiness',('SECTION 25 ' + $DOT + ' INTERVIEW'),'Interview Readiness'),
  @('26-solution-architect-behavioural-questions',('SECTION 26 ' + $DOT + ' INTERVIEW'),'Solution Architect Behavioural Questions (STAR)'),
  @('27-solution-designer-behavioural-questions',('SECTION 27 ' + $DOT + ' INTERVIEW'),'Solution Designer Behavioural Questions (STAR)'),
- @('28-engineering-manager-behavioural-questions',('SECTION 28 ' + $DOT + ' INTERVIEW'),'Engineering Manager Behavioural Questions (STAR)'))
+ @('28-engineering-manager-behavioural-questions',('SECTION 28 ' + $DOT + ' INTERVIEW'),'Engineering Manager Behavioural Questions (STAR)'),
+ @('29-role-foundations',('SECTION 29 ' + $DOT + ' INTERVIEW'),'Role Foundations: Architect, Designer, Manager, Principal Engineer'))
 
 $sb = New-Object Text.StringBuilder
 [void]$sb.AppendLine('<section id="sections">')
@@ -72,7 +73,7 @@ $path = @"
     $(N ' s' '21 Cloud Cheat Sheet')$ar$(N ' a' '22 .NET Deep Dive')$ar$(N ' a' '23 Design &amp; Coding')$ar$(N ' p' '24 Architecture Practice')
   </div>
   <div class="flow">
-    $(N ' fill' '25 Interview Readiness')$ar$(N ' fill' '26 Solution Architect Questions')$ar$(N ' fill' '27 Solution Designer Questions')$ar$(N ' fill' '28 Engineering Manager Questions')
+    $(N ' fill' '25 Interview Readiness')$ar$(N ' fill' '26 Solution Architect Questions')$ar$(N ' fill' '27 Solution Designer Questions')$ar$(N ' fill' '28 Engineering Manager Questions')$ar$(N ' fill' '29 Role Foundations')
   </div>
 "@
 

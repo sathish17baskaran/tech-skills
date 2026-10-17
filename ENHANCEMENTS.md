@@ -15,6 +15,7 @@ Each of these appears inside other sections, but has no dedicated concept sectio
 
 ## Content: more practice
 - [ ] More design case studies on page 19 (it has URL shortener, rate limiter, chat, notifications, news feed, video and payment ledger). Candidates: ride matching, hotel booking at scale, collaborative document editing, metrics/monitoring system, open banking API gateway.
+- [ ] A Principal Software Engineer behavioural page (STAR, same format as pages 26–28). Page 29.5 has four starter prompts.
 - [ ] A behavioural page for other roles if needed (e.g. Integration Architect, Enterprise Architect), in the same format as pages 26–28.
 
 ## Site features

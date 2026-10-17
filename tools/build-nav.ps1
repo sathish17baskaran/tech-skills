@@ -33,7 +33,8 @@ $pages = @(
  @('25-interview-readiness','Interview Readiness','Interview Readiness'),
  @('26-solution-architect-behavioural-questions','Solution Architect Questions','Solution Architect Behavioural Questions'),
  @('27-solution-designer-behavioural-questions','Solution Designer Questions','Solution Designer Behavioural Questions'),
- @('28-engineering-manager-behavioural-questions','Engineering Manager Questions','Engineering Manager Behavioural Questions'))
+ @('28-engineering-manager-behavioural-questions','Engineering Manager Questions','Engineering Manager Behavioural Questions'),
+ @('29-role-foundations','Role Foundations','Role Foundations'))
 for ($i = 0; $i -lt $pages.Count; $i++) {
   $p = $pages[$i]; $f = Join-Path $d ($p[0] + '.html'); $t = [IO.File]::ReadAllText($f)
   $here = [regex]::Match($t, '<span class="here">[\s\S]*?</span>').Value
