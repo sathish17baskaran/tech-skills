@@ -20,6 +20,12 @@
     <a href="#sync-async">Sync vs Async</a>
     <a href="#latency" class="added">Latency vs Throughput</a>
     <a href="#estimation" class="added">Back-of-the-envelope numbers</a>
+    <a href="#locks" class="added">Races, locks &amp; deadlocks</a>
+    <a href="#concurrency-models" class="added">Concurrency models</a>
+    <a href="#os" class="added">OS essentials</a>
+    <a href="#storage-hierarchy" class="added">Memory &amp; storage hierarchy</a>
+    <a href="#data-structures" class="added">Data structures in systems</a>
+    <a href="#url-journey" class="added">Typing a URL</a>
   </div>
   <div class="legend">Dashed chips = concepts added to your list.</div>
 </header>
@@ -364,11 +370,696 @@ public sealed class ReportWorker(Channel&lt;ReportJob&gt; queue) : BackgroundSer
 </div>
   </section>
 
+<!-- RACE CONDITIONS, LOCKS AND DEADLOCKS -->
+<section class="concept" id="locks">
+  <h2><span class="num">1.6</span> Race conditions, locks and deadlocks <span class="tag-added">Added</span></h2>
+  <p class="oneliner">A <b>race condition</b> is a bug where the result depends on which thread gets there first. <b>Locks</b> make a critical section run one at a time; <b>deadlock</b> is when locked threads wait for each other forever.</p>
+
+  <h3>Visual: the lost update</h3>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Read-modify-write race: two deposits, one is lost","actors":[{"t":"Thread A","c":"blue"},{"t":"balance","c":"teal"},{"t":"Thread B","c":"purple"}],"colW":150,
+ "steps":[
+  {"from":0,"to":1,"t":"read 100"},
+  {"from":2,"to":1,"t":"read 100"},
+  {"from":0,"to":1,"t":"write 150 (+50)","c":"blue"},
+  {"from":2,"to":1,"t":"write 120 (+20)","c":"purple"},
+  {"note":"balance = 120, should be 170: A's update is lost","over":[0,2],"c":"red"},
+  {"note":"Fix: lock, atomic op, CAS or version check","over":[0,2],"c":"green"}
+ ]}
+</script></figure>
+
+  <h3>How it works</h3>
+  <ul>
+    <li><b>Critical section</b>: code that touches shared state and must not interleave. <b>Atomic</b> = it happens all at once or not at all.</li>
+    <li>Two classic races: <b>read-modify-write</b> (<code>count++</code> is read, add, write) and <b>check-then-act</b> (<code>if (!exists) add</code>).</li>
+    <li><b>Atomic operations</b> use one CPU instruction. <b>Compare-and-swap (CAS)</b>: "set to X only if it is still Y", else re-read and retry. Lock-free, best for one variable.</li>
+    <li>Basics of thread safety were in <a href="#process-thread">1.1</a>. Across machines you need a <a href="04-distributed-systems.html#locks">distributed lock</a> or a fencing token.</li>
+  </ul>
+
+  <div class="tablewrap"><table>
+    <tr><th>Primitive</th><th>Lets in</th><th>Use for</th></tr>
+    <tr><td><b>Mutex / lock</b></td><td>1 thread</td><td>Protect a small critical section</td></tr>
+    <tr><td><b>Semaphore</b></td><td>N at once</td><td>Cap concurrency (e.g. 10 DB calls)</td></tr>
+    <tr><td><b>Reader-writer lock</b></td><td>Many readers or 1 writer</td><td>Read-mostly data, like a cache</td></tr>
+    <tr><td><b>Atomic / CAS</b></td><td>No lock</td><td>Counters, flags, swapping a reference</td></tr>
+  </table></div>
+
+  <h3>Optimistic vs pessimistic concurrency</h3>
+  <div class="cols2">
+    <div class="box green"><h4>Optimistic: check at write</h4><ul><li>Read a <b>row version</b> or <b>ETag</b>, then <code>UPDATE &hellip; WHERE version = @v</code>.</li><li>0 rows changed = someone won: reload and retry, or return 409 / 412.</li><li>Best when conflicts are <b>rare</b>. No locks held.</li></ul></div>
+    <div class="box amber"><h4>Pessimistic: lock at read</h4><ul><li><code>SELECT &hellip; FOR UPDATE</code> (SQL Server: <code>UPDLOCK</code>) inside a transaction.</li><li>Others wait until you commit.</li><li>Best when conflicts are <b>frequent</b> and retries are costly. Keep it short.</li></ul></div>
+  </div>
+  <p class="tip">See transactions in <a href="06-databases-data.html#acid">6.2</a> and ETag + If-Match on APIs in <a href="08-api-design.html#rest">8.2</a>.</p>
+
+  <h3>Deadlock: four conditions, break one</h3>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Circular wait, then two fixes","interval":3000,
+ "frames":[
+  {"label":"Deadlock","caption":"Each thread holds one lock and waits for the other. Neither can move.",
+   "rows":[
+    {"label":"T1","items":[{"t":"Thread 1","sub":"holds A","c":"blue"},{"k":"arrow","g":"→","t":"waits for"},{"t":"Lock B","sub":"held by T2","c":"red"}]},
+    {"label":"T2","items":[{"t":"Thread 2","sub":"holds B","c":"purple"},{"k":"arrow","g":"→","t":"waits for"},{"t":"Lock A","sub":"held by T1","c":"red"}]}
+   ]},
+  {"label":"Lock ordering","caption":"Both take <b>A before B</b>. T2 queues for A, so no cycle can form.",
+   "rows":[
+    {"label":"T1","items":[{"t":"Thread 1","sub":"A then B","c":"blue"},{"k":"arrow","g":"→","t":"gets both"},{"t":"Done","c":"green"}]},
+    {"label":"T2","items":[{"t":"Thread 2","sub":"A then B","c":"purple"},{"k":"arrow","g":"→","t":"waits for A"},{"t":"Queued","c":"amber"}]}
+   ]},
+  {"label":"Timeout","caption":"T2 tries B with a <b>timeout</b>, gives up, releases what it holds, backs off and retries.",
+   "rows":[
+    {"label":"T1","items":[{"t":"Thread 1","sub":"holds A","c":"blue"},{"k":"arrow","g":"→","t":"gets B"},{"t":"Done","c":"green"}]},
+    {"label":"T2","items":[{"t":"Thread 2","sub":"TryEnter 500 ms","c":"purple"},{"k":"arrow","g":"→","t":"fails"},{"t":"Back off","sub":"retry later","c":"amber"}]}
+   ]}
+ ]}
+</script></figure>
+
+  <div class="tablewrap"><table>
+    <tr><th>Coffman condition</th><th>Means</th><th>Break it with</th></tr>
+    <tr><td><b>Mutual exclusion</b></td><td>Only one holder</td><td>Immutable data, lock-free ops</td></tr>
+    <tr><td><b>Hold and wait</b></td><td>Hold one, wait for more</td><td>Take all locks at once, or <b>smaller lock scope</b></td></tr>
+    <tr><td><b>No preemption</b></td><td>Locks can't be taken away</td><td><b>Timeouts</b>, release and retry</td></tr>
+    <tr><td><b>Circular wait</b></td><td>A waits B waits A</td><td><b>Global lock order</b> (e.g. by account ID)</td></tr>
+  </table></div>
+
+  <div class="grid">
+    <div class="box red"><h4>Livelock</h4><p>Threads keep backing off for each other and retrying, so nothing finishes. Fix: <b>random jitter</b> on retries.</p></div>
+    <div class="box amber"><h4>Starvation</h4><p>One thread never gets the lock, e.g. a writer behind endless readers. Fix: <b>fair queues</b>, short hold times.</p></div>
+    <div class="box teal"><h4>Avoid locks</h4><p><b>Immutable</b> objects need no lock. <b>Thread-safe collections</b> do the locking for you.</p></div>
+  </div>
+
+  <h3>When to use what</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Situation</th><th>Choose</th><th>Avoid</th></tr>
+    <tr><td>One counter or flag</td><td>Atomic / CAS</td><td>A full lock</td></tr>
+    <tr><td>Small in-memory section</td><td><code>lock</code></td><td>Holding it during I/O</td></tr>
+    <tr><td>Async code, or cap of N</td><td>Semaphore</td><td><code>lock</code> around <code>await</code></td></tr>
+    <tr><td>DB row, rare conflicts</td><td>Optimistic version</td><td>Long DB locks</td></tr>
+    <tr><td>DB row, hot contention</td><td>Pessimistic, short tx</td><td>Retry storms</td></tr>
+    <tr><td>Several app instances</td><td>DB constraint or distributed lock</td><td>In-process locks</td></tr>
+  </table></div>
+
+  <div class="remember"><ul>
+    <li><code>count++</code> is <b>not atomic</b>: it is read, add, write.</li>
+    <li>Keep locks <b>small and short</b>. Never do I/O or call unknown code while holding one.</li>
+    <li>Prevent deadlock with a <b>fixed lock order</b> plus <b>timeouts</b>. Databases detect deadlocks and kill a victim: retry it.</li>
+    <li>Optimistic for rare conflicts, pessimistic for hot rows.</li>
+    <li>An in-process lock does <b>nothing</b> across two servers. Use the database or a distributed lock.</li>
+  </ul></div>
+
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Lock</b> + <code>lock</code></td><td><span class="pill builtin">built-in</span> <code>System.Threading</code> (.NET 9+)</td><td>Mutual exclusion; <code>TryEnter(timeout)</code> to avoid waiting forever</td></tr>
+    <tr><td><b>Interlocked</b></td><td><span class="pill builtin">built-in</span> <code>System.Threading</code></td><td><code>Increment</code>, <code>Add</code>, <code>CompareExchange</code> (CAS)</td></tr>
+    <tr><td><b>SemaphoreSlim</b></td><td><span class="pill builtin">built-in</span> <code>System.Threading</code></td><td>Async mutual exclusion (<code>WaitAsync</code>) or a cap of N</td></tr>
+    <tr><td><b>ReaderWriterLockSlim</b></td><td><span class="pill builtin">built-in</span> <code>System.Threading</code></td><td>Many readers, one writer; sync code only (thread-affine)</td></tr>
+    <tr><td><b>ConcurrentDictionary</b></td><td><span class="pill builtin">built-in</span> <code>System.Collections.Concurrent</code></td><td>Thread-safe map; <code>GetOrAdd</code>, <code>AddOrUpdate</code></td></tr>
+    <tr><td><b>ImmutableArray</b>, <b>FrozenDictionary</b></td><td><span class="pill builtin">built-in</span> <code>System.Collections.Immutable</code>, <code>System.Collections.Frozen</code></td><td>Share read-only data with no locks; swap the whole reference to update</td></tr>
+    <tr><td><b>EF Core concurrency token</b></td><td><code>Microsoft.EntityFrameworkCore</code> 10.0</td><td><code>[Timestamp]</code> / <code>IsRowVersion()</code>; stale writes throw <code>DbUpdateConcurrencyException</code></td></tr>
+  </table>
+<pre class="code"><code>public sealed class Account
+{
+    public Guid Id { get; set; }
+    public decimal Balance { get; set; }
+    [Timestamp] public byte[] RowVersion { get; set; } = [];   // concurrency token
+}
+
+// Optimistic: EF sends UPDATE ... WHERE Id = @id AND RowVersion = @original
+try
+{
+    account.Balance -= amount;
+    await db.SaveChangesAsync(ct);
+}
+catch (DbUpdateConcurrencyException)
+{
+    // Someone wrote first: reload, re-check the rule, then retry or return 409
+}
+
+// Lock-free counter and CAS
+Interlocked.Increment(ref _requests);
+Interlocked.CompareExchange(ref _config, newConfig, oldConfig);  // swap only if unchanged</code></pre>
+  <p class="warn"><code>ConcurrentDictionary.GetOrAdd</code> can run the value factory <b>more than once</b> under a race. Keep the factory cheap and side-effect free, or store a <code>Lazy&lt;T&gt;</code>.</p>
+</div>
+
+  <div class="post">
+    <p>Two deposits. One balance. One of them vanished. 💸</p>
+    <p>🧵 Thread A reads 100, Thread B reads 100.</p>
+    <p>➕ A writes 150, B writes 120. A's deposit is gone: a race condition.</p>
+    <p>🔒 Fix in memory: a lock, an atomic op or compare-and-swap.</p>
+    <p>🗄️ Fix in the database: a row version (optimistic) or SELECT FOR UPDATE (pessimistic).</p>
+    <p>🔁 Deadlock? Take locks in one fixed order, add timeouts, keep locks small.</p>
+    <p>Which do you reach for first: optimistic or pessimistic?</p>
+    <p>#Concurrency #DotNet #SoftwareEngineering #SystemDesign</p>
+  </div>
+</section>
+
+<!-- CONCURRENCY MODELS -->
+<section class="concept" id="concurrency-models">
+  <h2><span class="num">1.7</span> Concurrency models: threads, event loop, actors, channels <span class="tag-added">Added</span></h2>
+  <p class="oneliner">A <b>concurrency model</b> is the rule for how concurrent work shares state: <b>shared memory with locks</b>, one <b>event loop</b>, <b>actors</b> passing messages, <b>channels</b> between tasks, or <b>data split across cores</b>.</p>
+
+  <h3>Visual: five ways to share work</h3>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Same job, five models","interval":2800,
+ "frames":[
+  {"label":"Shared memory","caption":"Many threads touch <b>one shared state</b>. Fast, but every access needs a lock.",
+   "rows":[
+    {"label":"Threads","items":[{"t":"T1","c":"blue"},{"t":"T2","c":"blue"},{"t":"T3","c":"blue"}]},
+    {"label":"State","items":[{"k":"arrow","g":"↓","t":"lock"},{"t":"Shared state","sub":"one at a time","c":"red","big":true}]}
+   ]},
+  {"label":"Event loop","caption":"<b>One thread</b> runs callbacks. Slow I/O waits in the OS, not on the thread.",
+   "rows":[
+    {"label":"Loop","items":[{"t":"1 thread","sub":"runs callbacks","c":"purple","big":true},{"k":"arrow","g":"⇄","t":"start / done"},{"t":"OS async I/O","sub":"DB, HTTP, files","c":"teal"}]}
+   ]},
+  {"label":"Actors","caption":"Each actor owns its state and handles <b>one message at a time</b> from its mailbox.",
+   "rows":[
+    {"label":"Flow","items":[{"t":"Sender","c":"blue"},{"k":"arrow","g":"→","t":"message"},{"t":"Mailbox","sub":"queue","c":"amber"},{"k":"arrow","g":"→"},{"t":"Actor","sub":"private state","c":"green","big":true}]}
+   ]},
+  {"label":"Channels","caption":"Producers and consumers share <b>a pipe, not memory</b>. A bounded channel pushes back when full.",
+   "rows":[
+    {"label":"Flow","items":[{"t":"Producers","c":"blue"},{"k":"arrow","g":"→","t":"write"},{"t":"Channel","sub":"bounded","c":"amber","big":true},{"k":"arrow","g":"→","t":"read"},{"t":"Consumers","c":"green"}]}
+   ]},
+  {"label":"Data parallel","caption":"Split <b>one big dataset</b> into chunks; every core runs the same work on its chunk.",
+   "rows":[
+    {"label":"Data","items":[{"t":"1M rows","c":"slate","big":true}]},
+    {"label":"Cores","items":[{"t":"Core 1","c":"teal"},{"t":"Core 2","c":"teal"},{"t":"Core 3","c":"teal"},{"t":"Core 4","c":"teal"}]}
+   ]}
+ ]}
+</script></figure>
+
+  <h3>Compare the models</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Model</th><th>Use when</th><th>Failure mode</th><th>Examples</th></tr>
+    <tr><td><b>Shared memory + locks</b></td><td>Small hot state in one process</td><td>Races, deadlocks, contention</td><td>Java, C#, C++ threads</td></tr>
+    <tr><td><b>Event loop</b></td><td>Many I/O waits, little CPU</td><td>One CPU-heavy or blocking call freezes everyone</td><td>Node.js, Python asyncio</td></tr>
+    <tr><td><b>Actors</b></td><td>Many independent entities with state</td><td>Mailbox overflow, A&rarr;B&rarr;A call deadlock, hot actor</td><td>Erlang, Akka.NET, Orleans</td></tr>
+    <tr><td><b>CSP / channels</b></td><td>Pipelines, producer/consumer</td><td>Blocked sends, leaked consumers, unbounded buffers</td><td>Go, .NET Channels</td></tr>
+    <tr><td><b>Data parallelism</b></td><td>CPU work on big data</td><td>Overhead on small jobs, races in the loop body</td><td>Parallel.For, PLINQ, SIMD, GPU</td></tr>
+  </table></div>
+
+  <h3>Key ideas</h3>
+  <ul>
+    <li><b>Event loop</b>: async I/O lets one thread juggle thousands of waits (<a href="#sync-async">1.3</a>). Node.js moves CPU work to <code>worker_threads</code>. .NET async uses the same idea on a <b>thread pool</b>, so it gets both.</li>
+    <li><b>Actors</b>: no shared memory and no locks. Erlang and Akka.NET add <b>supervisors</b> ("let it crash"). Orleans adds <b>virtual actors</b> that the runtime places and activates for you (<a href="22-dotnet-engineering-deep-dive.html#orleans">22.10</a>).</li>
+    <li><b>CSP</b>: "Don't communicate by sharing memory; share memory by communicating" (Go proverb).</li>
+    <li><b>Data parallelism</b> is parallelism, not concurrency (<a href="#concurrency">1.2</a>). Amdahl's law still caps the speed-up.</li>
+  </ul>
+
+  <h3>How to answer "which model?"</h3>
+  <div class="flow">
+    <div class="n">CPU or I/O?<small>name the work</small></div><div class="ar">→</div>
+    <div class="n t">I/O: async<small>event loop / tasks</small></div><div class="ar">→</div>
+    <div class="n a">Stages? channel<small>bounded</small></div><div class="ar">→</div>
+    <div class="n g">Many stateful entities? actors</div><div class="ar">→</div>
+    <div class="n p">CPU on big data? parallel</div>
+  </div>
+
+  <div class="remember"><ul>
+    <li>Most real systems <b>mix</b> models: async I/O at the edge, channels inside, locks for a few hot fields.</li>
+    <li>Never <b>block</b> an event loop or an actor: it stalls everything queued behind it.</li>
+    <li>Every queue needs a <b>bound</b> (back-pressure), or memory grows until the process dies.</li>
+    <li>Actors and channels remove locks, not ordering, retry and overload problems.</li>
+    <li>Shared memory within one process; messages between processes and machines.</li>
+  </ul></div>
+
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Model</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Tasks / async</b></td><td><span class="pill builtin">built-in</span> <code>System.Threading.Tasks</code></td><td>Async I/O on the thread pool; <code>Task.WhenAll</code> to fan out</td></tr>
+    <tr><td><b>Channels (CSP)</b></td><td><span class="pill builtin">built-in</span> <code>System.Threading.Channels</code></td><td>Bounded producer/consumer queues between tasks</td></tr>
+    <tr><td><b>TPL Dataflow</b></td><td><code>System.Threading.Tasks.Dataflow</code> 10.0 (NuGet, MIT)</td><td>Linked blocks, each with its own buffer and parallelism</td></tr>
+    <tr><td><b>Virtual actors</b></td><td><code>Microsoft.Orleans.Server</code>, <code>.Client</code>, <code>.Sdk</code> 10.x</td><td>Grains across a cluster; single-threaded per grain by default</td></tr>
+    <tr><td><b>Classic actors</b></td><td><code>Akka</code> 1.5.x (1.6 <span class="pill preview">preview</span>)</td><td>Actors, supervision, clustering, streams (Apache 2.0)</td></tr>
+    <tr><td><b>Data parallelism</b></td><td><span class="pill builtin">built-in</span> <code>Parallel</code>, PLINQ, <code>System.Numerics.Vector&lt;T&gt;</code></td><td>Spread CPU work across cores; SIMD inside one core</td></tr>
+  </table>
+<pre class="code"><code>// An actor in miniature: one mailbox, one reader, private state, no locks
+public sealed class AccountActor
+{
+    private readonly Channel&lt;decimal&gt; _mailbox = Channel.CreateBounded&lt;decimal&gt;(
+        new BoundedChannelOptions(1_000) { SingleReader = true, FullMode = BoundedChannelFullMode.Wait });
+    private decimal _balance;   // only RunAsync touches it
+
+    public ValueTask PostAsync(decimal amount, CancellationToken ct) =&gt;
+        _mailbox.Writer.WriteAsync(amount, ct);   // waits when full: back-pressure
+
+    public async Task RunAsync(CancellationToken ct)   // start once, e.g. from a BackgroundService
+    {
+        await foreach (var amount in _mailbox.Reader.ReadAllAsync(ct))
+            _balance += amount;   // one message at a time
+    }
+}</code></pre>
+  <p class="warn">Orleans grains are <b>non-reentrant</b> by default: if grain A awaits B and B calls back into A, they deadlock until the request times out. Avoid call cycles, or allow reentrancy on purpose (<code>RequestContext.AllowCallChainReentrancy()</code>, <code>[AlwaysInterleave]</code> or <code>[Reentrant]</code>).</p>
+</div>
+
+  <div class="post">
+    <p>Five ways to run work at the same time, and how each one breaks. 🧠</p>
+    <p>🔒 Threads + locks: fast, until races and deadlocks.</p>
+    <p>🔁 Event loop: one thread, thousands of I/O waits. One CPU-heavy call freezes everyone.</p>
+    <p>📬 Actors: own your state, one message at a time. Watch for full mailboxes and call cycles.</p>
+    <p>🚰 Channels: share a pipe, not memory. Always bound the pipe.</p>
+    <p>⚡ Data parallel: split the data across cores. Amdahl still wins.</p>
+    <p>Real systems mix them. Which one runs your hot path?</p>
+    <p>#Concurrency #DotNet #SystemDesign #SoftwareArchitecture</p>
+  </div>
+</section>
+
+<!-- OS ESSENTIALS FOR ENGINEERS -->
+<section class="concept" id="os">
+  <h2><span class="num">1.8</span> OS essentials for engineers <span class="tag-added">Added</span></h2>
+  <p class="oneliner">The <b>kernel</b> owns the CPU, memory, files and sockets. Your code asks for them through <b>system calls</b>. OOM kills, port exhaustion and async scaling all come down to how it hands them out.</p>
+
+  <div class="flow">
+    <div class="n">Your code<small>user space</small></div><div class="ar">→</div>
+    <div class="n a">System call<small>read · write · epoll_wait</small></div><div class="ar">→</div>
+    <div class="n p">Kernel<small>privileged mode</small></div><div class="ar">→</div>
+    <div class="n t">Disk · NIC<small>device driver</small></div>
+  </div>
+
+  <h3>How it works</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Concept</th><th>What it means</th><th>Interview angle</th></tr>
+    <tr><td><b>User vs kernel space</b></td><td>Apps run unprivileged; a syscall jumps into the kernel and back</td><td>Crossings cost: batch I/O</td></tr>
+    <tr><td><b>Virtual memory</b></td><td>Private address space per process, mapped to RAM in <b>pages</b> (often 4 KB)</td><td>Reserved is not used</td></tr>
+    <tr><td><b>OOM kill</b></td><td>Container hits its memory limit; kernel sends <b>SIGKILL</b>: exit <b>137</b>, <code>OOMKilled</code></td><td>No exception, no log line</td></tr>
+    <tr><td><b>File descriptors</b></td><td>Every open file and socket is an fd, capped per process (<code>ulimit -n</code>)</td><td>"Too many open files"</td></tr>
+    <tr><td><b>Port exhaustion</b></td><td>Each outbound connection uses a local <b>ephemeral port</b>; closed ones linger in <b>TIME_WAIT</b></td><td>See <a href="22-dotnet-engineering-deep-dive.html#httpclient">22.7 HttpClient</a></td></tr>
+    <tr><td><b>Context switch</b></td><td>Swap one thread's registers for another's: microseconds, plus cold caches</td><td>10k threads = switching, not working</td></tr>
+  </table></div>
+  <p class="tip">Processes, threads and stacks are in <a href="#process-thread">1.1</a>. The caller's view of waiting is in <a href="#sync-async">1.3</a>, and the event loop as a programming model in <a href="#concurrency-models">1.7</a>.</p>
+
+  <h3>I/O models: why async scales</h3>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Waiting for 4 connections","interval":3000,
+ "frames":[
+  {"label":"Blocking","caption":"<b>Blocking I/O:</b> one thread per connection, each asleep in <code>read()</code>. Every idle thread still holds a stack and costs context switches.","rows":[
+   {"label":"Sockets","items":[{"t":"conn 1","c":"blue"},{"t":"conn 2","c":"blue"},{"t":"conn 3","c":"blue"},{"t":"conn 4","c":"blue"}]},
+   {"label":"Threads","items":[{"t":"T1","sub":"waiting","c":"red"},{"t":"T2","sub":"waiting","c":"red"},{"t":"T3","sub":"waiting","c":"red"},{"t":"T4","sub":"waiting","c":"red"}]}]},
+  {"label":"Multiplexing","caption":"<b>epoll / kqueue:</b> register every socket once, then one call returns only the <b>ready</b> ones. A few threads serve thousands of connections.","rows":[
+   {"label":"Sockets","items":[{"t":"conn 1","c":"off"},{"t":"conn 2","sub":"ready","c":"green"},{"t":"conn 3","c":"off"},{"t":"conn 4","sub":"ready","c":"green"}]},
+   {"label":"Kernel","items":[{"t":"epoll_wait","sub":"1 call, many sockets","c":"purple"}]},
+   {"label":"Threads","items":[{"t":"T1","sub":"runs conn 2","c":"green"},{"t":"T2","sub":"runs conn 4","c":"green"}]}]},
+  {"label":"Completion","caption":"<b>IOCP / io_uring:</b> hand the kernel the whole read, get told when it's <b>done</b>. io_uring shares two ring buffers with the kernel, so batches need few syscalls.","ms":3400,"rows":[
+   {"label":"App","items":[{"t":"submit","sub":"read conn 1..4","c":"blue"},{"k":"arrow","g":"→"},{"t":"kernel","sub":"does the I/O","c":"purple"},{"k":"arrow","g":"→"},{"t":"completed","sub":"data ready","c":"green"}]}]}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th>Model</th><th>Thread while waiting</th><th>Where you see it</th></tr>
+    <tr><td><b>Blocking</b></td><td>Asleep, held</td><td>Thread-per-request servers, scripts</td></tr>
+    <tr><td><b>Non-blocking</b></td><td>Free, but must keep asking (<code>EAGAIN</code>)</td><td>Building block, rarely used alone</td></tr>
+    <tr><td><b>Multiplexing</b> (readiness)</td><td>Free; one waiter for many sockets</td><td><b>epoll</b> (Linux), <b>kqueue</b> (BSD, macOS)</td></tr>
+    <tr><td><b>Completion</b></td><td>Free; kernel does the I/O</td><td><b>IOCP</b> (Windows), <b>io_uring</b> (Linux 5.1+)</td></tr>
+  </table></div>
+
+  <div class="cols2">
+    <div class="box green"><h4>Async / event loop wins</h4><ul>
+      <li>Many concurrent, mostly idle connections: APIs, gateways, WebSockets.</li>
+      <li>Memory and thread count stay flat as connections grow.</li></ul></div>
+    <div class="box amber"><h4>Threads are fine when</h4><ul>
+      <li>Few connections, or <b>CPU-bound</b> work (async doesn't add cores).</li>
+      <li>Simplicity matters more than scale: batch jobs, CLIs.</li></ul></div>
+  </div>
+
+  <div class="remember"><ul>
+    <li><b>137 / OOMKilled</b> = memory limit. Compare it with working set; hunt unbounded caches and queues.</li>
+    <li>"Too many open files" = fd limit. <code>SocketException</code> under load = port exhaustion. Both say: <b>reuse connections</b>.</li>
+    <li>Async scales because a waiting request holds <b>a kernel registration, not a thread</b>.</li>
+    <li>Low CPU + high latency = threads blocked, not busy. See <a href="22-dotnet-engineering-deep-dive.html#threadpool">22.4</a>.</li>
+  </ul></div>
+
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / tool</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Sockets, SocketsHttpHandler, Kestrel</b></td><td><span class="pill builtin">built-in</span> <code>System.Net.Sockets</code></td><td>Async socket calls sit on <b>epoll</b> (Linux), <b>kqueue</b> (macOS) and <b>IOCP</b> (Windows); completions resume on the thread pool</td></tr>
+    <tr><td><b>Container-aware GC</b></td><td><span class="pill builtin">built-in</span> runtime config</td><td>With a container memory limit, the GC heap defaults to 75% of it. Tune with <code>DOTNET_GCHeapHardLimitPercent</code></td></tr>
+    <tr><td><b>dotnet-counters</b></td><td><code>dotnet-counters</code> (.NET global tool)</td><td>Live GC heap, working set, thread-pool queue, HTTP connections</td></tr>
+    <tr><td><b>dotnet-trace</b></td><td><code>dotnet-trace</code> (.NET global tool)</td><td>CPU sampling and runtime events; open in Visual Studio or PerfView</td></tr>
+    <tr><td><b>dotnet-dump</b></td><td><code>dotnet-dump</code> (.NET global tool)</td><td>Capture and analyse a dump: heap by type, thread stacks, <code>gcroot</code></td></tr>
+  </table>
+<pre class="code"><code># install once (or copy the single-file builds into the container)
+dotnet tool install --global dotnet-counters
+dotnet tool install --global dotnet-trace
+dotnet tool install --global dotnet-dump
+
+# memory climbing toward the limit? watch it live
+dotnet-counters monitor -n PaymentsApi --counters System.Runtime,System.Net.Http
+
+# where is the CPU going? (Ctrl+C to stop)
+dotnet-trace collect -p 4242
+
+# what is holding the memory? dump before the OOM kill, then inspect
+dotnet-dump collect -p 4242
+dotnet-dump analyze &lt;dump-file&gt;   # then: dumpheap -stat, gcroot &lt;address&gt;</code></pre>
+  <p class="warn">An OOM kill is SIGKILL: no exception, no crash dump. Alert on working set near the limit and capture a dump <b>while it climbs</b>.</p>
+</div>
+  <div class="post">
+    <p>"Our pod keeps restarting with exit code 137." Here's what the OS is telling you 🐧</p>
+    <p>💥 137 = SIGKILL from the kernel: the container hit its memory limit. No exception, no log line</p>
+    <p>🔌 "Too many open files" or SocketException under load = file descriptors or ephemeral ports ran out. Reuse connections</p>
+    <p>🔄 10,000 threads mostly means 10,000 context switches and stacks</p>
+    <p>⚡ epoll, kqueue, IOCP and io_uring let a few threads wait on thousands of sockets. That's why async servers scale</p>
+    <p>Know these four and half the "it's slow / it crashed" incidents explain themselves. Which one bit you last?</p>
+    <p>#SoftwareEngineering #Linux #dotnet #Kubernetes #Backend</p>
+  </div>
+</section>
+
+<!-- MEMORY AND STORAGE HIERARCHY -->
+<section class="concept" id="storage-hierarchy">
+  <h2><span class="num">1.9</span> Memory and storage hierarchy <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Storage is a ladder: each step down is <b>bigger, cheaper per GB and much slower</b>. Fast systems keep hot data high on the ladder and turn random access into <b>sequential</b> access.</p>
+
+<figure class="viz" data-viz="journey"><script type="application/json">
+{"title":"From the CPU core to the cloud","stepMs":700,
+ "steps":[
+  {"t":"Registers","d":"Inside the core. A few dozen values","icon":"⚡","c":"red","tag":"&lt; 1 ns"},
+  {"t":"L1 / L2 cache","d":"Per core. KB to a few MB","icon":"🟥","c":"amber","tag":"ns"},
+  {"t":"L3 cache","d":"Shared by cores. Tens of MB","icon":"🟧","c":"amber","tag":"ns"},
+  {"t":"RAM","d":"GBs. Lost on power-off","icon":"🧠","c":"purple","tag":"~100 ns"},
+  {"t":"NVMe SSD","d":"TBs. Durable; random reads are fine","icon":"💾","c":"blue","tag":"µs"},
+  {"t":"HDD","d":"Cheap TBs. Seeks hurt; sequential only","icon":"💿","c":"teal","tag":"ms"},
+  {"t":"Network / object storage","d":"Practically unlimited, cheapest per GB, a round trip per request","icon":"☁️","c":"slate","tag":"ms"}
+ ]}
+</script></figure>
+  <p class="tip">The numbers to quote are in the <a href="#latency">1.4</a> and <a href="#estimation">1.5</a> latency ladder. Rule of thumb: each step is roughly <b>10–1,000× slower</b> than the one above.</p>
+
+  <h3>Locality: why arrays beat linked lists</h3>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Reading 4 numbers from RAM","interval":2800,
+ "frames":[
+  {"label":"Array","caption":"<b>Array:</b> values sit side by side. One 64-byte <b>cache line</b> brings several in, and the prefetcher fetches the next line early.","rows":[
+   {"label":"RAM","items":[{"t":"a[0]","c":"green"},{"t":"a[1]","c":"green"},{"t":"a[2]","c":"green"},{"t":"a[3]","c":"green"}]},
+   {"label":"Cache","items":[{"t":"1 line","sub":"1 miss, then hits","c":"green","big":true}]}]},
+  {"label":"Linked list","caption":"<b>Linked list:</b> each node lives somewhere else on the heap. Every <code>next</code> pointer can be a cache miss: about 100 ns each.","rows":[
+   {"label":"RAM","items":[{"t":"node 1","c":"red"},{"k":"gap"},{"t":"node 3","c":"red"},{"k":"gap"},{"t":"node 2","c":"red"},{"k":"gap"},{"t":"node 4","c":"red"}]},
+   {"label":"Cache","items":[{"t":"miss","c":"red"},{"t":"miss","c":"red"},{"t":"miss","c":"red"},{"t":"miss","c":"red"}]}]}
+ ]}
+</script></figure>
+
+  <h3>How it works</h3>
+  <ul>
+    <li><b>Temporal locality</b>: data used now is likely used again soon (so cache it). <b>Spatial locality</b>: its neighbours are likely next (so read whole lines and pages).</li>
+    <li><b>Sequential beats random</b>, on every device. That's why <b>append-only logs</b> (WAL, Kafka) and <b>LSM trees</b> (RocksDB, Cassandra) exist: they turn random writes into sequential ones.</li>
+    <li><b>Page cache</b>: a <code>write()</code> lands in OS memory and reaches the disk later. Reads of hot files are served from RAM.</li>
+    <li><b>Durable</b> means it survives a power cut: only after <b>fsync</b> (or write-through) returns. Databases fsync the WAL on commit and batch commits to share one fsync (<b>group commit</b>).</li>
+    <li><b>Row vs columnar</b>: rows keep a record together; columns keep each field together, so scans read less and compress better.</li>
+  </ul>
+  <div class="flow">
+    <div class="n">Write</div><div class="ar">→</div>
+    <div class="n a">WAL append<small>+ memtable in RAM</small></div><div class="ar">→</div>
+    <div class="n p">Flush<small>sorted file (SSTable)</small></div><div class="ar">→</div>
+    <div class="n g">Compaction<small>merge in background</small></div>
+  </div>
+
+  <h3>Trade-offs</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Choice</th><th>Wins at</th><th>Pays with</th></tr>
+    <tr><td><b>B-tree</b> (SQL Server, PostgreSQL)</td><td>Reads, range scans</td><td>Random in-place writes</td></tr>
+    <tr><td><b>LSM tree</b></td><td>High write rates</td><td>Reads check several files; compaction I/O</td></tr>
+    <tr><td><b>Row store</b> (OLTP)</td><td>Fetch or update one record</td><td>Scanning a few columns of many rows</td></tr>
+    <tr><td><b>Columnar</b> (Parquet, columnstore)</td><td>Analytics scans, compression</td><td>Single-row updates, small writes</td></tr>
+  </table></div>
+  <p class="tip">Index internals: <a href="06-databases-data.html#indexing">6.3 Indexing</a>. Block, file and object storage: <a href="06-databases-data.html#storage">6.8</a>. Parquet in a lakehouse: <a href="06-databases-data.html#lake">6.13</a>.</p>
+
+  <div class="remember"><ul>
+    <li>Caches exist to hide the gap between rungs. Hit rate decides speed.</li>
+    <li>Arrays beat linked lists because of <b>cache lines</b>, not big-O.</li>
+    <li><code>write()</code> returning is not durable. <b>fsync</b> is; in a cluster, durable usually also means "on N replicas".</li>
+    <li>Append, batch, then compact: sequential I/O is the cheapest I/O.</li>
+    <li>OLTP on rows, analytics on columns. Don't run big reports on the OLTP primary.</li>
+  </ul></div>
+
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Span&lt;T&gt; / Memory&lt;T&gt;</b></td><td><span class="pill builtin">built-in</span> <code>System</code></td><td>Slice contiguous memory without copies (see <a href="22-dotnet-engineering-deep-dive.html#perf">22.9</a>)</td></tr>
+    <tr><td><b>ArrayPool&lt;T&gt;.Shared</b></td><td><span class="pill builtin">built-in</span> <code>System.Buffers</code></td><td>Reuse I/O buffers instead of allocating new ones</td></tr>
+    <tr><td><b>Struct arrays, [StructLayout]</b></td><td><span class="pill builtin">built-in</span> <code>System.Runtime.InteropServices</code></td><td>An array of structs is contiguous; an array of classes is an array of pointers</td></tr>
+    <tr><td><b>FileStream + FileStreamOptions</b></td><td><span class="pill builtin">built-in</span> <code>System.IO</code></td><td><code>BufferSize</code>, <code>FileOptions.SequentialScan</code>, <code>FileOptions.WriteThrough</code>; <code>Flush(true)</code> asks the OS to flush to disk</td></tr>
+    <tr><td><b>Parquet.Net</b></td><td><code>Parquet.Net</code> 6.1 (MIT, .NET 8+)</td><td>Read and write columnar Parquet files</td></tr>
+  </table>
+<pre class="code"><code>// Append-only journal: sequential writes, durable on return
+var opts = new FileStreamOptions
+{
+    Mode = FileMode.Append, Access = FileAccess.Write, Share = FileShare.Read,
+    BufferSize = 64 * 1024, Options = FileOptions.Asynchronous
+};
+await using var journal = new FileStream("payments.journal", opts);
+await journal.WriteAsync(record, ct);   // in .NET's buffer / OS page cache
+journal.Flush(flushToDisk: true);       // fsync: now it survives a power cut
+
+// Cache-friendly: contiguous structs and a pooled buffer
+public readonly record struct Tick(long Time, decimal Price);
+byte[] buffer = ArrayPool&lt;byte&gt;.Shared.Rent(81_920);
+try { /* read into buffer.AsSpan() */ }
+finally { ArrayPool&lt;byte&gt;.Shared.Return(buffer); }
+
+// Columnar export for analytics
+await ParquetSerializer.SerializeAsync(transactions, "tx-2026-10.parquet");</code></pre>
+  <p class="warn"><code>Flush()</code> and <code>FlushAsync()</code> only move .NET's buffer into the OS page cache. For durability use <code>Flush(true)</code> or <code>FileOptions.WriteThrough</code>, and batch writes so you don't fsync per record.</p>
+</div>
+  <div class="post">
+    <p>Why is an array faster than a linked list when both are O(n)? 🧠</p>
+    <p>📏 The CPU reads memory in 64-byte cache lines. Arrays use every byte; linked lists jump around and miss</p>
+    <p>💾 Disks love sequential I/O. That's why Kafka, WALs and LSM trees append instead of updating in place</p>
+    <p>⚠️ write() returning isn't durable. The data sits in the OS page cache until fsync</p>
+    <p>📊 OLTP wants rows, analytics wants columns. That's the whole case for Parquet</p>
+    <p>Big-O tells you the shape. The storage ladder tells you the real cost. What's your favourite locality win?</p>
+    <p>#SystemDesign #Performance #Databases #dotnet</p>
+  </div>
+</section>
+
+<!-- DATA STRUCTURES BEHIND REAL SYSTEMS -->
+<section class="concept" id="data-structures">
+  <h2><span class="num">1.10</span> Data structures behind real systems <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Every database, cache and search engine is a few classic <b>data structures</b> underneath. Know which one, its cost and its trade-off, and you can justify any design choice.</p>
+
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"LSM tree: why write-heavy stores are fast","interval":2600,
+ "frames":[
+  {"label":"Write","caption":"Each write is a <b>sequential append</b> to the WAL plus an insert into a sorted in-memory <b>memtable</b>. No random disk writes.",
+   "rows":[[{"t":"PUT k","c":"blue"},{"k":"arrow"},{"t":"WAL","sub":"append","c":"amber"},{"k":"arrow"},{"t":"Memtable","sub":"sorted, RAM","c":"green"}]]},
+  {"label":"Flush","caption":"When the memtable is full it is written out as an <b>immutable, sorted SSTable</b> file.",
+   "rows":[[{"t":"Memtable","sub":"full","c":"green"},{"k":"arrow","t":"flush"},{"t":"SSTable 3","sub":"new","c":"teal"}],[{"t":"SSTable 2","c":"teal"},{"t":"SSTable 1","c":"teal"}]]},
+  {"label":"Compact","caption":"Background <b>compaction</b> merges files and drops old versions and tombstones. Cost: extra disk I/O (write amplification).",
+   "rows":[[{"t":"SST 1+2+3","c":"teal"},{"k":"arrow","t":"merge"},{"t":"SSTable L1","sub":"one version per key","c":"purple"}]]},
+  {"label":"Read","caption":"Reads check the memtable, then SSTables newest first. A <b>Bloom filter</b> per file skips files that can't hold the key.",
+   "rows":[[{"t":"GET k","c":"blue"},{"k":"arrow"},{"t":"Memtable","sub":"miss","c":"green"}],[{"t":"Bloom filter","sub":"skip files","c":"amber"},{"k":"arrow"},{"t":"SSTable","sub":"hit","c":"teal"}]]}
+ ]}
+</script></figure>
+
+  <h3>The structures, where they live, what they cost</h3>
+  <div class="tablewrap"><table style="font-size:13px">
+    <tr><th>Structure</th><th>Used in</th><th>Key cost</th><th>Trade-off</th></tr>
+    <tr><td><b>Hash table</b><br>key → bucket</td><td>Caches, Redis keys, hash joins</td><td>O(1) avg get/put</td><td>No order, no range queries; bad hash = slow</td></tr>
+    <tr><td><b>B+tree</b><br>wide sorted tree, linked leaves</td><td>Relational indexes (SQL Server, PostgreSQL, InnoDB)</td><td>O(log n) seek, 3-4 levels; fast range scan</td><td>Random writes, page splits</td></tr>
+    <tr><td><b>LSM tree</b><br>memtable + SSTables</td><td>Cassandra, RocksDB, write-heavy stores</td><td>Very fast writes (append)</td><td>Reads touch many files; compaction I/O</td></tr>
+    <tr><td><b>Skip list</b><br>linked list with express lanes</td><td>Redis sorted sets, leaderboards</td><td>O(log n) insert, rank, range</td><td>Extra pointers; probabilistic balance</td></tr>
+    <tr><td><b>Heap</b> (priority queue)<br>min/max on top</td><td>Schedulers, top-K, timers, retries</td><td>Peek O(1), push/pop O(log n)</td><td>Search is O(n); no sorted scan</td></tr>
+    <tr><td><b>Trie</b><br>tree of characters</td><td>Autocomplete, IP routing (longest prefix)</td><td>O(key length)</td><td>Memory heavy; use a radix trie</td></tr>
+    <tr><td><b>Inverted index</b><br>term → list of doc IDs</td><td>Search engines (Lucene, Elasticsearch)</td><td>Fast term lookup, merge posting lists</td><td>Slow, costly writes; refresh lag</td></tr>
+    <tr><td><b>Ring buffer</b><br>fixed array, wrap-around</td><td>Log buffers, high-throughput queues</td><td>O(1) push/pop, no allocation</td><td>Fixed size: block or overwrite when full</td></tr>
+    <tr><td><b>Geohash / quadtree</b><br>map cells</td><td>Proximity: nearby drivers, ATMs</td><td>Prefix or tree lookup, O(log n)</td><td>Cell edges (check neighbours); density skew</td></tr>
+  </table></div>
+
+  <h3>B+tree vs LSM tree: the classic trade-off</h3>
+  <div class="tablewrap"><table>
+    <tr><th></th><th>B+tree</th><th>LSM tree</th></tr>
+    <tr><td>Optimised for</td><td><b>Reads</b>, ranges</td><td><b>Writes</b>, ingest</td></tr>
+    <tr><td>Writes</td><td>Update in place (random I/O)</td><td>Append, flush, compact</td></tr>
+    <tr><td>Reads</td><td>One path down the tree</td><td>Memtable + several SSTables</td></tr>
+    <tr><td>Pick for</td><td>OLTP, payments, ledgers</td><td>Telemetry, events, time series</td></tr>
+  </table></div>
+
+  <h3>Interview angle: "which would you pick for X?"</h3>
+  <ul>
+    <li><b>Answer frame:</b> access pattern → structure → cost.</li>
+    <li><b>Leaderboard</b> → skip list (Redis sorted set).</li>
+    <li><b>Typeahead</b> → trie (<a href="20-dotnet-system-design-use-cases.html#autocomplete">20.3</a>).</li>
+    <li><b>Nearby ATMs</b> → geohash (<a href="20-dotnet-system-design-use-cases.html#proximity">20.4</a>, <a href="06-databases-data.html#geo">6.6</a>).</li>
+  </ul>
+  <p class="tip">Deeper: <a href="06-databases-data.html#indexing">indexing</a>, <a href="06-databases-data.html#search">search</a>, <a href="05-caching.html#probabilistic">Bloom filter &amp; HyperLogLog</a>, <a href="23-software-design-coding.html#bigo">Big-O &amp; .NET collections</a>.</p>
+
+  <div class="remember"><ul>
+    <li>Hash = O(1) but <b>no ranges</b>. Need order → tree or skip list.</li>
+    <li><b>B+tree reads, LSM writes.</b> Bloom filters keep LSM reads cheap.</li>
+    <li>Top-K = <b>min-heap of size K</b>, O(n log K).</li>
+    <li>Geohash search must check <b>neighbouring cells</b>.</li>
+    <li>A <b>bounded</b> buffer gives back-pressure: block or drop.</li>
+  </ul></div>
+
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Dictionary / HashSet</b></td><td><span class="pill builtin">built-in</span> <code>System.Collections.Generic</code></td><td>Hash tables: O(1) average lookups, "seen before?"</td></tr>
+    <tr><td><b>SortedDictionary / SortedSet</b></td><td><span class="pill builtin">built-in</span> <code>System.Collections.Generic</code></td><td>Self-balancing (red-black) tree: ordered keys, min/max, ranges via <code>SortedSet.GetViewBetween</code></td></tr>
+    <tr><td><b>PriorityQueue&lt;TElement,TPriority&gt;</b></td><td><span class="pill builtin">built-in</span> <code>System.Collections.Generic</code></td><td>Array-backed quaternary min-heap: top-K, schedulers. Equal priorities are not FIFO</td></tr>
+    <tr><td><b>FrozenDictionary / FrozenSet</b></td><td><span class="pill builtin">built-in</span> <code>System.Collections.Frozen</code></td><td>Read-only hash lookups built once at startup, fastest reads</td></tr>
+    <tr><td><b>Bounded Channel&lt;T&gt;</b></td><td><span class="pill builtin">built-in</span> <code>System.Threading.Channels</code></td><td>Bounded buffer with back-pressure; <code>FullMode</code>: Wait, DropOldest, DropNewest, DropWrite</td></tr>
+    <tr><td><b>StackExchange.Redis</b></td><td><code>StackExchange.Redis</code></td><td>Sorted sets (<code>SortedSetAddAsync</code>, rank, range) and GEO commands</td></tr>
+    <tr><td><b>Lucene.NET</b></td><td><code>Lucene.Net</code> <span class="pill preview">preview</span></td><td>In-process inverted index (4.8.0 is still beta). Most teams use a search service</td></tr>
+  </table>
+<pre class="code"><code>// Top-K largest payments: keep a min-heap of size K, O(n log K)
+static List&lt;Payment&gt; TopK(IEnumerable&lt;Payment&gt; all, int k)
+{
+    var heap = new PriorityQueue&lt;Payment, decimal&gt;(k);
+    foreach (var p in all)
+    {
+        if (heap.Count &lt; k) heap.Enqueue(p, p.Amount);
+        else if (p.Amount &gt; heap.Peek().Amount) heap.EnqueueDequeue(p, p.Amount);
+    }
+    return heap.UnorderedItems.Select(x =&gt; x.Element)
+               .OrderByDescending(p =&gt; p.Amount).ToList();
+}
+
+// Ring-buffer style log queue: never grows, drops the oldest when full
+var logs = Channel.CreateBounded&lt;string&gt;(new BoundedChannelOptions(10_000)
+    { FullMode = BoundedChannelFullMode.DropOldest, SingleReader = true });</code></pre>
+</div>
+
+  <div class="post">
+    <p>Every "big system" is a handful of data structures wearing a trench coat 🧥</p>
+    <p>⚡ Redis cache → hash table. Leaderboard → skip list.</p>
+    <p>🗄️ SQL index → B+tree. Cassandra / RocksDB → LSM tree.</p>
+    <p>🔎 Elasticsearch → inverted index. Typeahead → trie.</p>
+    <p>📍 "ATMs near me" → geohash cells. Job scheduler → heap.</p>
+    <p>In a design interview, don't start with the product. Start with the access pattern: point, range, prefix, top-K or nearby. The structure follows.</p>
+    <p>Which one surprised you most in production?</p>
+    <p>#SystemDesign #DataStructures #SoftwareArchitecture #Backend</p>
+  </div>
+</section>
+
+<!-- WHAT HAPPENS WHEN YOU TYPE A URL -->
+<section class="concept" id="url-journey">
+  <h2><span class="num">1.11</span> What happens when you type a URL <span class="tag-added">Added</span></h2>
+  <p class="oneliner">The classic opener: walk one request from the address bar to <b>DNS</b>, <b>TCP/QUIC</b>, <b>TLS</b>, the edge, your backend and back to <b>pixels on screen</b>.</p>
+
+<figure class="viz" data-viz="journey"><script type="application/json">
+{"title":"https://bank.example/accounts: every step","stepMs":1100,
+ "steps":[
+  {"icon":"⌨️","t":"Parse the URL","d":"scheme, host, path; <b>HSTS</b> list forces https","c":"slate"},
+  {"icon":"🗂️","t":"Check caches","d":"browser HTTP cache, browser + OS DNS cache, hosts file","c":"slate","indent":1},
+  {"icon":"🌐","t":"DNS lookup","d":"recursive resolver → root → TLD → authoritative; answer cached for its <b>TTL</b>","tag":"2.4 DNS","href":"02-networking-protocols.html#dns","c":"teal"},
+  {"icon":"🤝","t":"TCP handshake","d":"SYN, SYN-ACK, ACK (1 RTT); or <b>QUIC</b> over UDP for HTTP/3","tag":"2.2 TCP/UDP","href":"02-networking-protocols.html#tcp-udp","c":"blue"},
+  {"icon":"🔒","t":"TLS 1.3 handshake","d":"key share + certificate; browser checks chain, hostname, expiry (1 RTT)","tag":"12.6 TLS","href":"12-security-iam.html#tls","c":"purple"},
+  {"icon":"📨","t":"HTTP request","d":"GET /accounts, cookies, Accept-Encoding; HTTP/2 or HTTP/3","tag":"2.3 HTTP","href":"02-networking-protocols.html#http","c":"blue"},
+  {"icon":"🛡️","t":"CDN edge + WAF","d":"nearest PoP; cache hit returns here; WAF and DDoS filter","tag":"5.6 CDN","href":"05-caching.html#cdn","c":"teal","indent":1},
+  {"icon":"⚖️","t":"Load balancer","d":"healthy instance, L4 or L7","tag":"3.3 LB","href":"03-scalability-reliability.html#lb","c":"slate","indent":1},
+  {"icon":"🚪","t":"API gateway","d":"validate token, rate limit, route","tag":"9.3 APIM","href":"09-apim.html#policies","c":"purple","indent":1},
+  {"icon":"⚙️","t":"App server","d":"middleware, auth, business logic","tag":"18.1 E2E","href":"18-system-design-playbook.html#e2e","c":"blue","indent":1},
+  {"icon":"⚡","t":"Cache, then database","d":"cache-aside; indexed query on a miss","tag":"5.2 Caching","href":"05-caching.html#strategies","c":"red","indent":1},
+  {"icon":"📦","t":"Response","d":"200 + <b>Content-Encoding: br</b>, <b>Cache-Control</b>, ETag","c":"green"},
+  {"icon":"🎨","t":"Browser renders","d":"HTML → <b>DOM</b>, CSS → <b>CSSOM</b> → render tree → layout → paint","c":"pink"}
+ ]}
+</script></figure>
+
+  <h3>How it works, step by step</h3>
+  <ul>
+    <li><b>HSTS:</b> a host on the HSTS list is upgraded to https before anything is sent.</li>
+    <li><b>Caches first:</b> a fresh HTTP cache entry skips the network; a cached DNS answer skips the lookup.</li>
+    <li><b>DNS:</b> the <b>recursive resolver</b> walks <b>root → TLD → authoritative</b>. The answer is often a CNAME to a CDN, cached for the <b>TTL</b>.</li>
+    <li><b>Connect:</b> TCP handshake, then <b>TLS 1.3</b> (SNI, ALPN, certificate, keys). <b>QUIC</b> does both in one round trip.</li>
+    <li><b>Response:</b> compressed (<b>br</b>/gzip) with <b>Cache-Control</b> and <b>ETag</b>, so the next visit is cheaper.</li>
+    <li><b>Render:</b> sub-resources reuse the connection; render-blocking JS delays first paint.</li>
+  </ul>
+
+<figure class="viz" data-viz="bars"><script type="application/json">
+{"title":"Round trips before the request can be sent (after DNS)","max":3,
+ "rows":[
+  {"label":"TCP + TLS 1.2","v":3,"show":"3 RTT","c":"red","note":"legacy"},
+  {"label":"TCP + TLS 1.3","v":2,"show":"2 RTT","c":"amber","note":"HTTP/1.1, HTTP/2"},
+  {"label":"QUIC (HTTP/3)","v":1,"show":"1 RTT","c":"green","note":"transport + TLS together"},
+  {"label":"QUIC 0-RTT resume","v":0.15,"show":"0 RTT","c":"teal","note":"repeat visit; replay risk, safe GETs only"}
+ ]}
+</script></figure>
+
+  <h3>Trade-offs you tune at each layer</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Layer</th><th>Knob</th><th>Trade-off</th></tr>
+    <tr><td>DNS</td><td>TTL</td><td>Long = fewer lookups, slow failover</td></tr>
+    <tr><td>TLS</td><td>Cert lifetime</td><td>Short = safer, must automate renewal</td></tr>
+    <tr><td>CDN</td><td>Cache TTL</td><td>Higher hit ratio vs stale content</td></tr>
+    <tr><td>Load balancer</td><td>Sticky sessions</td><td>Simple state vs uneven load</td></tr>
+    <tr><td>Response</td><td>Compression</td><td>Fewer bytes vs CPU</td></tr>
+  </table></div>
+
+  <div class="grid">
+    <div class="box green"><h4>🎤 How to answer in an interview</h4><p><b>1. Breadth first:</b> walk the whole path in about 60-90 s, one line per layer.<br><b>2. Ask:</b> "Which layer shall I go deep on?"<br><b>3. Go deep</b> with numbers: RTTs, TTLs, cache hit ratio.<br><b>4. Close</b> with failures and how you'd observe them (traces, p99).</p></div>
+    <div class="box amber"><h4>⚠️ Common slips</h4><p>Skipping caches, HSTS or the certificate check. Stopping at the server and forgetting rendering.</p></div>
+  </div>
+
+  <div class="remember"><ul>
+    <li><b>Breadth first, then depth</b>: let the interviewer choose the layer.</li>
+    <li>DNS: <b>resolver → root → TLD → authoritative</b>, cached for the TTL.</li>
+    <li>TLS 1.3 = <b>1 RTT</b>; QUIC folds TCP + TLS into <b>1 RTT</b>.</li>
+    <li>Edge order: <b>CDN/WAF → LB → gateway → app → cache → DB</b>.</li>
+    <li>Render: <b>DOM + CSSOM → render tree → layout → paint</b>.</li>
+  </ul></div>
+
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Kestrel</b></td><td><span class="pill builtin">built-in</span> ASP.NET Core</td><td>The web server. HTTP/3 is <b>off by default</b>: set <code>Http1AndHttp2AndHttp3</code> + HTTPS; it adds <code>alt-svc</code> for you</td></tr>
+    <tr><td><b>HttpClient / SocketsHttpHandler</b></td><td><span class="pill builtin">built-in</span> <code>System.Net.Http</code></td><td>Outbound calls. HTTP/3 is opt-in: <code>DefaultRequestVersion = 3.0</code> + <code>RequestVersionOrHigher</code>; falls back if QUIC is missing</td></tr>
+    <tr><td><b>HSTS + HTTPS redirect</b></td><td><span class="pill builtin">built-in</span> <code>UseHsts</code>, <code>UseHttpsRedirection</code></td><td>Send the Strict-Transport-Security header; redirect http to https</td></tr>
+    <tr><td><b>Response compression</b></td><td><span class="pill builtin">built-in</span> <code>AddResponseCompression</code></td><td>Brotli + Gzip. HTTPS is off by default (CRIME/BREACH); prefer CDN or proxy compression</td></tr>
+    <tr><td><b>Output caching</b></td><td><span class="pill builtin">built-in</span> <code>AddOutputCache</code>, <code>CacheOutput()</code></td><td>Cache whole responses on the server, with tags for eviction</td></tr>
+    <tr><td><b>Output cache in Redis</b></td><td><code>Microsoft.AspNetCore.OutputCaching.StackExchangeRedis</code></td><td>Share the output cache across instances</td></tr>
+  </table>
+<pre class="code"><code>var builder = WebApplication.CreateBuilder(args);
+builder.WebHost.ConfigureKestrel(k =&gt; k.ListenAnyIP(5001, o =&gt;
+{
+    o.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;   // needs MsQuic
+    o.UseHttps();
+}));
+builder.Services.AddResponseCompression();
+builder.Services.AddOutputCache();
+
+var app = builder.Build();
+app.UseHsts();
+app.UseHttpsRedirection();
+app.UseResponseCompression();
+app.UseOutputCache();
+
+app.MapGet("/rates", () =&gt; Rates.Today())
+   .CacheOutput(p =&gt; p.Expire(TimeSpan.FromSeconds(30)));
+app.Run();</code></pre>
+  <p class="warn">HTTP/3 in .NET needs <b>MsQuic</b>: built in on Windows 11 / Server 2022+, install <code>libmsquic</code> on Linux. Always keep HTTP/1.1 and HTTP/2 enabled as a fallback.</p>
+</div>
+
+  <div class="post">
+    <p>"What happens when you type a URL?" is not a trivia question. It's a map of your whole stack 🗺️</p>
+    <p>🌐 DNS: resolver → root → TLD → authoritative, cached for the TTL.</p>
+    <p>🤝 TCP + TLS 1.3 = 2 round trips. HTTP/3 over QUIC = 1.</p>
+    <p>🛡️ CDN + WAF → load balancer → API gateway → app → cache → DB.</p>
+    <p>🎨 Back in the browser: DOM + CSSOM → layout → paint.</p>
+    <p>The best answer goes breadth first, then asks the interviewer which layer to go deep on. That one question shows you know the whole system.</p>
+    <p>Which layer do you always get asked about?</p>
+    <p>#SystemDesign #Networking #WebPerformance #InterviewPrep</p>
+  </div>
+</section>
+
 <div class="qa-wrap">
   <h2>⚡ Quick-fire Q&amp;A</h2>
   <details class="qa"><summary>Why are threads cheaper than processes?</summary><p>They share the parent's memory and resources, so creating and switching them needs no new address space.</p></details>
   <details class="qa"><summary>Is async always better?</summary><p>No. It adds complexity (ordering, retries, eventual consistency). Use it when decoupling, spike absorption or long-running work justify it.</p></details>
   <details class="qa"><summary>Why does p99 latency matter more than average?</summary><p>If one page calls 10 services, most users hit at least one tail-latency call. The average hides the pain.</p></details>
+  <details class="qa"><summary>How do you prevent deadlocks?</summary><p>Break one Coffman condition: take locks in one global order (no circular wait), use timeouts and release on failure, keep lock scope small, and avoid locks with immutable data or atomic operations. Databases detect deadlocks and kill a victim, so retry it.</p></details>
+  <details class="qa"><summary>Optimistic or pessimistic concurrency?</summary><p>Optimistic (row version / ETag, retry on conflict) when conflicts are rare; pessimistic (SELECT ... FOR UPDATE in a short transaction) when the row is hot and retries are costly.</p></details>
+  <details class="qa"><summary>Actors or shared memory with locks?</summary><p>Actors when you have many independent stateful entities (accounts, devices, sessions): each owns its state and handles one message at a time, so no locks. Shared memory with locks for a few hot fields inside one process, where message passing would only add overhead.</p></details>
+  <details class="qa"><summary>What breaks an event loop?</summary><p>Any CPU-heavy or blocking call on the loop thread: every other request waits behind it. Move CPU work to worker threads and keep I/O async.</p></details>
+  <details class="qa"><summary>Why did our container get OOM-killed when the app never threw OutOfMemoryException?</summary><p>The container hit its cgroup memory limit, so the kernel killed the process with SIGKILL (exit code 137, <code>OOMKilled</code>). Nothing in the app gets a chance to run. Compare the limit with working set, look for unbounded caches or queues, and capture a dump with <code>dotnet-dump</code> while memory climbs.</p></details>
+  <details class="qa"><summary>Why can an async server handle 10,000 connections on a handful of threads?</summary><p>Waiting sockets are registered with the kernel (epoll, kqueue, IOCP, io_uring) instead of each holding a blocked thread. The kernel reports which ones are ready or done, and a few threads run just those. Threads only cost something when there's work to do.</p></details>
+  <details class="qa"><summary>When is a write actually durable?</summary><p>When it's on stable storage, not just in the OS page cache: after <code>fsync</code> (or a write-through write) returns. Databases fsync the write-ahead log on commit and group commits to share one fsync. In a replicated system, durable usually also means acknowledged by N replicas.</p></details>
+  <details class="qa"><summary>Why do analytics systems store data by column?</summary><p>Reports scan a few columns over millions of rows. Columnar formats like Parquet read only those columns, compress similar values well, and skip row groups using min/max stats. Row stores suit OLTP, where you fetch or update whole records.</p></details>
+  <details class="qa"><summary>Why do write-heavy stores like Cassandra use an LSM tree instead of a B+tree?</summary><p>An LSM tree turns writes into sequential appends (WAL + memtable, flushed to SSTables), so ingest is fast. The cost is reads across several files and background compaction; Bloom filters keep those reads cheap.</p></details>
+  <details class="qa"><summary>Which structure would you use for a real-time leaderboard?</summary><p>A Redis sorted set (a skip list plus a hash): O(log n) score updates, rank lookup and top-N range queries.</p></details>
+  <details class="qa"><summary>What happens when you type a URL? (the short version)</summary><p>URL parse + HSTS, caches, DNS (resolver → root → TLD → authoritative), TCP + TLS 1.3 (or QUIC), HTTP request through CDN/WAF, load balancer, gateway, app, cache, DB, then a compressed, cacheable response the browser turns into DOM + CSSOM → layout → paint. Go breadth first, then ask which layer to go deep on.</p></details>
+  <details class="qa"><summary>Why is HTTP/3 faster to connect than HTTP/2?</summary><p>HTTP/2 needs a TCP handshake and then a TLS 1.3 handshake (2 round trips). HTTP/3 runs over QUIC, which combines transport and TLS into 1 round trip, or 0 on a resumed connection.</p></details>
 </div>
 
 <div class="pager"><a href="index.html">← Roadmap</a><a class="next" href="02-networking-protocols.html">02 · Networking &amp; Protocols →</a></div>
