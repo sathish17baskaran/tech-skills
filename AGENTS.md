@@ -39,7 +39,7 @@ There's no framework and no build step. Every page is a hand-written HTML file t
 ## Files
 | Path | What it is |
 |---|---|
-| `index.html` | Roadmap: hero, learning path, section cards, LinkedIn kit, posting plan |
+| `index.html` | Roadmap: hero, learning path, section cards, LinkedIn kit |
 | `NN-name.html` | One page per section (01–28). The number is the page order |
 | `26-leadership-behavioural-questions.html` | Redirect stub to `26-solution-architect-behavioural-questions.html`. Keep it so old links work |
 | `assets/style.css` | All styles. Later rules override earlier ones, so append overrides at the end |

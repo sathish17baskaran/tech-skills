@@ -1,7 +1,6 @@
 ﻿# Rebuilds index.html: the section cards (from each page's hero toc) and the learning-path rows.
 # Add a new page to $cards and to the $path rows, then run:
 #   powershell -ExecutionPolicy Bypass -File tools\build-index.ps1
-# The LinkedIn posting plan table in index.html is edited by hand.
 $ErrorActionPreference = 'Stop'
 $dir = Split-Path -Parent $PSScriptRoot
 $enc = New-Object Text.UTF8Encoding $false
