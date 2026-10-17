@@ -19,7 +19,8 @@ Each of these appears inside other sections, but has no dedicated concept sectio
 ## Site features
 - [ ] **Full-text search** across all pages. The menu filter only matches page and section titles. One option: a generated JSON index plus a small client-side search box.
 - [ ] **Progress tracking**: a "done" tick per section saved in `localStorage`, with a per-page percentage in the menu.
-- [ ] **Flashcard / quiz mode** built from the quick-fire Q&A and the behavioural questions: random card, reveal the answer, mark it known.
+- [x] **Flashcard / quiz mode**: done as the "Quick revise" panel on every page plus `revise.html` (see AGENTS.md "Quick revise data").
+- [ ] Spaced repetition for flashcards: show cards marked "Again" sooner, and track a per-page quiz best score.
 - [ ] **Dark mode** via `prefers-color-scheme`. Colours already use CSS variables in `assets/style.css`.
 - [ ] **LinkedIn carousel export**: turn a section's post and diagram into square image slides.
 - [ ] **Print / PDF-friendly** pages: expand all frames, hide the menu, avoid page breaks inside cards.
@@ -29,6 +30,15 @@ Each of these appears inside other sections, but has no dedicated concept sectio
 - [ ] Accessibility pass: colour contrast, keyboard focus on diagram frame buttons and menu toggles, alt text and aria labels on hand-made SVGs.
 - [ ] Learning path on `index.html`: the last row (25–28) wraps at desktop width and leaves a dangling arrow. Split it into balanced rows in `tools/build-index.ps1`.
 - [ ] Trim the behavioural answers that run past about 330 words (some on pages 26–28).
+
+## Content fixes reported while writing the revise data
+- [ ] 03, section 3.8: the "see 06 API performance" and "see 04 Caching" links point at the wrong pages (API design is 08, caching is 05).
+- [ ] 04, sections 4.1 to 4.3: "see 3.10" should be 3.11 (CAP), and "consistency models in 3.11" should be 3.12 (PACELC).
+- [ ] 01, section 1.5: "memory is about 1,000x faster than a network hop" disagrees with the page's own table (about 5,000x).
+- [ ] 18: the hero kicker says "Section 15", and the 18.1 journey tags use old section numbers (S04 Caching, S10 IAM and others).
+- [ ] 24, section 24.1: Thoughtworks renamed the radar ring "Hold" to "Caution" (Volume 34, April 2026).
+- [ ] 27 and 28: some stories are told as "architect" or "principal engineer" (27: Q4, Q28, Q29; 28: Q24, Q26, Q31, Q33). Reword them for the page's role.
+- [ ] 16, section 16.5: recheck the card surcharge ban date (1 October 2026) online.
 
 ## Maintenance
 - [ ] When .NET 11 ships (expected November 2026), recheck the `.dotnet` boxes:

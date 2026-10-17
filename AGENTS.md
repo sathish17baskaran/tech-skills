@@ -46,6 +46,10 @@ There's no framework and no build step. Every page is a hand-written HTML file t
 | `tools/build-nav.ps1` | Rewrites `nav.top` and the bottom pager on every page from its ordered `$pages` list |
 | `tools/build-index.ps1` | Rebuilds the index section cards (from each page's toc) and learning-path rows |
 | `tools/check-pages.ps1` | Structure and link check for all pages |
+| `revise.html` | Last-minute revision hub: pick pages, then flashcards, a 10-question quiz, a printable cram sheet, mind map and "how to answer" |
+| `assets/revise.js` | The "⚡ Quick revise" panel under each page hero (mind map, flashcards, quiz, how to answer) and Revise mode; also renders `revise.html` |
+| `assets/revise/NN.js` | Quick-revision data for page NN. See "Quick revise data" below |
+| `tools/check-revise.mjs` | Validates the revise data against each page: `node tools/check-revise.mjs [NN ...]` |
 | `render.yaml` | Render static-site blueprint |
 
 ## Page anatomy
@@ -139,7 +143,33 @@ Example:
 ```
 Long labels wrap or clip on phones, so keep node labels to a few words and put detail in `caption` or `sub`.
 
+## Quick revise data (`assets/revise/NN.js`)
+Each page has a data file that drives its Quick revise panel, Revise mode and the `revise.html` hub. Pages are for reading; this layer is for last-minute recall, so keep it crisp.
+
+```js
+(window.REVISE = window.REVISE || {})['NN'] = {
+  approach: [['Step', 'detail'], …],     // 4–7 steps to answer any question on this topic
+  traps: ['Common mistake', …],           // optional, 1–5
+  sections: {                             // one entry per <section class="concept" id>, ids must match exactly
+    'section-id': {
+      say: '30-second spoken answer',     // 12–70 words
+      k: ['keyword', …],                  // 4–8 keyword chips
+      p: ['key point', …],                // 2–4 one-line points
+      f: [['flashcard question', 'answer'], …],                 // 1–8
+      q: [{ q: 'question', o: ['A', 'B', 'C', 'D'], a: 0, e: 'why' }]   // 1–2, a = index of the right option
+    }
+  }
+};
+```
+- Use `05.js` as the model.
+- Quiz options are shuffled at runtime, so never use "all/none of the above".
+- Simple inline HTML (`<b>`, `<code>`) is allowed. No scripts.
+- Behavioural pages (26–28): one flashcard per question card. The front is `'QN. question'`, and the back is a STAR skeleton written as `'<b>S</b> … <b>T</b> … <b>A</b> … <b>R</b> …'`; the panel puts each letter on its own line. Quiz items ask "what is the interviewer really testing?".
+- `tools/build-menu.ps1` adds the `<script>` tags for the data file and `revise.js` to every page that has data, and lists all data files in `revise.html`. Run it after adding a data file.
+- Progress is stored in `localStorage`: `tcp-known` (known cards), `tcp-rv-tab` (last tab) and `tcp-rv-mode` (Revise mode).
+
 ## Common changes
+- **Change a page's sections:** update its `assets/revise/NN.js` to match (add, remove or rename section keys), then run `node tools/check-revise.mjs NN`.
 - **Add a section to a page:**
   1. Insert it where it fits.
   2. Renumber every later `span.num` on that page.
@@ -148,7 +178,8 @@ Long labels wrap or clip on phones, so keep node labels to a few words and put d
 - **Add a page:**
   1. Create `NN-name.html` from a similar page.
   2. Add it to `$pages` in `tools/build-nav.ps1`, to `$cards` and the `$path` rows in `tools/build-index.ps1`, and to a context group in `tools/build-menu.ps1`.
-  3. Run all three, then `check-pages`.
+  3. Write its `assets/revise/NN.js`.
+  4. Run all three, then `check-pages` and `check-revise`.
 - **Rename or remove a page:** leave a redirect stub at the old file name. A page with `<meta http-equiv="refresh">` is skipped by the menu builder. Then update all links.
 - **Change the menu grouping:** edit `$groups` in `tools/build-menu.ps1`. Pages keep their numbers, and the pager stays in number order.
 
@@ -160,7 +191,7 @@ Long labels wrap or clip on phones, so keep node labels to a few words and put d
 - PowerShell variable names are case-insensitive: `$D` and `$d` are the same variable.
 
 ## Before you commit
-1. `tools\check-pages.ps1` prints no `CHECK` lines.
+1. `tools\check-pages.ps1` prints no `CHECK` lines, and `node tools/check-revise.mjs` prints only `ok` lines.
 2. Every page you changed loads without console errors and without any `viz-err`. A quick headless check: `chrome --headless=new --dump-dom file:///…/page.html` and search the output for `viz-err`.
 3. Look at the changed sections at desktop width and at 390 px (browser device mode). Check that diagrams render and labels don't overlap, and that the page doesn't scroll sideways.
 4. Commit to `main` and push; both sites redeploy. If styles look stale, a hard refresh (Ctrl+F5) clears the browser cache.

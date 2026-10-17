@@ -40,6 +40,10 @@
   btns.appendChild(expand);
   btns.appendChild(collapse);
   tools.appendChild(btns);
+  var quick = el('a', 'side-quick', '\u26a1 Last-minute revision');
+  quick.href = 'revise.html';
+  if (here === 'revise.html') quick.classList.add('on');
+  tools.appendChild(quick);
   side.appendChild(tools);
 
   var list = el('nav', 'side-list');
