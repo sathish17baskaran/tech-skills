@@ -12,8 +12,8 @@
 
 <header class="hero">
   <div class="kicker">Section 01 · Start here</div>
-  <h1>Foundations: how programs run &amp; wait</h1>
-  <p>Before system design, get the basics clear: what actually runs on a CPU, how work is shared, and what "waiting" costs. Every later topic (async APIs, queues, scaling) builds on these.</p>
+  <h1>Foundations: computer science &amp; system design basics</h1>
+  <p>Two parts. <b>1.1–1.11, computer science basics:</b> what runs on a CPU, how work is shared and locked, what waiting costs, how memory, storage and the OS behave, the data structures behind real systems, and what happens when you type a URL. <b>1.12–1.19, system design basics:</b> the building blocks, requirements and quality attributes, scaling and partitioning, data, communication patterns, reliability, coordination, and the security and observability baseline. Each is a primer that links to the deep-dive page.</p>
   <div class="toc">
     <a href="#process-thread">Process vs Thread</a>
     <a href="#concurrency" class="added">Concurrency vs Parallelism</a>
@@ -26,6 +26,14 @@
     <a href="#storage-hierarchy" class="added">Memory &amp; storage hierarchy</a>
     <a href="#data-structures" class="added">Data structures in systems</a>
     <a href="#url-journey" class="added">Typing a URL</a>
+    <a href="#building-blocks" class="added">Building blocks</a>
+    <a href="#requirements" class="added">Requirements &amp; NFRs</a>
+    <a href="#scaling-basics" class="added">Scaling &amp; partitioning</a>
+    <a href="#data-basics" class="added">Data fundamentals</a>
+    <a href="#communication" class="added">Communication patterns</a>
+    <a href="#reliability-basics" class="added">Reliability fundamentals</a>
+    <a href="#coordination" class="added">Coordination primitives</a>
+    <a href="#security-observability-basics" class="added">Security &amp; observability baseline</a>
   </div>
   <div class="legend">Dashed chips = concepts added to your list.</div>
 </header>
@@ -1043,6 +1051,1059 @@ app.Run();</code></pre>
   </div>
 </section>
 
+<!-- BUILDING BLOCKS OF ANY SYSTEM -->
+<section class="concept" id="building-blocks">
+  <h2><span class="num">1.12</span> Building blocks of any system <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Almost every web-scale design is the same dozen <b>blocks</b>: start with <b>client → app → database</b> and add a block only when a <b>requirement</b> demands it.</p>
+
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Grow the design one block at a time","interval":3200,
+ "frames":[
+  {"label":"1. Start simple","caption":"One app, one database. Fine for a prototype or low traffic.",
+   "rows":[[{"t":"Client","c":"slate"},{"k":"arrow","g":"→"},{"t":"App","c":"blue"},{"k":"arrow","g":"→"},{"t":"DB","c":"teal"}]]},
+  {"label":"2. Scale out","caption":"More users: <b>LB</b> + <b>stateless</b> app servers; <b>read replicas</b> for read-heavy load.",
+   "rows":[[{"t":"Client","c":"slate"},{"k":"arrow","g":"→"},{"t":"LB","c":"purple"},{"k":"arrow","g":"→"},{"t":"App ×N","c":"blue"}],
+           [{"t":"Primary","c":"teal"},{"k":"arrow","g":"→"},{"t":"Replicas","c":"teal","sub":"reads"}]]},
+  {"label":"3. Cut latency","caption":"Hot reads hit a <b>cache</b>; static files come from a <b>CDN</b> near the user.",
+   "rows":[[{"t":"DNS","c":"slate"},{"k":"arrow","g":"→"},{"t":"CDN","c":"green"},{"k":"arrow","g":"→"},{"t":"LB","c":"purple"},{"k":"arrow","g":"→"},{"t":"App ×N","c":"blue"}],
+           [{"t":"Cache","c":"red","sub":"hot reads"},{"k":"arrow","g":"→"},{"t":"DB","c":"teal","sub":"on miss"}]]},
+  {"label":"4. Full web scale","caption":"Slow work goes <b>async</b>; files to <b>object storage</b>; text to a <b>search index</b>; everything emits <b>telemetry</b>.",
+   "rows":[{"label":"Edge","items":[{"t":"DNS","c":"slate"},{"k":"arrow","g":"→"},{"t":"CDN","c":"green"},{"k":"arrow","g":"→"},{"t":"LB","c":"purple"}]},
+           {"label":"Entry","items":[{"t":"Gateway","c":"purple","sub":"auth, route"},{"k":"arrow","g":"→"},{"t":"App ×N","c":"blue","sub":"stateless"}]},
+           {"label":"Data","items":[{"t":"Cache","c":"red"},{"t":"DB","c":"teal","sub":"+ replicas"},{"t":"Search","c":"amber"}]},
+           {"label":"Async","items":[{"t":"Queue","c":"pink"},{"k":"arrow","g":"→"},{"t":"Workers","c":"blue"},{"k":"arrow","g":"→"},{"t":"Blob","c":"teal"}]},
+           {"label":"Ops","items":[{"t":"Logs · metrics · traces","c":"slate"}]}]}
+ ]}
+</script></figure>
+
+  <h3>Block → job → when you add it</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Block</th><th>Its job</th><th>Add it when</th><th>Deep dive</th></tr>
+    <tr><td><b>DNS</b></td><td>Name → IP, can steer by region</td><td>Always; GeoDNS for multi-region</td><td><a href="02-networking-protocols.html#dns">2.4</a></td></tr>
+    <tr><td><b>CDN</b></td><td>Serve static/cacheable content at the edge</td><td>Global users, heavy assets</td><td><a href="05-caching.html#cdn">5.6</a></td></tr>
+    <tr><td><b>Load balancer</b></td><td>Spread traffic, drop unhealthy nodes</td><td>More than one app instance</td><td><a href="03-scalability-reliability.html#lb">3.3</a></td></tr>
+    <tr><td><b>Gateway / reverse proxy</b></td><td>Auth, rate limit, routing, TLS</td><td>Many services or public APIs</td><td><a href="09-apim.html#compare">9.9</a></td></tr>
+    <tr><td><b>Stateless app</b></td><td>Business logic, no local session</td><td>To scale horizontally</td><td><a href="03-scalability-reliability.html#stateless">3.2</a></td></tr>
+    <tr><td><b>Cache</b></td><td>Fast reads of hot data</td><td>Read-heavy, latency target</td><td><a href="05-caching.html#strategies">5.2</a></td></tr>
+    <tr><td><b>Database</b></td><td>Source of truth; replicas for reads</td><td>Always; replicas/shards at scale</td><td><a href="06-databases-data.html#scaling">6.7</a></td></tr>
+    <tr><td><b>Queue / stream</b></td><td>Decouple, buffer spikes</td><td>Slow or bursty work, fan-out</td><td><a href="10-integration-messaging.html#queue-event">10.3</a></td></tr>
+    <tr><td><b>Workers</b></td><td>Process jobs off the request path</td><td>Emails, reports, video, retries</td><td><a href="10-integration-messaging.html#kafka">10.9</a></td></tr>
+    <tr><td><b>Object storage</b></td><td>Cheap, durable files/blobs</td><td>Uploads, media, backups</td><td><a href="06-databases-data.html#storage">6.8</a></td></tr>
+    <tr><td><b>Search index</b></td><td>Full-text and faceted queries</td><td>"Search" or "filter" requirement</td><td><a href="06-databases-data.html#search">6.5</a></td></tr>
+    <tr><td><b>Observability</b></td><td>Logs, metrics, traces, alerts</td><td>Always, from day one</td><td><a href="13-devops-deployment-observability.html#observability">13.9</a></td></tr>
+  </table></div>
+
+  <h3>Gaps worth knowing</h3>
+  <div class="grid">
+    <div class="box blue"><h4>Client-server vs peer-to-peer</h4><p><b>Client-server:</b> clients call a central server that owns the data. Easy to secure, govern and update; the server must scale. <b>P2P:</b> every node is both client and server (BitTorrent, blockchain, WebRTC media). No central bottleneck, scales with users, but hard to trust, secure and keep consistent. Banking and most business systems are client-server.</p></div>
+    <div class="box teal"><h4>GeoDNS and anycast</h4><p><b>GeoDNS:</b> the DNS server answers with a different IP based on the resolver's location (latency or geo policy). Failover is limited by <b>TTL</b> caching. <b>Anycast:</b> many sites announce the <b>same IP</b> over BGP; the network delivers you to the nearest one. Used by CDNs, public DNS and global load balancers; fails over in seconds, no DNS change.</p></div>
+  </div>
+
+  <div class="tablewrap"><table>
+    <tr><th></th><th>Forward proxy</th><th>Reverse proxy</th></tr>
+    <tr><td>Sits in front of</td><td><b>Clients</b></td><td><b>Servers</b></td></tr>
+    <tr><td>Hides</td><td>Who the client is</td><td>Which server answers</td></tr>
+    <tr><td>Used for</td><td>Egress control, URL filtering, caching</td><td>TLS offload, routing, LB, caching, WAF</td></tr>
+    <tr><td>Examples</td><td>Corporate web proxy, Squid</td><td>NGINX, Envoy, YARP, API gateway</td></tr>
+  </table></div>
+
+  <div class="grid">
+    <div class="box green"><h4>🎯 Interview angle: "Draw a high-level design"</h4><p><b>1. Clarify</b> requirements and scale first (<a href="#requirements">1.13</a>, <a href="#estimation">1.5</a>).<br><b>2. Draw the simple path:</b> client → API → service → DB.<br><b>3. Add blocks by requirement</b> and say why: "reads are 100:1, so a cache".<br><b>4. Walk one request</b> end to end through the boxes.<br><b>5. Name failure points</b> and how you'd see them (metrics, traces).</p></div>
+    <div class="box amber"><h4>⚠️ Common slips</h4><p>Drawing Kafka, Redis and a service mesh in minute one with no requirement behind them. No observability.</p></div>
+  </div>
+
+  <div class="remember"><ul>
+    <li><b>Start simple</b>; every extra box needs a requirement behind it.</li>
+    <li>Edge order: <b>DNS → CDN → LB → gateway → stateless app</b>.</li>
+    <li>Data: <b>cache</b> for hot reads, <b>replicas</b> for read scale, <b>queue</b> for slow work.</li>
+    <li><b>Reverse proxy</b> protects servers; <b>forward proxy</b> controls clients.</li>
+    <li><b>GeoDNS</b> steers by answer (TTL-bound); <b>anycast</b> steers by routing (same IP).</li>
+  </ul></div>
+
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>YARP</b></td><td><code>Yarp.ReverseProxy</code> (2.3.0)</td><td>Reverse proxy / lightweight gateway: routes, clusters, load balancing, health checks, transforms</td></tr>
+    <tr><td><b>Rate limiting</b></td><td><span class="pill builtin">built-in</span> <code>AddRateLimiter</code></td><td>Per-route limits; YARP routes can reference a <code>RateLimiterPolicy</code></td></tr>
+    <tr><td><b>HybridCache</b></td><td><code>Microsoft.Extensions.Caching.Hybrid</code></td><td>In-memory + distributed cache with stampede protection</td></tr>
+    <tr><td><b>OpenTelemetry</b></td><td><code>OpenTelemetry.Extensions.Hosting</code></td><td>Logs, metrics and traces for the observability block</td></tr>
+  </table>
+<pre class="code"><code>// Program.cs
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddReverseProxy()
+       .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
+var app = builder.Build();
+app.MapReverseProxy();
+app.Run();
+
+// appsettings.json
+"ReverseProxy": {
+  "Routes": {
+    "accounts": {
+      "ClusterId": "accounts",
+      "Match": { "Path": "/accounts/{**catch-all}" }
+    }
+  },
+  "Clusters": {
+    "accounts": {
+      "LoadBalancingPolicy": "RoundRobin",
+      "HealthCheck": { "Active": { "Enabled": true, "Path": "/health" } },
+      "Destinations": {
+        "a1": { "Address": "https://accounts-1:8443/" },
+        "a2": { "Address": "https://accounts-2:8443/" }
+      }
+    }
+  }
+}</code></pre>
+  <p class="tip">YARP is a library, not a product: you host it in ASP.NET Core and add auth, rate limiting and telemetry with normal middleware. For a managed gateway with developer portal and subscriptions, use an APIM product (<a href="09-apim.html#what">9.1</a>).</p>
+</div>
+
+  <div class="post">
+    <p>Every system design interview uses the same dozen boxes. The skill is knowing when to draw each one 🧱</p>
+    <p>🌍 DNS + CDN: get users to the nearest edge.</p>
+    <p>⚖️ Load balancer + stateless apps: scale out by adding copies.</p>
+    <p>⚡ Cache + read replicas: survive read-heavy traffic.</p>
+    <p>📬 Queue + workers: move slow work off the request path.</p>
+    <p>🔭 Logs, metrics, traces: from day one, not after the first outage.</p>
+    <p>Start with client → app → database. Add a box only when a requirement asks for it, and say which one. That's what interviewers listen for.</p>
+    <p>Which box do you see added too early most often?</p>
+    <p>#SystemDesign #SoftwareArchitecture #InterviewPrep #DotNet</p>
+  </div>
+</section>
+
+<!-- REQUIREMENTS AND QUALITY ATTRIBUTES -->
+<section class="concept" id="requirements">
+  <h2><span class="num">1.13</span> Requirements and quality attributes <span class="tag-added">Added</span></h2>
+  <p class="oneliner"><b>Functional</b> requirements say <b>what</b> the system does; <b>non-functional</b> ones (the "-ilities") say <b>how well</b>, and only count when they have a <b>number</b>.</p>
+
+  <div class="grid">
+    <div class="box blue"><h4>Functional (FR)</h4><p>Features and behaviour: "a customer can <b>transfer money</b>", "an admin can <b>reverse</b> a payment". Write as <b>user stories</b> or use cases; they shape the <b>APIs and data model</b>.</p></div>
+    <div class="box purple"><h4>Non-functional (NFR)</h4><p>Qualities and constraints: speed, uptime, security, cost. They shape the <b>architecture</b>: replicas, caches, regions, queues. Full catalogue: <a href="17-architecture-documents.html#nfr">17.9</a>; trade-offs: <a href="24-architecture-practice.html#quality">24.2</a>.</p></div>
+  </div>
+
+  <h3>Quantify every "-ility"</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Attribute</th><th>How to state it</th><th>Example target</th></tr>
+    <tr><td><b>Latency</b></td><td>Percentiles, not averages</td><td>p95 &lt; 200 ms, p99 &lt; 500 ms</td></tr>
+    <tr><td><b>Throughput</b></td><td>Average and peak req/s or TPS</td><td>2k req/s avg, 10k peak</td></tr>
+    <tr><td><b>Availability</b></td><td>Nines over a window (SLO)</td><td>99.95% monthly (<a href="03-scalability-reliability.html#availability">3.7</a>, <a href="03-scalability-reliability.html#sla">3.10</a>)</td></tr>
+    <tr><td><b>Durability</b></td><td>Chance of losing stored data</td><td>Zero loss of committed payments</td></tr>
+    <tr><td><b>RPO / RTO</b></td><td>Max data loss / max downtime after disaster</td><td>RPO 0, RTO 15 min (<a href="03-scalability-reliability.html#dr">3.13</a>)</td></tr>
+    <tr><td><b>Consistency</b></td><td>Strong or eventual, per data type</td><td>Balance strong; feed eventual (<a href="03-scalability-reliability.html#pacelc">3.12</a>)</td></tr>
+    <tr><td><b>Scalability</b></td><td>Growth target and headroom</td><td>10× users in 2 years</td></tr>
+    <tr><td><b>Security / compliance</b></td><td>Controls and regulations named</td><td>MFA, encryption, data residency</td></tr>
+    <tr><td><b>Cost</b></td><td>Budget per month or per transaction</td><td>&lt; $0.001 per request</td></tr>
+    <tr><td><b>Maintainability</b></td><td>Change speed, deploy safety</td><td>Daily deploys, MTTR &lt; 1 h</td></tr>
+  </table></div>
+
+<figure class="viz" data-viz="bars"><script type="application/json">
+{"title":"Allowed downtime per year (bar length on a log scale)","max":5,
+ "rows":[
+  {"label":"99%","v":4.9,"show":"3.65 days","c":"red"},
+  {"label":"99.9%","v":3.9,"show":"8.76 h","c":"amber"},
+  {"label":"99.95%","v":3.4,"show":"4.38 h","c":"amber"},
+  {"label":"99.99%","v":2.7,"show":"52.6 min","c":"green","note":"needs auto failover"},
+  {"label":"99.999%","v":1.7,"show":"5.26 min","c":"teal","note":"multi-region, very costly"}
+ ]}
+</script></figure>
+
+  <h3>Read/write ratio and access patterns</h3>
+  <ul>
+    <li><b>Read:write ratio</b> drives the design: 100:1 → cache + replicas; write-heavy → partitioning, append-only logs, queues.</li>
+    <li><b>Access pattern:</b> key lookup, range scan, full-text, aggregate, or "latest N"? It picks the <b>database and index</b>.</li>
+    <li><b>Shape of traffic:</b> steady, daily peak, or spikes (pay day, flash sale)? Spikes call for <b>queues and autoscaling</b>.</li>
+    <li>Turn the numbers into storage and QPS with <a href="#estimation">1.5 estimation</a>.</li>
+  </ul>
+
+<figure class="viz" data-viz="steps"><script type="application/json">
+{"title":"First 5 minutes: clarifying questions","stepMs":900,"holdMs":3000,
+ "items":[
+  {"k":"Users","t":"Who uses it, how many, where? <b>DAU</b>, regions","c":"blue"},
+  {"k":"Scope","t":"Top 3 features in scope; what is <b>out</b>?","c":"blue"},
+  {"k":"Scale","t":"Peak req/s, data size, growth","c":"purple"},
+  {"k":"Ratio","t":"Read:write ratio, access patterns","c":"purple"},
+  {"k":"Latency","t":"p95/p99 target for the key path","c":"amber"},
+  {"k":"Uptime","t":"Nines, RPO/RTO, multi-region?","c":"amber"},
+  {"k":"Consistency","t":"Where must it be strong?","c":"red"},
+  {"k":"Security","t":"PII, compliance, residency","c":"red"},
+  {"k":"Constraints","t":"Budget, team skills, existing platforms, deadline","c":"teal"}
+ ]}
+</script></figure>
+
+  <div class="grid">
+    <div class="box green"><h4>🎯 Interview angle</h4><p><b>Classic:</b> "Design X" (the first 5 min), "What NFRs matter here?", "How would you prove p99?"<br><b>1. Split</b> FR and NFR out loud; write them on the board.<br><b>2. Put a number</b> on each NFR, or state your assumption.<br><b>3. Rank</b> the top 2-3 qualities; name what you trade away.<br><b>4. Tie each design choice</b> back to an NFR. Framework: <a href="18-system-design-playbook.html#framework">18.2</a>.</p></div>
+    <div class="box amber"><h4>⚠️ Common slips</h4><p>"It must be fast and highly available" with no numbers. Using <b>average</b> latency. Asking 20 questions instead of assuming and moving on.</p></div>
+  </div>
+
+  <div class="remember"><ul>
+    <li><b>FR = what</b>, <b>NFR = how well</b>; NFRs drive the architecture.</li>
+    <li>An NFR without a <b>number</b> is a wish.</li>
+    <li>Latency in <b>p95/p99</b>; availability in <b>nines</b> (99.99% ≈ 52.6 min/year).</li>
+    <li><b>RPO</b> = data you can lose; <b>RTO</b> = time to recover.</li>
+    <li><b>Read:write ratio</b> and access pattern pick the cache and database.</li>
+    <li>Rank qualities: you can't max them all, so say what you trade.</li>
+  </ul></div>
+
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Meter + Histogram&lt;T&gt;</b></td><td><span class="pill builtin">built-in</span> <code>System.Diagnostics.Metrics</code></td><td>Record durations; the backend computes p95/p99 from buckets</td></tr>
+    <tr><td><b>http.server.request.duration</b></td><td><span class="pill builtin">built-in</span> ASP.NET Core meter</td><td>Request latency histogram, emitted by the framework</td></tr>
+    <tr><td><b>OpenTelemetry hosting</b></td><td><code>OpenTelemetry.Extensions.Hosting</code></td><td>Wire up metrics and traces</td></tr>
+    <tr><td><b>OTLP exporter</b></td><td><code>OpenTelemetry.Exporter.OpenTelemetryProtocol</code></td><td>Send to any OTLP backend (Prometheus, Grafana, Azure Monitor)</td></tr>
+    <tr><td><b>k6</b></td><td>Grafana k6, open source CLI</td><td>Load test with thresholds, e.g. <code>p(95)&lt;200</code></td></tr>
+    <tr><td><b>NBomber</b></td><td><code>NBomber</code> <span class="pill lic">commercial licence</span></td><td>Load tests in C#; free only for personal use</td></tr>
+  </table>
+<pre class="code"><code>// Custom histogram for one business operation
+public sealed class PaymentMetrics
+{
+    public static readonly Meter Meter = new("Bank.Payments");
+    public static readonly Histogram&lt;double&gt; Duration =
+        Meter.CreateHistogram&lt;double&gt;("payments.submit.duration", unit: "s");
+}
+
+builder.Services.AddOpenTelemetry()
+    .WithMetrics(m =&gt; m
+        .AddMeter("Microsoft.AspNetCore.Hosting")   // http.server.request.duration
+        .AddMeter("Bank.Payments")
+        .AddOtlpExporter());
+
+var sw = Stopwatch.StartNew();
+await payments.SubmitAsync(cmd);
+PaymentMetrics.Duration.Record(sw.Elapsed.TotalSeconds,
+    new KeyValuePair&lt;string, object?&gt;("channel", "mobile"));</code></pre>
+  <p class="tip">Prove an NFR twice: a <b>load test</b> before release (k6 threshold fails the build) and a <b>p99 SLO alert</b> in production from the same histogram.</p>
+</div>
+
+  <div class="post">
+    <p>"It must be fast, secure and highly available." That's not a requirement. That's a wish 🎯</p>
+    <p>⏱️ Fast → p95 &lt; 200 ms, p99 &lt; 500 ms on the payment path.</p>
+    <p>🟢 Available → 99.95%, about 4.4 hours of downtime a year.</p>
+    <p>💾 Recoverable → RPO 0, RTO 15 minutes.</p>
+    <p>📈 Scalable → 10k req/s at peak, 10× in two years.</p>
+    <p>Numbers turn arguments into design choices. 99.9% and 99.99% are different architectures, and different budgets.</p>
+    <p>In a design interview, the first 5 minutes are for questions like these. Which one do you always ask first?</p>
+    <p>#SystemDesign #NonFunctionalRequirements #SoftwareArchitecture #SRE #InterviewPrep</p>
+  </div>
+</section>
+
+<!-- SCALING AND PARTITIONING FUNDAMENTALS -->
+<section class="concept" id="scaling-basics">
+  <h2><span class="num">1.14</span> Scaling and partitioning fundamentals <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Scale the <b>cheap, reversible</b> way first (caches, replicas, queues). <b>Partition</b> (shard) only when one database can't take the writes or hold the data, because every query then needs a <b>shard key</b>.</p>
+
+  <h3>The scaling toolkit (primer)</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Move</th><th>In one line</th><th>Deep</th></tr>
+    <tr><td><b>Vertical vs horizontal</b></td><td>Bigger box (simple, has a ceiling) vs more boxes (no ceiling, needs stateless apps)</td><td><a href="03-scalability-reliability.html#scaling">3.1</a></td></tr>
+    <tr><td><b>Stateless services</b></td><td>Keep session and state in Redis or the DB, so any instance serves any request</td><td><a href="03-scalability-reliability.html#stateless">3.2</a></td></tr>
+    <tr><td><b>Load balancing</b></td><td>Spread requests; health checks take bad instances out</td><td><a href="03-scalability-reliability.html#lb">3.3</a></td></tr>
+    <tr><td><b>Caching</b></td><td>Serve hot reads from memory; plan invalidation</td><td><a href="05-caching.html#layers">5.1</a></td></tr>
+    <tr><td><b>CDN</b></td><td>Static and cacheable content at the edge, near users</td><td><a href="05-caching.html#cdn">5.6</a></td></tr>
+    <tr><td><b>Async via queues</b></td><td>Accept now, process later; absorbs spikes</td><td><a href="10-integration-messaging.html#queue-event">10.3</a></td></tr>
+    <tr><td><b>Read replicas</b></td><td>Copies take reads; <b>replication lag</b> means stale reads</td><td><a href="04-distributed-systems.html#replication">4.2</a></td></tr>
+  </table></div>
+
+  <h3>Replication vs partitioning: different problems</h3>
+  <div class="grid">
+    <div class="box blue"><h4>Replication = copies</h4><ul><li>Same data on N nodes.</li><li>Fixes <b>read scale</b> and <b>availability</b>.</li><li>Does <b>not</b> fix write volume or data size.</li></ul></div>
+    <div class="box green"><h4>Partitioning = split</h4><ul><li>Each node owns a slice of the rows.</li><li>Fixes <b>write throughput</b> and <b>data size</b>.</li><li>Costs cross-shard queries and transactions.</li></ul></div>
+  </div>
+  <p class="tip">Real systems do both: each shard is a small replicated cluster.</p>
+
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Where do the writes land?","interval":3200,
+ "frames":[
+  {"label":"Range","caption":"<b>Range</b> by date: range scans are easy, but <b>all new writes hit the last shard</b>.","rows":[
+   {"label":"Shards","items":[{"t":"Jan-Apr","sub":"idle","c":"off"},{"t":"May-Aug","sub":"idle","c":"off"},{"t":"Sep-Dec","sub":"all writes","c":"red","big":true}]}]},
+  {"label":"Hash","caption":"<b>Hash</b> of account id: writes <b>spread evenly</b>, but a date-range query must ask every shard.","rows":[
+   {"label":"Shards","items":[{"t":"Shard 0","sub":"33%","c":"green"},{"t":"Shard 1","sub":"33%","c":"green"},{"t":"Shard 2","sub":"33%","c":"green"}]}]},
+  {"label":"Hot key","caption":"<b>Hot key</b>: one huge merchant still lands on one shard. Fix: <b>salt</b> the key (merchant#0..7) and merge on read.","rows":[
+   {"label":"Before","items":[{"t":"Shard 0","sub":"10%","c":"green"},{"t":"Shard 1","sub":"80% hot","c":"red","big":true},{"t":"Shard 2","sub":"10%","c":"green"}]},
+   {"label":"Salted","items":[{"t":"Shard 0","sub":"33%","c":"teal"},{"t":"Shard 1","sub":"34%","c":"teal"},{"t":"Shard 2","sub":"33%","c":"teal"}]}]}
+ ]}
+</script></figure>
+
+  <h3>Sharding strategies</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Strategy</th><th>Wins</th><th>Pays</th></tr>
+    <tr><td><b>Range</b> (date, A-H)</td><td>Range scans, simple</td><td>Hotspots on the newest range</td></tr>
+    <tr><td><b>Hash</b> (hash(key))</td><td>Even spread</td><td>Ranges fan out to all shards</td></tr>
+    <tr><td><b>Directory</b> (lookup table)</td><td>Move any key or tenant freely</td><td>Extra hop; the directory must be HA and cached</td></tr>
+    <tr><td><b>Geo / tenant</b></td><td>Data residency, isolation</td><td>Uneven sizes ("whale" tenants)</td></tr>
+  </table></div>
+  <p class="tip">A good shard key has <b>high cardinality</b>, spreads load evenly and is in <b>most queries</b>. Ladder and examples: <a href="06-databases-data.html#scaling">6.7 Database scaling</a>.</p>
+
+  <h3>Hot partitions, rebalancing and the bill</h3>
+  <ul>
+    <li><b>Hot key fixes:</b> <b>cache</b> hot reads; <b>salt</b> or <b>write-shard</b> hot writes (N sub-keys, sum on read); <b>split</b> the hot partition; give a whale tenant its own shard.</li>
+    <li><b>Rebalancing:</b> <code>hash % N</code> moves almost every key when N changes. <b>Consistent hashing</b> moves about 1/N (<a href="03-scalability-reliability.html#consistent-hashing">3.4</a>). Or pre-split into many <b>fixed slots</b> and move slots, not keys.</li>
+    <li><b>Cross-shard cost:</b> queries become <b>scatter-gather</b>; transactions need a <b>saga</b> or 2PC (<a href="04-distributed-systems.html#two-pc">4.6</a>); IDs must be globally unique (<a href="06-databases-data.html#ids">6.4</a>).</li>
+  </ul>
+
+  <div class="box amber"><h4>Interview angle: "How would you scale this to 10x?"</h4>
+    <p><b>Also:</b> "Replicas or shards?", "Pick a shard key", "One customer is hot. Now what?"</p>
+    <ol>
+      <li><b>Measure:</b> which resource saturates first (CPU, DB reads, DB writes, storage)?</li>
+      <li><b>Cache</b> hot reads; push static content to a <b>CDN</b>.</li>
+      <li><b>Read replicas</b> for read-heavy load; route read-your-own-writes to the primary.</li>
+      <li><b>Async:</b> move slow or spiky work to a <b>queue</b>.</li>
+      <li><b>Partition</b> last: name the shard key, the hot-key plan and the cross-shard cost.</li>
+    </ol>
+  </div>
+
+  <div class="remember"><ul>
+    <li><b>Replicas scale reads; shards scale writes and size.</b></li>
+    <li>The <b>shard key</b> is the decision you can't easily undo. Pick it from the main query.</li>
+    <li>Range = scans but hotspots. Hash = even but no ranges.</li>
+    <li>A hot key beats any strategy: <b>salt, split or cache</b> it.</li>
+    <li>Consistent hashing or fixed slots make <b>rebalancing</b> cheap.</li>
+  </ul></div>
+
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Azure Cosmos DB SDK</b></td><td><code>Microsoft.Azure.Cosmos</code> 3.63</td><td>Partition keys (up to 3 levels with hierarchical keys); a logical partition holds up to 20 GB and 10,000 RU/s</td></tr>
+    <tr><td><b>EF Core SQL Server</b></td><td><code>Microsoft.EntityFrameworkCore.SqlServer</code> 10.0</td><td>One DbContext per shard database</td></tr>
+    <tr><td><b>DbContextOptionsBuilder</b></td><td><span class="pill builtin">built-in</span> EF Core</td><td>Build options per tenant from a <b>directory</b> lookup (shard routing)</td></tr>
+  </table>
+<pre class="code"><code>// Directory sharding: look up the tenant's shard, then open a context on it
+public sealed class ShardedContextFactory(ITenantDirectory directory)
+{
+    public async Task&lt;PaymentsContext&gt; CreateAsync(string tenantId, CancellationToken ct)
+    {
+        string conn = await directory.GetConnectionStringAsync(tenantId, ct); // cache this
+        var options = new DbContextOptionsBuilder&lt;PaymentsContext&gt;()
+            .UseSqlServer(conn).Options;
+        return new PaymentsContext(options);
+    }
+}
+
+// Cosmos DB: hierarchical partition key, tenant then account
+Container payments = await database.CreateContainerIfNotExistsAsync(
+    new ContainerProperties("payments", ["/tenantId", "/accountId"]));
+
+PartitionKey pk = new PartitionKeyBuilder().Add(p.TenantId).Add(p.AccountId).Build();
+await payments.CreateItemAsync(p, pk);   // single-partition write
+var read = await payments.ReadItemAsync&lt;Payment&gt;(p.Id, pk); // cheapest read: id + key
+
+// Hot counter: write-shard into 8 sub-keys, sum them on read
+string subKey = $"{merchantId}#{Random.Shared.Next(8)}";</code></pre>
+  <p class="warn">A Cosmos DB transaction (<code>TransactionalBatch</code>) only spans <b>one logical partition</b>. Queries without the partition key fan out across partitions and cost more RUs.</p>
+</div>
+
+  <div class="post">
+    <p>"Add read replicas" doesn't fix a write bottleneck. Here's why 👇</p>
+    <p>📖 Replication = copies. It scales reads and availability, not writes or data size</p>
+    <p>🔪 Partitioning = split. It scales writes and size, but every query now needs the shard key</p>
+    <p>📅 Range shards make scans easy but put every new write on the last shard</p>
+    <p>🎲 Hash shards spread load evenly but turn range queries into scatter-gather</p>
+    <p>🔥 One hot key beats any strategy: salt it, split it or cache it</p>
+    <p>My 10x order: measure → cache → replicas → queues → shard. What's the first thing you'd measure?</p>
+    <p>#SystemDesign #Scalability #Databases #Architecture #dotnet</p>
+  </div>
+</section>
+
+<!-- DATA FUNDAMENTALS -->
+<section class="concept" id="data-basics">
+  <h2><span class="num">1.15</span> Data fundamentals <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Pick storage from the <b>access pattern</b>: how you read, write and query the data, how fresh it must be, and whether you need answers <b>now</b> (OLTP, stream) or <b>over everything</b> (OLAP, batch).</p>
+
+  <h3>Primer</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Concept</th><th>In one line</th><th>Deep</th></tr>
+    <tr><td><b>SQL vs NoSQL</b></td><td>Schema + joins + transactions vs models built for one access pattern at scale</td><td><a href="06-databases-data.html#sql-nosql">6.1</a></td></tr>
+    <tr><td><b>ACID vs BASE</b></td><td>All-or-nothing, isolated, durable vs basically available, eventually consistent</td><td><a href="06-databases-data.html#acid">6.2</a></td></tr>
+    <tr><td><b>Indexing</b></td><td>Faster reads, slower writes; match the index to the query</td><td><a href="06-databases-data.html#indexing">6.3</a></td></tr>
+    <tr><td><b>CAP / PACELC</b></td><td>In a partition: consistency or availability. Else: latency or consistency</td><td><a href="03-scalability-reliability.html#cap">3.11</a>, <a href="03-scalability-reliability.html#pacelc">3.12</a></td></tr>
+    <tr><td><b>ETL / ELT, CDC</b></td><td>Move data to analytics; CDC streams changes from the DB log</td><td><a href="06-databases-data.html#etl">6.11</a>, <a href="06-databases-data.html#cdc">6.12</a></td></tr>
+  </table></div>
+
+  <h3>Database types: when to use each</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Type</th><th>Best for</th><th>Examples</th></tr>
+    <tr><td><b>Relational</b></td><td>Transactions, ledgers, ad-hoc joins</td><td>SQL Server, PostgreSQL</td></tr>
+    <tr><td><b>Key-value</b></td><td>Lookup by key: sessions, cache</td><td>Redis, DynamoDB</td></tr>
+    <tr><td><b>Document</b></td><td>JSON aggregates read whole: profiles, catalogue</td><td>MongoDB, Cosmos DB</td></tr>
+    <tr><td><b>Wide-column</b></td><td>Huge write rates, known queries</td><td>Cassandra</td></tr>
+    <tr><td><b>Graph</b></td><td>Many-hop relationships: fraud rings</td><td>Neo4j</td></tr>
+    <tr><td><b>Time-series</b></td><td>Metrics by time, downsampling</td><td>InfluxDB, TimescaleDB</td></tr>
+    <tr><td><b>Search</b></td><td>Full-text, relevance, facets</td><td>Elasticsearch, OpenSearch</td></tr>
+    <tr><td><b>Vector</b></td><td>Similarity search for AI (<a href="14-rag-genai.html#vector">14.7</a>)</td><td>pgvector, Qdrant</td></tr>
+  </table></div>
+
+  <h3>Model and workload</h3>
+  <div class="grid">
+    <div class="box blue"><h4>Normalise (write model)</h4><p>Each fact stored <b>once</b>. Safe updates, no anomalies. Reads need <b>joins</b>.</p></div>
+    <div class="box green"><h4>Denormalise (read model)</h4><p>Copy data into the shape the screen needs: <b>one read, no joins</b>. Pays with <b>write fan-out</b> and staleness. See <a href="11-architecture-patterns.html#cqrs">CQRS</a>.</p></div>
+  </div>
+  <div class="tablewrap"><table>
+    <tr><th></th><th>OLTP</th><th>OLAP</th></tr>
+    <tr><td>Work</td><td>Many small reads and writes</td><td>Few big scans and aggregates</td></tr>
+    <tr><td>Storage</td><td><b>Row</b> store, normalised</td><td><b>Columnar</b>, denormalised (star schema)</td></tr>
+    <tr><td>Example</td><td>Payments DB</td><td>Warehouse, lakehouse (<a href="06-databases-data.html#lake">6.13</a>)</td></tr>
+  </table></div>
+  <p class="tip">Why rows vs columns: <a href="#storage-hierarchy">1.9</a>. Feed OLAP with ETL or CDC; never run big reports on the OLTP primary.</p>
+
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Strong vs eventual, in one picture","actors":[{"t":"Client","c":"blue"},{"t":"Primary","c":"teal"},{"t":"Replica","c":"purple"}],
+ "steps":[{"from":0,"to":1,"t":"write x = 2"},{"from":1,"to":0,"t":"OK","dash":true,"c":"green"},
+  {"from":0,"to":2,"t":"read x","sub":"eventual"},{"from":2,"to":0,"t":"x = 1 (stale)","dash":true,"c":"red"},
+  {"from":1,"to":2,"t":"replicate x = 2","c":"amber"},
+  {"note":"Strong: ack only after the replica has it (or read the primary). Slower, never stale","over":[0,2],"c":"green"}]}
+</script></figure>
+
+  <h3>Batch vs stream processing</h3>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Same payments, two ways","interval":3200,
+ "frames":[
+  {"label":"Batch","caption":"<b>Batch</b>: bounded data. Wait for the whole day, then process it all. <b>Complete</b>, but hours late.","rows":[
+   {"label":"Data","items":[{"t":"00:00-23:59","sub":"all of yesterday","c":"slate","big":true}]},
+   {"label":"Job","items":[{"t":"02:00 run","c":"blue"},{"k":"arrow"},{"t":"Report","sub":"exact totals","c":"green"}]}]},
+  {"label":"Stream","caption":"<b>Stream</b>: unbounded data. Each event updates a <b>1-minute window</b>. Seconds late, but <b>late events</b> need a watermark.","rows":[
+   {"label":"Events","items":[{"t":"e1","c":"amber"},{"t":"e2","c":"amber"},{"t":"e3","c":"amber"},{"t":"late e0","c":"red"}]},
+   {"label":"Windows","items":[{"t":"10:01","sub":"closed","c":"teal"},{"t":"10:02","sub":"closed","c":"teal"},{"t":"10:03","sub":"open","c":"green"}]}]}
+ ]}
+</script></figure>
+  <div class="tablewrap"><table>
+    <tr><th></th><th>Batch</th><th>Stream</th></tr>
+    <tr><td>Data</td><td><b>Bounded</b> (a file, a day)</td><td><b>Unbounded</b> (never ends)</td></tr>
+    <tr><td>Trade-off</td><td>Complete, minutes to hours late</td><td>Low latency, must handle late and out-of-order events</td></tr>
+    <tr><td>Use for</td><td>Statements, reconciliation, ML training</td><td>Fraud alerts, live dashboards</td></tr>
+  </table></div>
+  <ul>
+    <li><b>Windows:</b> <b>tumbling</b> (fixed, no overlap), <b>sliding/hopping</b> (overlap), <b>session</b> (gap-based). Group by <b>event time</b>; a <b>watermark</b> decides when a window closes.</li>
+    <li><b>Lambda</b> = batch layer + speed layer, merged (two codebases). <b>Kappa</b> = stream only; reprocess by <b>replaying the log</b> (<a href="10-integration-messaging.html#kafka">10.9</a>).</li>
+  </ul>
+
+  <div class="box amber"><h4>Interview angle: "Which database would you choose?"</h4>
+    <p><b>Also:</b> "SQL or NoSQL?", "Batch or real time?", "Why not run reports on the main DB?"</p>
+    <ol>
+      <li><b>Access pattern first:</b> key lookups, rich queries, joins, scans, text or similarity?</li>
+      <li><b>Consistency:</b> money moves need ACID; feeds can be eventual.</li>
+      <li><b>Scale and shape:</b> read/write ratio, data size, growth, hot keys.</li>
+      <li><b>Default relational</b>; add a specialised store only for a pattern it can't serve.</li>
+      <li><b>Name the cost:</b> ops, skills, sync (CDC), and keep one source of truth.</li>
+    </ol>
+  </div>
+
+  <div class="remember"><ul>
+    <li><b>Access pattern decides</b> the store, not fashion.</li>
+    <li>Normalise to <b>write</b>, denormalise to <b>read</b>.</li>
+    <li>OLTP = rows, small transactions. OLAP = columns, big scans.</li>
+    <li>Eventual = may be <b>stale</b> for a while; strong = slower but never stale.</li>
+    <li>Batch = complete but late; stream = fast but needs <b>windows and watermarks</b>.</li>
+  </ul></div>
+
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Store / need</th><th>Package</th><th>Notes</th></tr>
+    <tr><td><b>SQL Server / Azure SQL</b></td><td><code>Microsoft.EntityFrameworkCore.SqlServer</code> 10.0</td><td>EF Core for relational OLTP</td></tr>
+    <tr><td><b>PostgreSQL</b></td><td><code>Npgsql.EntityFrameworkCore.PostgreSQL</code> 10.0 (driver: <code>Npgsql</code>)</td><td>EF Core provider; pgvector has its own plugin</td></tr>
+    <tr><td><b>Cosmos DB</b></td><td><code>Microsoft.Azure.Cosmos</code> 3.63</td><td>Document store; pick the partition key from the main query</td></tr>
+    <tr><td><b>MongoDB</b></td><td><code>MongoDB.Driver</code> 3.12</td><td>Official driver</td></tr>
+    <tr><td><b>In-process streams</b></td><td><span class="pill builtin">built-in</span> <code>System.Threading.Channels</code></td><td>Bounded producer/consumer with back-pressure</td></tr>
+    <tr><td><b>Kafka</b></td><td><code>Confluent.Kafka</code> 2.16</td><td>Consume and produce durable event streams</td></tr>
+  </table>
+<pre class="code"><code>// Batch: bounded data, exact answer (EF Core, runs nightly)
+var daily = await db.Payments
+    .Where(p =&gt; p.At &gt;= day &amp;&amp; p.At &lt; day.AddDays(1))
+    .GroupBy(p =&gt; p.AccountId)
+    .Select(g =&gt; new { AccountId = g.Key, Total = g.Sum(p =&gt; p.Amount) })
+    .ToListAsync(ct);
+
+// Stream: unbounded data, 1-minute tumbling windows by event time
+var channel = Channel.CreateBounded&lt;Payment&gt;(new BoundedChannelOptions(10_000)
+    { FullMode = BoundedChannelFullMode.Wait });          // back-pressure
+
+var windows = new Dictionary&lt;DateTime, decimal&gt;();
+await foreach (var p in channel.Reader.ReadAllAsync(ct))
+{
+    var start = new DateTime(p.At.Ticks - p.At.Ticks % TimeSpan.TicksPerMinute, DateTimeKind.Utc);
+    windows[start] = windows.GetValueOrDefault(start) + p.Amount;
+    // watermark: emit and remove windows older than (latest event time - 2 min)
+}</code></pre>
+  <p class="tip">Stick to the in-process Channel for a single service. For durable, replayable, multi-consumer streams use Kafka or Azure Event Hubs.</p>
+</div>
+
+  <div class="post">
+    <p>"Which database would you use?" is the wrong first question. Ask "how will the data be read?" 👇</p>
+    <p>🔑 Lookups by key → key-value. Whole JSON aggregates → document</p>
+    <p>🧾 Money and joins → relational with ACID</p>
+    <p>🕸️ Many-hop relationships → graph. Similarity for AI → vector</p>
+    <p>📊 Transactions on rows (OLTP), analytics on columns (OLAP)</p>
+    <p>⏱️ Batch is complete but late. Streams are fast but need windows and watermarks</p>
+    <p>Default to relational, then add a store only when a pattern demands it. What did you add last, and why?</p>
+    <p>#SystemDesign #Databases #DataEngineering #Architecture #dotnet</p>
+  </div>
+</section>
+
+<!-- COMMUNICATION AND DATA-FLOW PATTERNS -->
+<section class="concept" id="communication">
+  <h2><span class="num">1.16</span> Communication and data-flow patterns <span class="tag-added">Added</span></h2>
+  <p class="oneliner">How data moves between parts of a system: <b>who starts</b> the exchange (push or pull), <b>when</b> (sync or async) and <b>how much at a time</b> (pages, streams, fan-out).</p>
+
+  <h3>Primer: the basics</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Concept</th><th>In one line</th><th>Deep dive</th></tr>
+    <tr><td><b>Sync vs async</b></td><td>Wait for the answer vs move on; queues decouple</td><td><a href="#sync-async">1.3</a>, <a href="10-integration-messaging.html#queue-event">10.3</a></td></tr>
+    <tr><td><b>Protocols</b></td><td>HTTP, gRPC, AMQP, MQTT, WebSocket</td><td><a href="02-networking-protocols.html#protocols">2.5</a>, <a href="02-networking-protocols.html#realtime">2.6</a></td></tr>
+    <tr><td><b>Pub/sub + guarantees</b></td><td>One event, many subscribers; at-least-once is the norm</td><td><a href="10-integration-messaging.html#guarantees">10.4</a></td></tr>
+    <tr><td><b>Backpressure</b></td><td>Slow consumer throttles the producer</td><td><a href="10-integration-messaging.html#backpressure">10.5</a></td></tr>
+    <tr><td><b>REST / gRPC / GraphQL</b></td><td>Public resources; fast internal calls; client-shaped queries</td><td><a href="08-api-design.html#styles">8.1</a></td></tr>
+  </table></div>
+
+  <h3>Push vs pull</h3>
+  <div class="cols2">
+    <div class="box blue"><h4>Push: the sender starts</h4><ul><li><b>Low latency</b>.</li><li>Sender must handle <b>slow or offline</b> receivers.</li><li>e.g. webhooks, mobile push, WebSocket.</li></ul></div>
+    <div class="box green"><h4>Pull: the receiver starts</h4><ul><li>Receiver <b>controls the rate</b> (natural backpressure).</li><li>Latency = <b>poll interval</b>; empty polls waste calls.</li><li>e.g. Prometheus <b>scraping</b> /metrics, Kafka consumers.</li></ul></div>
+  </div>
+  <p class="tip"><b>Hybrid:</b> push a thin "changed" signal; the client pulls the data.</p>
+
+  <h3>How clients get updates</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Option</th><th>How</th><th>Best for</th><th>Watch out</th></tr>
+    <tr><td><b>Short polling</b></td><td>Ask every N s</td><td>Rare changes</td><td>Wasted calls, N s lag</td></tr>
+    <tr><td><b>Long polling</b></td><td>Server holds the request until data</td><td>Fallback when WS blocked</td><td>One open request each</td></tr>
+    <tr><td><b>SSE</b></td><td>One HTTP response streams events</td><td>Feeds, AI token streams</td><td>One-way, text only</td></tr>
+    <tr><td><b>WebSocket</b></td><td>Full-duplex upgraded connection</td><td>Chat, trading, collaboration</td><td>Stateful; sticky or backplane</td></tr>
+    <tr><td><b>Webhook</b></td><td>Server POSTs to your URL</td><td>Server-to-server events</td><td>Retries, signing, public URL</td></tr>
+  </table></div>
+
+  <h3>Fan-out on write vs fan-out on read</h3>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"News feed: when do you build the timeline?","interval":2600,
+ "frames":[
+  {"label":"Write","caption":"<b>Fan-out on write (push):</b> copy the post ID into every follower's timeline cache. A read is one lookup.",
+   "rows":[[{"t":"Ana posts","c":"blue"},{"k":"arrow","g":"→"},{"t":"Feed service","c":"purple"}],
+           {"label":"writes","items":[{"t":"Bo's feed","c":"green"},{"t":"Cy's feed","c":"green"},{"t":"Di's feed","c":"green"}]}]},
+  {"label":"Celebrity","caption":"<b>Celebrity problem:</b> one post = millions of writes and a lag spike, mostly for inactive users.",
+   "rows":[[{"t":"Star posts","sub":"10M followers","c":"amber"},{"k":"arrow","g":"→"},{"t":"Feed service","c":"purple"}],
+           {"label":"writes","items":[{"t":"10M writes","c":"red","big":true}]}]},
+  {"label":"Read","caption":"<b>Fan-out on read (pull):</b> fetch and merge followees' posts when the user opens the feed. Cheap writes, slow reads.",
+   "rows":[[{"t":"Bo opens feed","c":"blue"},{"k":"arrow","g":"→"},{"t":"Feed service","c":"purple"}],
+           {"label":"reads","items":[{"t":"Ana's posts","c":"teal"},{"t":"Star's posts","c":"teal"},{"t":"Cy's posts","c":"teal"}]}]},
+  {"label":"Hybrid","caption":"<b>Hybrid:</b> push for normal accounts, pull for accounts above a follower threshold, merge at read time.",
+   "rows":[[{"t":"Bo opens feed","c":"blue"},{"k":"arrow","g":"→"},{"t":"Feed service","c":"purple"}],
+           {"label":"merge","items":[{"t":"Pre-built feed","sub":"push","c":"green"},{"t":"Star's posts","sub":"pull","c":"amber"}]}]}
+ ]}
+</script></figure>
+  <p>Write: <b>fast reads</b>, costly writes. Read: <b>cheap writes</b>, slow reads. Real feeds are <b>hybrid</b> (<a href="19-design-case-studies.html#feed">19.5</a>).</p>
+
+  <h3>Pagination: offset vs cursor</h3>
+  <div class="tablewrap"><table>
+    <tr><th></th><th>Offset (<code>?page=500</code>)</th><th>Cursor / keyset (<code>?after=…</code>)</th></tr>
+    <tr><td>How</td><td>Skip N rows, take M</td><td>Rows after the last key seen, take M</td></tr>
+    <tr><td>Deep pages</td><td><b>Slow</b>: DB reads and drops N rows</td><td><b>Fast</b>: index seek every time</td></tr>
+    <tr><td>Inserts while paging</td><td>Duplicates or skipped rows</td><td>Stable</td></tr>
+    <tr><td>Jump to page 37</td><td>Yes</td><td>No, next/previous only</td></tr>
+    <tr><td>Use for</td><td>Small admin grids</td><td>Feeds, public APIs, exports</td></tr>
+  </table></div>
+  <ul>
+    <li><b>Why cursors scale:</b> cost depends on page size, not depth.</li>
+    <li>Sort on a <b>unique, indexed</b> key (add <code>Id</code> as tie-breaker); keep the cursor <b>opaque</b>.</li>
+  </ul>
+
+  <h3>Head-of-line (HOL) blocking</h3>
+  <p>One slow item at the front holds up everything behind it (<a href="02-networking-protocols.html#http">2.3</a>).</p>
+  <div class="tablewrap"><table>
+    <tr><th>Where</th><th>Cause</th><th>Fix</th></tr>
+    <tr><td><b>HTTP/1.1</b></td><td>One response at a time per connection</td><td>~6 connections per host; upgrade</td></tr>
+    <tr><td><b>HTTP/2</b></td><td>One lost TCP packet stalls all streams</td><td>HTTP/3</td></tr>
+    <tr><td><b>HTTP/3 (QUIC)</b></td><td>Independent streams over UDP</td><td>Loss stalls only its own stream</td></tr>
+    <tr><td><b>Queues</b></td><td>Poison message blocks a partition</td><td>Retry limit + DLQ, more partitions</td></tr>
+  </table></div>
+
+  <div class="grid">
+    <div class="box green"><h4>🎤 "How will clients get updates?"</h4><p><b>1. Clarify:</b> freshness, direction, client count, browser or server.<br><b>2. Pick:</b> polling (rare changes), SSE (server to client), WebSocket (two-way), webhooks (partners).<br><b>3. Scale:</b> connections, backplane, fan-out strategy.<br><b>4. Failure:</b> reconnect with backoff, resume from the last event ID.</p></div>
+    <div class="box amber"><h4>⚠️ Also asked</h4><p>News feed (fan-out). Paging 10M rows (keyset). HTTP/2 on lossy mobile (TCP HOL).</p></div>
+  </div>
+
+  <div class="remember"><ul>
+    <li><b>Push</b> = low latency, sender owns delivery; <b>pull</b> = receiver owns the rate.</li>
+    <li>Default ladder: <b>polling → SSE → WebSocket</b>; webhooks between servers.</li>
+    <li>Feeds: <b>hybrid fan-out</b>, pull for celebrities.</li>
+    <li><b>Keyset pagination</b> costs the same on page 1 and page 10,000.</li>
+    <li>HTTP/2 fixes HOL at the HTTP layer; <b>QUIC</b> fixes it at transport.</li>
+  </ul></div>
+
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Need</th><th>Library / API</th><th>Use it for</th></tr>
+    <tr><td><b>Real-time push</b></td><td><span class="pill builtin">built-in</span> ASP.NET Core SignalR: <code>AddSignalR</code>, <code>MapHub</code>, <code>IHubContext&lt;T&gt;</code></td><td>Negotiates WebSockets, then SSE, then long polling</td></tr>
+    <tr><td><b>Scale out SignalR</b></td><td><code>Microsoft.Azure.SignalR</code> or <code>Microsoft.AspNetCore.SignalR.StackExchangeRedis</code></td><td>Managed service or Redis backplane so any instance reaches any client</td></tr>
+    <tr><td><b>One-way stream</b></td><td><span class="pill builtin">built-in</span> <code>TypedResults.ServerSentEvents</code> (new in .NET 10)</td><td>SSE without SignalR</td></tr>
+    <tr><td><b>Producer/consumer</b></td><td><span class="pill builtin">built-in</span> <code>System.Threading.Channels</code>: <code>Channel.CreateBounded</code></td><td>In-process queue; a full bounded channel makes writers wait (backpressure)</td></tr>
+    <tr><td><b>Keyset paging</b></td><td><code>Microsoft.EntityFrameworkCore</code> 10</td><td><code>Where</code> on the last key + <code>OrderBy</code> + <code>Take</code></td></tr>
+  </table>
+<pre class="code"><code>// Push: a worker drains a bounded channel and broadcasts via SignalR
+builder.Services.AddSignalR();
+builder.Services.AddSingleton(Channel.CreateBounded&lt;PriceTick&gt;(
+    new BoundedChannelOptions(1_000) { FullMode = BoundedChannelFullMode.Wait }));
+builder.Services.AddHostedService&lt;PricePusher&gt;();
+app.MapHub&lt;PricesHub&gt;("/hubs/prices");
+
+public sealed class PricePusher(Channel&lt;PriceTick&gt; ch, IHubContext&lt;PricesHub&gt; hub) : BackgroundService
+{
+    protected override async Task ExecuteAsync(CancellationToken ct)
+    {
+        await foreach (var t in ch.Reader.ReadAllAsync(ct))
+            await hub.Clients.Group(t.Pair).SendAsync("tick", t, ct);
+    }
+}
+
+// Keyset pagination: index (AccountId, BookedAt, Id)
+var page = await db.Transactions
+    .Where(t =&gt; t.AccountId == accountId &amp;&amp;
+                (t.BookedAt &lt; after.BookedAt ||
+                 (t.BookedAt == after.BookedAt &amp;&amp; t.Id &lt; after.Id)))
+    .OrderByDescending(t =&gt; t.BookedAt).ThenByDescending(t =&gt; t.Id)
+    .Take(50)
+    .ToListAsync(ct);</code></pre>
+  <p class="warn">Self-hosted SignalR on more than one instance needs a Redis backplane <b>and</b> sticky sessions (unless every client is WebSocket-only). Azure SignalR Service removes both.</p>
+</div>
+
+  <div class="post">
+    <p>"How will clients get updates?" is a trade-off question, not a trivia question 📡</p>
+    <p>🔁 Polling: simple, but every empty call is waste.</p>
+    <p>📜 SSE: one HTTP stream, server to client. Great for feeds and AI token streams.</p>
+    <p>🔌 WebSocket: two-way and fastest, but stateful. Plan the backplane.</p>
+    <p>📰 News feed? Fan-out on write for most users, fan-out on read for celebrities.</p>
+    <p>📄 Big lists? Cursor pagination. Page 10,000 costs the same as page 1.</p>
+    <p>Start with freshness, direction and client count. The protocol choice follows.</p>
+    <p>#SystemDesign #RealTime #APIs #InterviewPrep</p>
+  </div>
+</section>
+
+<!-- RELIABILITY FUNDAMENTALS -->
+<section class="concept" id="reliability-basics">
+  <h2><span class="num">1.17</span> Reliability fundamentals <span class="tag-added">Added</span></h2>
+  <p class="oneliner">A reliable system keeps doing the <b>right thing</b> when parts fail: <b>no single point of failure</b>, <b>fast detection</b>, <b>bounded retries</b> and a <b>planned way to degrade</b>.</p>
+
+  <h3>Primer: the basics</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Concept</th><th>In one line</th><th>Deep dive</th></tr>
+    <tr><td><b>Fault tolerance</b></td><td>Keep serving when a part fails</td><td><a href="03-scalability-reliability.html#ft">3.5</a></td></tr>
+    <tr><td><b>Resilience patterns</b></td><td>Timeout, retry, breaker, bulkhead, fallback</td><td><a href="03-scalability-reliability.html#resilience">3.6</a></td></tr>
+    <tr><td><b>Availability</b></td><td>99.9% ≈ 8.8 h down a year; 99.99% ≈ 53 min</td><td><a href="03-scalability-reliability.html#availability">3.7</a></td></tr>
+    <tr><td><b>DR</b></td><td><b>RPO</b> = data you can lose; <b>RTO</b> = time to recover</td><td><a href="03-scalability-reliability.html#dr">3.13</a></td></tr>
+    <tr><td><b>Idempotency</b></td><td>Same request twice = same effect</td><td><a href="08-api-design.html#idempotency">8.7</a></td></tr>
+    <tr><td><b>Rate limiting</b></td><td>Cap each client's requests</td><td><a href="08-api-design.html#ratelimit">8.6</a></td></tr>
+  </table></div>
+
+  <h3>Redundancy: find the SPOFs</h3>
+  <ul>
+    <li><b>Draw the request path</b>; for every box ask "if only this dies, what breaks?"</li>
+    <li><b>Hidden SPOFs:</b> DNS, certificates, secrets vault, identity provider, one region, one person with access.</li>
+    <li><b>Fix:</b> N+1 across zones; replicate or remove shared parts.</li>
+  </ul>
+
+  <h3>Failover modes</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Mode</th><th>Standby</th><th>RTO</th><th>Cost / risk</th></tr>
+    <tr><td><b>Cold</b></td><td>Built from IaC + backup</td><td>Hours</td><td>Cheapest; untested restores</td></tr>
+    <tr><td><b>Warm</b></td><td>Running small, data replicating</td><td>Minutes</td><td>Must scale up under stress</td></tr>
+    <tr><td><b>Hot</b> (active-passive)</td><td>Full size, in sync, idle</td><td>Seconds-minutes</td><td>Paying for idle</td></tr>
+    <tr><td><b>Active-active</b></td><td>All sites serve traffic</td><td>Near zero</td><td>Write conflicts</td></tr>
+  </table></div>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Active-passive failover","interval":2400,
+ "frames":[
+  {"label":"Normal","caption":"Traffic goes to the <b>primary</b>; the standby replicates and sends heartbeats.",
+   "rows":[[{"t":"Users","c":"blue"},{"k":"arrow","g":"→"},{"t":"Traffic mgr","c":"purple"},{"k":"arrow","g":"→"},{"t":"Primary","sub":"serving","c":"green"}],
+           [{"k":"gap"},{"k":"gap"},{"t":"Standby","sub":"replicating","c":"slate"}]]},
+  {"label":"Fail","caption":"Primary stops answering. <b>k missed heartbeats</b> or failed health checks trigger failover.",
+   "rows":[[{"t":"Users","c":"blue"},{"k":"arrow","g":"→"},{"t":"Traffic mgr","c":"purple"},{"k":"arrow","g":"✕"},{"t":"Primary","sub":"no heartbeat","c":"red"}],
+           [{"k":"gap"},{"k":"gap"},{"t":"Standby","sub":"replicating","c":"slate"}]]},
+  {"label":"Promote","caption":"<b>Fence</b> the old primary, promote the standby, repoint traffic. Data lost = replication lag (RPO).",
+   "rows":[[{"t":"Users","c":"blue"},{"k":"arrow","g":"→"},{"t":"Traffic mgr","c":"purple"},{"k":"arrow","g":"↘"},{"t":"Old primary","sub":"fenced","c":"off"}],
+           [{"k":"gap"},{"k":"gap"},{"t":"New primary","sub":"serving","c":"green"}]]},
+  {"label":"Recover","caption":"The old node rejoins as the <b>standby</b>. Fail back later, in a quiet window.",
+   "rows":[[{"t":"Users","c":"blue"},{"k":"arrow","g":"→"},{"t":"Traffic mgr","c":"purple"},{"k":"arrow","g":"↘"},{"t":"Standby","sub":"catching up","c":"slate"}],
+           [{"k":"gap"},{"k":"gap"},{"t":"Primary","sub":"serving","c":"green"}]]}
+ ]}
+</script></figure>
+
+  <h3>Detect: heartbeats and health checks</h3>
+  <ul>
+    <li><b>Heartbeat:</b> "alive" every T; dead after k misses. Short timeout = fast failover but <b>false alarms</b>.</li>
+    <li><b>Liveness:</b> process alive? Fail = restart. Keep it <b>shallow</b>.</li>
+    <li><b>Readiness:</b> can take traffic? Fail = out of the load balancer.</li>
+    <li>More: <a href="03-scalability-reliability.html#ft">3.5</a>, probes <a href="13-devops-deployment-observability.html#k8s">13.8</a>.</li>
+  </ul>
+
+  <h3>Timeouts, retries, backoff, jitter</h3>
+  <ul>
+    <li><b>Timeout</b> every remote call; pass the <b>remaining deadline</b> downstream.</li>
+    <li>Retry only <b>transient</b> errors (timeout, 503, 429 + Retry-After) on <b>idempotent</b> calls.</li>
+    <li><b>Backoff</b>: base × 2<sup>n</sup>, capped. <b>Jitter</b>: randomise so clients don't retry in sync.</li>
+    <li><b>Retry budget</b>: retries ≤ ~10% of traffic. Retry at <b>one layer</b>: 3 layers × 3 attempts = up to 27 calls.</li>
+  </ul>
+<figure class="viz" data-viz="lanes"><script type="application/json">
+{"title":"Two clients retrying a failed dependency","max":16,"labelW":120,"axis":"seconds",
+ "markers":[{"at":8,"t":"recovers","c":"green"}],
+ "ticks":[{"at":0,"t":"0"},{"at":4,"t":"4"},{"at":8,"t":"8"},{"at":12,"t":"12"},{"at":16,"t":"16"}],
+ "rows":[
+  {"label":"Fixed 1s: A","blocks":[{"s":0,"e":0.6,"c":"red"},{"s":1,"e":1.6,"c":"red"},{"s":2,"e":2.6,"c":"red"},{"s":3,"e":3.6,"c":"red"},{"s":4,"e":4.6,"c":"red"},{"s":5,"e":5.6,"c":"red"}]},
+  {"label":"Fixed 1s: B","blocks":[{"s":0,"e":0.6,"c":"red"},{"s":1,"e":1.6,"c":"red"},{"s":2,"e":2.6,"c":"red"},{"s":3,"e":3.6,"c":"red"},{"s":4,"e":4.6,"c":"red"},{"s":5,"e":5.6,"c":"red"}]},
+  {"label":"Backoff+jitter: A","blocks":[{"s":0,"e":0.6,"c":"amber"},{"s":1.4,"e":2,"c":"amber"},{"s":4.3,"e":4.9,"c":"amber"},{"s":9.6,"e":10.2,"t":"ok","c":"green"}]},
+  {"label":"Backoff+jitter: B","blocks":[{"s":0,"e":0.6,"c":"amber"},{"s":0.9,"e":1.5,"c":"amber"},{"s":3.1,"e":3.7,"c":"amber"},{"s":8.4,"e":9,"t":"ok","c":"green"}]}
+ ]}
+</script></figure>
+
+  <h3>Overload: shed load, degrade gracefully</h3>
+  <div class="cols2">
+    <div class="box red"><h4>Load shedding</h4><ul><li>Reject excess <b>early and cheaply</b> (503 + Retry-After) so admitted requests meet the SLO.</li><li>Signals: in-flight count, queue length or wait.</li><li>Drop requests already past their deadline.</li></ul></div>
+    <div class="box amber"><h4>Graceful degradation</h4><ul><li><b>Drop first:</b> batch, analytics, recommendations. <b>Keep:</b> login, balances, payments.</li><li><b>Kill-switch</b> feature flags (<a href="13-devops-deployment-observability.html#flags">13.6</a>).</li><li>Stale cache, static fallback, read-only.</li></ul></div>
+  </div>
+
+  <h3>Split brain and fencing tokens</h3>
+  <ul>
+    <li><b>Split brain:</b> after a partition, two nodes both act as primary and data diverges.</li>
+    <li><b>Prevent:</b> majority <b>quorum</b> (or a witness), expiring leases, fence the old node.</li>
+    <li><b>Fencing token:</b> each lease carries an increasing number; storage rejects older tokens, so a paused ex-leader can't write (<a href="04-distributed-systems.html#locks">4.5</a>). Leader election and failure detection: <a href="#coordination">1.18</a>.</li>
+  </ul>
+
+  <h3>Checksums and end-to-end integrity</h3>
+  <ul>
+    <li>Corruption is silent: bit flips, bad disks, truncated files.</li>
+    <li><b>CRC</b> catches accidents cheaply; <b>SHA-256</b> also catches tampering; <b>HMAC</b> proves the sender.</li>
+    <li><b>End to end:</b> checksum at the producer, verify at the final consumer, not per hop.</li>
+    <li>Money and batch: <b>control totals</b>, reconciliation.</li>
+  </ul>
+
+  <div class="grid">
+    <div class="box green"><h4>🎤 "What happens when X fails?"</h4><p><b>1. Draw the path</b>, list components.<br><b>2. For each:</b> detection, blast radius, automatic response.<br><b>3. Data:</b> RPO, duplicates, split brain.<br><b>4. Slow, not down:</b> timeouts, shedding.<br><b>5. Close:</b> RTO/RPO and how you test it (<a href="13-devops-deployment-observability.html#chaos">13.16</a>).</p></div>
+    <div class="box amber"><h4>⚠️ Common slips</h4><p>Retries at every layer. DB checks in liveness. Unrehearsed failover.</p></div>
+  </div>
+
+  <div class="remember"><ul>
+    <li>Find SPOFs by asking <b>"if only this dies?"</b> along the whole path.</li>
+    <li>Cold → warm → hot → active-active: <b>RTO falls, cost rises</b>.</li>
+    <li><b>Liveness</b> restarts; <b>readiness</b> removes from traffic.</li>
+    <li>Retries need <b>timeouts, backoff + jitter, a budget and idempotency</b>.</li>
+    <li>Under overload, <b>shed early</b> and degrade by business priority.</li>
+    <li>Split brain → <b>quorum + fencing tokens</b>.</li>
+  </ul></div>
+
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Need</th><th>Library / API</th><th>Use it for</th></tr>
+    <tr><td><b>HttpClient resilience</b></td><td><code>Microsoft.Extensions.Http.Resilience</code> (10.x): <code>AddStandardResilienceHandler()</code></td><td>Concurrency limiter, total timeout, retry (exponential + jitter), circuit breaker, per-attempt timeout</td></tr>
+    <tr><td><b>Non-HTTP calls</b></td><td><code>Polly.Core</code> (Polly v8, 8.x): <code>ResiliencePipelineBuilder</code></td><td>The same strategies around DB or SDK calls</td></tr>
+    <tr><td><b>Load shedding</b></td><td><span class="pill builtin">built-in</span> <code>AddRateLimiter</code> + <code>AddConcurrencyLimiter</code></td><td><code>PermitLimit</code> in flight, <code>QueueLimit</code> waiting, the rest rejected (503 by default)</td></tr>
+    <tr><td><b>Health checks</b></td><td><span class="pill builtin">built-in</span> <code>AddHealthChecks</code> / <code>MapHealthChecks</code>; community <code>AspNetCore.HealthChecks.*</code></td><td>Separate live and ready endpoints via tags</td></tr>
+    <tr><td><b>Kill switches</b></td><td><code>Microsoft.FeatureManagement.AspNetCore</code></td><td>Turn off non-critical features under load</td></tr>
+    <tr><td><b>Checksums</b></td><td><code>System.IO.Hashing</code> (<code>Crc32</code>, <code>Crc64</code>); <span class="pill builtin">built-in</span> <code>SHA256</code></td><td>Verify payloads and files end to end</td></tr>
+  </table>
+<pre class="code"><code>builder.Services.AddHttpClient&lt;LedgerClient&gt;(c =&gt; c.BaseAddress = new("https://ledger.internal"))
+    .AddStandardResilienceHandler(o =&gt;
+    {
+        o.AttemptTimeout.Timeout = TimeSpan.FromSeconds(2);
+        o.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(6);
+        o.Retry.MaxRetryAttempts = 2;            // exponential backoff + jitter by default
+    });
+
+builder.Services.AddRateLimiter(o =&gt;
+{
+    o.RejectionStatusCode = StatusCodes.Status503ServiceUnavailable;
+    o.AddConcurrencyLimiter("shed", c =&gt; { c.PermitLimit = 200; c.QueueLimit = 50; });
+});
+
+builder.Services.AddHealthChecks()
+    .AddCheck("self", () =&gt; HealthCheckResult.Healthy(), tags: ["live"])
+    .AddCheck&lt;LedgerReadyCheck&gt;("ledger", tags: ["ready"]);
+
+var app = builder.Build();
+app.UseRateLimiter();
+app.MapHealthChecks("/health/live",  new() { Predicate = r =&gt; r.Tags.Contains("live") });
+app.MapHealthChecks("/health/ready", new() { Predicate = r =&gt; r.Tags.Contains("ready") });
+app.MapPost("/payments", PayAsync).RequireRateLimiting("shed");</code></pre>
+  <p class="warn">Polly has no built-in retry budget. Keep <code>MaxRetryAttempts</code> low, let the circuit breaker stop retry storms, and retry at one layer only.</p>
+</div>
+
+  <div class="post">
+    <p>"What happens when the database fails?" is the reliability question every design review asks 🔥</p>
+    <p>🔍 Find SPOFs: walk the path and ask "if only this dies?" Don't forget DNS and certificates.</p>
+    <p>💓 Liveness restarts a process; readiness takes it out of traffic. Mix them up and one DB blip restarts everything.</p>
+    <p>⏱️ Retries need timeouts, backoff, jitter and a budget, or they turn an outage into a storm.</p>
+    <p>🪫 Overloaded? Shed load early, then switch off the nice-to-haves before the must-haves.</p>
+    <p>🧠 Two primaries after a network split? Quorum and fencing tokens.</p>
+    <p>Slow is often worse than down. Design for both.</p>
+    <p>#SystemDesign #Reliability #SRE #Resilience</p>
+  </div>
+</section>
+
+<!-- DISTRIBUTED COORDINATION PRIMITIVES -->
+<section class="concept" id="coordination">
+  <h2><span class="num">1.18</span> Distributed coordination primitives <span class="tag-added">Added</span></h2>
+  <p class="oneliner">The building blocks that let many nodes <b>agree</b> (consensus, quorum), <b>find each other</b> (discovery, gossip), <b>detect failure</b> (heartbeats) and <b>repair drift</b> (Merkle trees).</p>
+
+  <h3>Primer: the core primitives</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Primitive</th><th>In one line</th><th>Deep dive</th></tr>
+    <tr><td><b>Replication</b></td><td>Copies on several nodes: leader-follower, multi-leader or leaderless</td><td><a href="04-distributed-systems.html#replication">4.2</a></td></tr>
+    <tr><td><b>Quorum</b></td><td>W + R &gt; N, so a read overlaps the latest write</td><td><a href="04-distributed-systems.html#quorum">4.3</a></td></tr>
+    <tr><td><b>Consensus (Raft)</b></td><td>A majority agrees on one ordered log; survives minority loss</td><td><a href="04-distributed-systems.html#consensus">4.4</a></td></tr>
+    <tr><td><b>Lock + fencing</b></td><td>Lease-based lock; a rising token rejects stale holders</td><td><a href="04-distributed-systems.html#locks">4.5</a></td></tr>
+    <tr><td><b>Two-phase commit</b></td><td>Prepare, then commit; blocks if the coordinator dies</td><td><a href="04-distributed-systems.html#two-pc">4.6</a></td></tr>
+    <tr><td><b>Clocks</b></td><td>Wall clocks drift; Lamport / vector clocks order events</td><td><a href="04-distributed-systems.html#clocks">4.7</a></td></tr>
+    <tr><td><b>Consistent hashing</b></td><td>Hash ring: adding a node moves only ~1/N of keys</td><td><a href="03-scalability-reliability.html#consistent-hashing">3.4</a></td></tr>
+  </table></div>
+
+  <h3>Gossip protocol (epidemic spread)</h3>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Gossip: each node tells 1 random peer per round","interval":2200,
+ "frames":[
+  {"label":"Round 0","caption":"N1 learns a fact: <b>N5 is down</b>.","rows":[
+    [{"t":"N1","c":"green"},{"t":"N2","c":"off"},{"t":"N3","c":"off"},{"t":"N4","c":"off"}],
+    [{"t":"N5","c":"red"},{"t":"N6","c":"off"},{"t":"N7","c":"off"},{"t":"N8","c":"off"}]]},
+  {"label":"Round 1","caption":"N1 tells N3. <b>2</b> nodes know.","rows":[
+    [{"t":"N1","c":"green"},{"t":"N2","c":"off"},{"t":"N3","c":"green"},{"t":"N4","c":"off"}],
+    [{"t":"N5","c":"red"},{"t":"N6","c":"off"},{"t":"N7","c":"off"},{"t":"N8","c":"off"}]]},
+  {"label":"Round 2","caption":"Both tell one peer each. <b>4</b> know.","rows":[
+    [{"t":"N1","c":"green"},{"t":"N2","c":"green"},{"t":"N3","c":"green"},{"t":"N4","c":"off"}],
+    [{"t":"N5","c":"red"},{"t":"N6","c":"off"},{"t":"N7","c":"green"},{"t":"N8","c":"off"}]]},
+  {"label":"Round 3","caption":"Doubling each round: all live nodes know in about <b>log&#8322; N</b> rounds.","rows":[
+    [{"t":"N1","c":"green"},{"t":"N2","c":"green"},{"t":"N3","c":"green"},{"t":"N4","c":"green"}],
+    [{"t":"N5","c":"red"},{"t":"N6","c":"green"},{"t":"N7","c":"green"},{"t":"N8","c":"green"}]]}
+ ]}
+</script></figure>
+  <ul>
+    <li><b>How:</b> each second, every node swaps state (members, heartbeats, versions) with a few <b>random peers</b>. Newer wins.</li>
+    <li><b>Converges</b> in ~<b>O(log N)</b> rounds (1,000 nodes &asymp; 10). No central server.</li>
+    <li><b>Used by:</b> <b>Cassandra</b> (cluster state), <b>Consul / Serf</b> (SWIM-style membership), <b>Redis Cluster</b> (cluster bus), Amazon's Dynamo design.</li>
+    <li><b>Trade-off:</b> <b>eventually</b> consistent; fine for membership, not for "exactly one leader".</li>
+  </ul>
+
+  <h3>Merkle trees and anti-entropy repair</h3>
+<figure class="viz" data-viz="frames"><script type="application/json">
+{"title":"Compare two replicas top-down","interval":2600,
+ "frames":[
+  {"label":"Roots","caption":"Root hashes differ, so something is out of sync.","rows":[
+    {"label":"Root","items":[{"t":"Root","sub":"A &ne; B","c":"red"}]},
+    {"label":"Half","items":[{"t":"H(0-1)","c":"slate"},{"t":"H(2-3)","c":"slate"}]},
+    {"label":"Range","items":[{"t":"R0","c":"slate"},{"t":"R1","c":"slate"},{"t":"R2","c":"slate"},{"t":"R3","c":"slate"}]}]},
+  {"label":"Halves","caption":"Left half matches: skip it. Only recurse right.","rows":[
+    {"label":"Root","items":[{"t":"Root","sub":"A &ne; B","c":"red"}]},
+    {"label":"Half","items":[{"t":"H(0-1)","sub":"match","c":"green"},{"t":"H(2-3)","sub":"differs","c":"red"}]},
+    {"label":"Range","items":[{"t":"R0","c":"off"},{"t":"R1","c":"off"},{"t":"R2","c":"slate"},{"t":"R3","c":"slate"}]}]},
+  {"label":"Repair","caption":"Only range <b>R2</b> differs. Stream just that range: O(log n) hash checks, not a full scan.","rows":[
+    {"label":"Root","items":[{"t":"Root","c":"amber"}]},
+    {"label":"Half","items":[{"t":"H(0-1)","c":"green"},{"t":"H(2-3)","c":"amber"}]},
+    {"label":"Range","items":[{"t":"R0","c":"off"},{"t":"R1","c":"off"},{"t":"R2","sub":"sync","c":"amber","big":true},{"t":"R3","sub":"match","c":"green"}]}]}
+ ]}
+</script></figure>
+  <ul>
+    <li><b>Merkle tree:</b> leaves hash key ranges; each parent hashes its children. Equal roots = equal data.</li>
+    <li><b>Anti-entropy:</b> a background job compares trees and copies only the differing ranges (e.g. Cassandra <code>nodetool repair</code>).</li>
+    <li>Same idea in <b>Git</b> trees and <b>blockchain</b> blocks.</li>
+  </ul>
+
+  <h3>Failure detection, leader election, discovery</h3>
+  <div class="grid">
+    <div class="box red"><h4>Failure detection</h4><ul><li><b>Heartbeat</b> + <b>timeout</b>: no beat in T &rArr; suspect.</li><li>You <b>can't tell slow from dead</b> (GC pause, partition), so a detector only <b>suspects</b>.</li><li><b>Phi accrual</b>: learns the beat-interval distribution and outputs a suspicion level &phi;; act above a threshold (Cassandra, Akka).</li><li>Short timeout = false alarms; long = slow failover.</li></ul></div>
+    <div class="box purple"><h4>Leader election</h4><ul><li><b>Bully / ring</b>: highest ID wins. Textbook; unsafe under partitions.</li><li><b>Lease via a coordinator</b>: etcd, ZooKeeper, a Kubernetes Lease or a blob lease. Holder renews; expiry = new election.</li><li><b>Consensus log</b>: Raft elects a leader per <b>term</b>.</li><li>Always add a <b>fencing token</b>: two leaders can overlap briefly.</li></ul></div>
+    <div class="box teal"><h4>Service discovery</h4><ul><li><b>Registry</b> (Consul, etcd, Eureka, Kubernetes) lists healthy instances; TTL or health checks expire them.</li><li><b>Client-side</b>: client asks the registry and load-balances itself.</li><li><b>Server-side</b>: client calls a stable name (DNS, load balancer, K8s Service) that routes for it.</li></ul></div>
+  </div>
+
+  <div class="box amber"><h4>Interview angle: "how do nodes agree / find each other / detect failure?"</h4><ol>
+    <li><b>Split the question:</b> membership, failure detection, agreement, repair.</li>
+    <li><b>Membership:</b> registry for services; gossip for large peer clusters.</li>
+    <li><b>Failure:</b> heartbeats + timeout (or phi accrual); say "suspect, not dead".</li>
+    <li><b>Agreement:</b> need one leader or strict order? Use Raft / etcd plus fencing. Else quorum + anti-entropy.</li>
+    <li><b>Close</b> with the cost: majority-write latency vs eventual convergence.</li>
+  </ol></div>
+
+  <div class="remember"><ul>
+    <li><b>Gossip</b> spreads state in ~<b>O(log N)</b> rounds with no central node; eventually consistent.</li>
+    <li><b>Merkle trees</b> find differing ranges in O(log n) comparisons; anti-entropy syncs only those.</li>
+    <li>A failure detector can only <b>suspect</b>: slow and dead look the same.</li>
+    <li>Leader election = <b>lease or consensus</b>, plus a <b>fencing token</b>.</li>
+    <li>Discovery: <b>client-side</b> (smart client) vs <b>server-side</b> (LB/DNS) over a health-checked registry.</li>
+  </ul></div>
+
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Orleans membership</b></td><td><code>Microsoft.Orleans.Server</code> 10.x + a clustering provider, e.g. <code>Microsoft.Orleans.Clustering.AzureStorage</code></td><td>Silos probe each other and vote dead silos out via a membership table. See <a href="22-dotnet-engineering-deep-dive.html#orleans">22.10</a></td></tr>
+    <tr><td><b>DistributedLock</b></td><td><code>DistributedLock</code> 2.8 (meta-package; or one provider, e.g. <code>DistributedLock.SqlServer</code>, <code>DistributedLock.Azure</code>)</td><td>Locks / leader-only work over SQL Server, Postgres, Redis, Azure blob leases, ZooKeeper; <code>HandleLostToken</code> tells you the lock was lost</td></tr>
+    <tr><td><b>BlobLeaseClient</b></td><td><code>Azure.Storage.Blobs</code> 12.x</td><td>Lease-based leader (15&ndash;60 s, renewable). Example in <a href="04-distributed-systems.html#consensus">4.4</a></td></tr>
+    <tr><td><b>Service discovery</b></td><td><code>Microsoft.Extensions.ServiceDiscovery</code> 10.x</td><td>Client-side: <code>https+http://accounts</code> resolves from config, Aspire or Kubernetes DNS</td></tr>
+    <tr><td><b>SHA256.HashData</b></td><td><span class="pill builtin">built-in</span> <code>System.Security.Cryptography</code></td><td>Merkle leaf and node hashes</td></tr>
+  </table>
+<pre class="code"><code>// Leader-only job with DistributedLock (SQL Server provider)
+var leaderLock = new SqlDistributedLock("nightly-settlement", connectionString);
+await using var handle = await leaderLock.TryAcquireAsync(TimeSpan.FromSeconds(5), ct);
+if (handle is null) return;                        // another node is leader
+using var lost = CancellationTokenSource.CreateLinkedTokenSource(ct, handle.HandleLostToken);
+await RunSettlementAsync(lost.Token);              // stop if the lock is lost
+
+// Merkle root over key ranges: compare roots first, then children
+static byte[] MerkleRoot(IReadOnlyList&lt;byte[]&gt; ranges)
+{
+    var level = ranges.Select(r =&gt; SHA256.HashData(r)).ToList();
+    while (level.Count &gt; 1)
+    {
+        var next = new List&lt;byte[]&gt;();
+        for (int i = 0; i &lt; level.Count; i += 2)
+        {
+            var right = i + 1 &lt; level.Count ? level[i + 1] : level[i]; // odd count: repeat last
+            byte[] pair = [.. level[i], .. right];
+            next.Add(SHA256.HashData(pair));
+        }
+        level = next;
+    }
+    return level[0];
+}
+bool inSync = MerkleRoot(replicaA).AsSpan().SequenceEqual(MerkleRoot(replicaB));</code></pre>
+  <p class="warn">A lock or lease is <b>not</b> a guarantee of exclusivity after a long GC pause. Pass a <b>fencing token</b> (or row version) to the resource you write.</p>
+</div>
+
+  <div class="post">
+    <p>How does a 1,000-node cluster learn that one node died, with no central server? 🗣️</p>
+    <p>🦠 Gossip: each node tells a few random peers every second. Everyone knows in about 10 rounds (log N).</p>
+    <p>💓 Heartbeats + timeouts only suspect failure. Slow and dead look the same.</p>
+    <p>🌳 Merkle trees: compare one root hash, then drill down. Repair only the ranges that differ.</p>
+    <p>👑 Need exactly one leader? Use a lease or Raft, and always add a fencing token.</p>
+    <p>🧭 Services find each other through a registry: client-side or server-side discovery.</p>
+    <p>Which of these have you debugged in production?</p>
+    <p>#DistributedSystems #SystemDesign #Architecture #DotNet</p>
+  </div>
+</section>
+
+<!-- SECURITY AND OBSERVABILITY IN EVERY DESIGN -->
+<section class="concept" id="security-observability-basics">
+  <h2><span class="num">1.19</span> Security and observability in every design <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Every design answer needs a <b>security baseline</b> (who can do what, data protected in transit and at rest) and an <b>observability baseline</b> (logs, metrics, traces, SLOs). Mention both in 60 seconds, then move on.</p>
+
+  <h3>Visual: one request, every control and signal</h3>
+<figure class="viz" data-viz="journey"><script type="application/json">
+{"title":"Where each control and signal applies","stepMs":750,
+ "steps":[
+  {"t":"Client &rarr; edge","d":"TLS 1.2+, WAF, rate limit","icon":"🔒","c":"blue","tag":"in transit"},
+  {"t":"Gateway","d":"Validate token: who are you?","icon":"🪪","c":"purple","tag":"authN"},
+  {"t":"Correlation ID","d":"traceparent created or passed on","icon":"🧵","c":"slate","tag":"trace"},
+  {"t":"API","d":"Policy check, validate input","icon":"🛂","c":"purple","tag":"authZ"},
+  {"t":"Secrets","d":"Managed identity + Key Vault","icon":"🔑","c":"amber","tag":"no secrets in code"},
+  {"t":"Database","d":"Least-privilege role, encrypted","icon":"🗄️","c":"teal","tag":"at rest"},
+  {"t":"Audit log","d":"Who did what, when; tamper-evident","icon":"📜","c":"red","tag":"audit"},
+  {"t":"Telemetry","d":"Logs, metrics, spans by trace ID","icon":"📈","c":"green","tag":"3 signals"},
+  {"t":"Alert","d":"SLO burn on errors / latency","icon":"🚨","c":"red","tag":"symptoms"}
+ ]}
+</script></figure>
+
+  <h3>Security baseline (primer)</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Control</th><th>Say this</th><th>Deep dive</th></tr>
+    <tr><td><b>AuthN vs AuthZ</b></td><td>OIDC / OAuth tokens prove identity; policies decide access</td><td><a href="12-security-iam.html#authn-authz">12.1</a></td></tr>
+    <tr><td><b>Least privilege</b></td><td>Managed identities, scoped roles, no shared admin</td><td><a href="12-security-iam.html#iam">12.2</a></td></tr>
+    <tr><td><b>In transit</b></td><td>TLS everywhere; mTLS service-to-service</td><td><a href="12-security-iam.html#tls">12.6</a></td></tr>
+    <tr><td><b>At rest</b></td><td>Encrypted storage; customer-managed keys if required</td><td><a href="12-security-iam.html#keys">12.4</a></td></tr>
+    <tr><td><b>Secrets</b></td><td>Vault + rotation, never in code or config</td><td><a href="12-security-iam.html#secrets">12.7</a></td></tr>
+    <tr><td><b>Input / OWASP</b></td><td>Validate at the edge; object-level authZ checks</td><td><a href="12-security-iam.html#owasp">12.9</a></td></tr>
+    <tr><td><b>Zero trust</b></td><td>Verify every call; no trusted network</td><td><a href="12-security-iam.html#zerotrust">12.8</a></td></tr>
+    <tr><td><b>Classification</b></td><td>Tag PII / confidential; mask in logs</td><td><a href="07-data-governance-privacy.html#classification">7.2</a></td></tr>
+    <tr><td><b>Audit log</b></td><td>Append-only record of who changed what; kept apart from debug logs</td><td>&mdash;</td></tr>
+  </table></div>
+
+  <h3>Observability baseline (primer)</h3>
+  <div class="grid">
+    <div class="box blue"><h4>Three signals</h4><ul><li><b>Logs</b>: structured events (<a href="13-devops-deployment-observability.html#logging">13.10</a>).</li><li><b>Metrics</b>: cheap numbers over time (<a href="13-devops-deployment-observability.html#metrics">13.11</a>).</li><li><b>Traces</b>: one request across services (<a href="13-devops-deployment-observability.html#observability">13.9</a>).</li></ul></div>
+    <div class="box green"><h4>SLIs, SLOs, alerts</h4><ul><li><b>SLI</b>: measured, e.g. % of 2xx under 300 ms.</li><li><b>SLO</b>: target, e.g. 99.9% over 30 days (<a href="13-devops-deployment-observability.html#sre">13.14</a>).</li><li>Alert on <b>symptoms</b> users feel, not CPU (<a href="13-devops-deployment-observability.html#alerting">13.12</a>).</li></ul></div>
+    <div class="box teal"><h4>Correlation ID</h4><ul><li>W3C <b>traceparent</b> header flows through every hop and message.</li><li>Every log line carries the trace ID: one search finds the whole request.</li></ul></div>
+  </div>
+
+  <h3>Say this in every design (60 seconds)</h3>
+<figure class="viz" data-viz="steps"><script type="application/json">
+{"title":"The 10-point baseline","stepMs":650,"holdMs":2500,
+ "items":[
+  {"k":"1","t":"<b>Identity</b>: OIDC sign-in, OAuth tokens at the gateway","c":"purple"},
+  {"k":"2","t":"<b>AuthZ</b>: policy / scope checks in the service","c":"purple"},
+  {"k":"3","t":"<b>TLS</b> everywhere, mTLS inside","c":"blue"},
+  {"k":"4","t":"<b>Encrypted at rest</b>, keys in a vault","c":"blue"},
+  {"k":"5","t":"<b>Managed identities</b>, least privilege, no secrets in code","c":"amber"},
+  {"k":"6","t":"<b>Validate input</b>, rate limit, WAF at the edge","c":"amber"},
+  {"k":"7","t":"<b>Classify data</b>, mask PII, audit log","c":"red"},
+  {"k":"8","t":"<b>Logs, metrics, traces</b> via OpenTelemetry","c":"green"},
+  {"k":"9","t":"<b>Correlation ID</b> on every hop and message","c":"teal"},
+  {"k":"10","t":"<b>SLOs</b> + symptom alerts + dashboards","c":"green"}
+ ]}
+</script></figure>
+
+  <div class="box amber"><h4>Interview angle: weave it in, don't derail</h4><ol>
+    <li><b>Don't open with it.</b> Get requirements and the core design first.</li>
+    <li><b>One sentence per hop</b> as you draw: "the gateway validates the token", "this queue carries the trace context".</li>
+    <li><b>Give it a 60-second slot</b> near the end: run the 10-point list.</li>
+    <li><b>Go deep only where the domain needs it</b>: payments = audit and encryption; public API = OWASP and rate limits.</li>
+    <li>Offer, don't lecture: "Happy to go deeper on the threat model."</li>
+  </ol></div>
+
+  <div class="remember"><ul>
+    <li><b>AuthN</b> = who you are; <b>AuthZ</b> = what you may do. Check both, at the object level.</li>
+    <li>Encrypt <b>in transit and at rest</b>; secrets in a <b>vault</b>, accessed by <b>managed identity</b>.</li>
+    <li>Three signals: <b>logs, metrics, traces</b>, joined by a <b>trace / correlation ID</b>.</li>
+    <li>Alert on <b>SLO burn</b> (errors, latency), not on CPU.</li>
+    <li>Keep an <b>audit log</b> separate from debug logs, and never log secrets or raw PII.</li>
+  </ul></div>
+
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
+  <table>
+    <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
+    <tr><td><b>Authentication / authorisation</b></td><td><span class="pill builtin">built-in</span> ASP.NET Core + <code>Microsoft.AspNetCore.Authentication.JwtBearer</code> 10.0</td><td>Validate bearer tokens; policies with <code>RequireAuthorization</code>. See <a href="22-dotnet-engineering-deep-dive.html#authn-authz">22.15</a></td></tr>
+    <tr><td><b>Microsoft Identity Web</b></td><td><code>Microsoft.Identity.Web</code> 4.x</td><td>Entra ID sign-in and token validation helpers</td></tr>
+    <tr><td><b>Key Vault configuration</b></td><td><code>Azure.Extensions.AspNetCore.Configuration.Secrets</code> 1.5 + <code>Azure.Identity</code> 1.x</td><td>Load secrets into <code>IConfiguration</code> using a managed identity</td></tr>
+    <tr><td><b>OpenTelemetry host</b></td><td><code>OpenTelemetry.Extensions.Hosting</code> 1.x</td><td>Wire traces, metrics and logs into DI</td></tr>
+    <tr><td><b>Instrumentation</b></td><td><code>OpenTelemetry.Instrumentation.AspNetCore</code>, <code>.Http</code>, <code>.SqlClient</code> 1.x</td><td>Automatic spans and metrics for incoming requests, <code>HttpClient</code> and SQL</td></tr>
+    <tr><td><b>Exporters</b></td><td><code>OpenTelemetry.Exporter.OpenTelemetryProtocol</code> 1.x, or <code>Azure.Monitor.OpenTelemetry.AspNetCore</code> 1.x</td><td>Send to any OTLP backend, or to Application Insights</td></tr>
+  </table>
+<pre class="code"><code>var builder = WebApplication.CreateBuilder(args);
+
+// Secrets from Key Vault via managed identity (no secrets in appsettings)
+builder.Configuration.AddAzureKeyVault(
+    new Uri("https://payments-kv.vault.azure.net/"), new DefaultAzureCredential());
+
+// AuthN + AuthZ
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(o =&gt; { o.Authority = builder.Configuration["Auth:Authority"]; o.Audience = "api://payments"; });
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy("payments.write", p =&gt; p.RequireRole("Payments.Writer"));
+
+// Traces, metrics and logs; W3C traceparent is propagated automatically
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(r =&gt; r.AddService("payments-api"))
+    .WithTracing(t =&gt; t.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation().AddOtlpExporter())
+    .WithMetrics(m =&gt; m.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation().AddOtlpExporter());
+builder.Logging.AddOpenTelemetry(o =&gt; o.AddOtlpExporter());
+
+var app = builder.Build();
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapPost("/payments", CreatePayment).RequireAuthorization("payments.write");
+app.Run();</code></pre>
+  <p class="warn">In production, prefer a specific credential such as <code>ManagedIdentityCredential</code> over <code>DefaultAzureCredential</code>, and never log tokens, secrets or full card numbers.</p>
+</div>
+
+  <div class="post">
+    <p>Your system design was great. Then the interviewer asked: "How is it secured, and how would you know it's broken?" 🤔</p>
+    <p>🪪 AuthN at the gateway, AuthZ in the service. Least privilege everywhere.</p>
+    <p>🔒 TLS in transit, encryption at rest, secrets in a vault via managed identity.</p>
+    <p>📜 Classify the data, mask PII, keep an audit log.</p>
+    <p>📈 Logs, metrics and traces, joined by one correlation ID.</p>
+    <p>🚨 Alert on SLO burn that users feel, not on CPU.</p>
+    <p>Ten points, 60 seconds, then back to the design. What is on your checklist?</p>
+    <p>#SystemDesign #Security #Observability #SolutionArchitecture #DotNet</p>
+  </div>
+</section>
+
 <div class="qa-wrap">
   <h2>⚡ Quick-fire Q&amp;A</h2>
   <details class="qa"><summary>Why are threads cheaper than processes?</summary><p>They share the parent's memory and resources, so creating and switching them needs no new address space.</p></details>
@@ -1060,6 +2121,22 @@ app.Run();</code></pre>
   <details class="qa"><summary>Which structure would you use for a real-time leaderboard?</summary><p>A Redis sorted set (a skip list plus a hash): O(log n) score updates, rank lookup and top-N range queries.</p></details>
   <details class="qa"><summary>What happens when you type a URL? (the short version)</summary><p>URL parse + HSTS, caches, DNS (resolver → root → TLD → authoritative), TCP + TLS 1.3 (or QUIC), HTTP request through CDN/WAF, load balancer, gateway, app, cache, DB, then a compressed, cacheable response the browser turns into DOM + CSSOM → layout → paint. Go breadth first, then ask which layer to go deep on.</p></details>
   <details class="qa"><summary>Why is HTTP/3 faster to connect than HTTP/2?</summary><p>HTTP/2 needs a TCP handshake and then a TLS 1.3 handshake (2 round trips). HTTP/3 runs over QUIC, which combines transport and TLS into 1 round trip, or 0 on a resumed connection.</p></details>
+  <details class="qa"><summary>Forward proxy vs reverse proxy?</summary><p>A forward proxy sits in front of clients and hides them (egress control, filtering). A reverse proxy sits in front of servers and hides them (TLS offload, routing, load balancing, WAF). NGINX, Envoy and YARP are reverse proxies.</p></details>
+  <details class="qa"><summary>GeoDNS vs anycast?</summary><p>GeoDNS returns a different IP per user location, so failover waits for the DNS TTL. Anycast announces the same IP from many sites over BGP and the network routes to the nearest one, so failover takes seconds.</p></details>
+  <details class="qa"><summary>Why p99 instead of average latency?</summary><p>Averages hide the slow tail. p99 is the latency 1 in 100 requests exceed; with many calls per page, most users hit the tail, so SLOs use p95/p99.</p></details>
+  <details class="qa"><summary>How much downtime does 99.99% allow?</summary><p>About 52.6 minutes a year (about 4.3 minutes a month). 99.9% allows 8.76 hours a year; 99.999% about 5.26 minutes.</p></details>
+  <details class="qa"><summary>Read replicas or sharding: which fixes a write bottleneck?</summary><p>Sharding. Replicas copy the data, so every write still goes through one primary. Partitioning splits the rows, so each shard takes only its slice of the writes.</p></details>
+  <details class="qa"><summary>How do you handle a hot partition?</summary><p>Cache hot reads. Salt or write-shard hot writes into N sub-keys and merge on read. Split the partition, or move a whale tenant to its own shard.</p></details>
+  <details class="qa"><summary>Why do read-heavy systems denormalise?</summary><p>A denormalised view answers a screen in one read with no joins. You pay with write fan-out and some staleness, so keep a normalised source of truth and build read models from it.</p></details>
+  <details class="qa"><summary>Batch or stream processing?</summary><p>Batch for bounded data where completeness matters more than speed (statements, reconciliation). Stream for unbounded data that needs answers in seconds (fraud alerts), using windows and watermarks for late events.</p></details>
+  <details class="qa"><summary>Why does offset pagination get slow on deep pages, and what replaces it?</summary><p>OFFSET makes the database read and throw away every skipped row, so page 10,000 costs far more than page 1, and inserts shift rows between pages. Keyset (cursor) pagination filters on the last key seen (e.g. date + id) with an index seek, so every page costs the same and stays stable.</p></details>
+  <details class="qa"><summary>Fan-out on write or fan-out on read for a news feed?</summary><p>Both: push each post into followers' timeline caches for normal accounts (fast reads), but pull posts from celebrity accounts at read time and merge, so one post doesn't trigger millions of writes.</p></details>
+  <details class="qa"><summary>What is a fencing token and why do you need one?</summary><p>An increasing number handed out with each lock or leader lease. Storage rejects writes carrying an older number, so a leader that paused (GC, network split) and lost its lease can't overwrite the new leader's data. It is the fix for split brain at the storage layer.</p></details>
+  <details class="qa"><summary>Why add jitter to exponential backoff?</summary><p>Without it, every client that failed at the same moment retries at the same moments too, hitting the recovering service in synchronised waves. Randomising each wait spreads the retries out so the dependency can recover.</p></details>
+  <details class="qa"><summary>How does a gossip protocol spread cluster state, and how fast?</summary><p>Each node periodically swaps state with a few random peers; newer versions win. The number of informed nodes roughly doubles each round, so the whole cluster converges in about O(log N) rounds with no central server, but only eventually.</p></details>
+  <details class="qa"><summary>Why can't a failure detector be certain a node is dead?</summary><p>A slow node (GC pause, overload, network partition) looks the same as a dead one: both stop answering heartbeats. Detectors such as heartbeat timeouts or phi accrual only raise a suspicion; leaders still need leases and fencing tokens for safety.</p></details>
+  <details class="qa"><summary>What security points should every system design answer mention?</summary><p>AuthN with OIDC/OAuth at the gateway, AuthZ policies in the service, TLS in transit and encryption at rest, secrets in a vault via managed identity, least privilege, input validation and rate limits, data classification with PII masking, and an audit log.</p></details>
+  <details class="qa"><summary>What is a correlation ID and why does it matter?</summary><p>An ID (in practice the W3C traceparent trace ID) passed on every hop and message and written on every log line and span. One search then shows the whole request across services, which turns a multi-service incident into a single timeline.</p></details>
 </div>
 
 <div class="pager"><a href="index.html">← Roadmap</a><a class="next" href="02-networking-protocols.html">02 · Networking &amp; Protocols →</a></div>
