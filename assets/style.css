@@ -708,3 +708,19 @@ footer a { color: #fff; }
 .rv-mm-root { background: var(--th-grad-ink); }
 .rv-switch { color: var(--th); }
 .rv-switch input:checked + .rv-track { background: var(--th); }
+/* Animation speed control (assets/viz.js) */
+.spd { position: fixed; left: 14px; bottom: 14px; z-index: 20; display: flex; align-items: center; gap: 2px; padding: 3px 4px 3px 10px;
+  background: rgba(255, 255, 255, .92); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); border: 1px solid var(--th-line, var(--line));
+  border-radius: 999px; box-shadow: 0 6px 18px -8px rgba(15, 23, 42, .3); font-size: 12.5px; }
+.spd-lab { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.spd button { border: 0; background: none; font: inherit; font-weight: 700; color: var(--th, var(--blue)); min-width: 30px; height: 30px; padding: 0 6px;
+  border-radius: 999px; cursor: pointer; line-height: 1; }
+.spd button:hover:not(:disabled) { background: var(--th-bg, var(--blue-bg)); }
+.spd button:disabled { color: #cbd5e1; cursor: default; }
+.spd .spd-step { font-size: 18px; }
+.spd .spd-val { min-width: 54px; font-variant-numeric: tabular-nums; color: var(--ink); }
+.spd.off { border-color: #f59e0b; }
+.spd.off .spd-val { color: #b45309; }
+@media (min-width: 1100px) { body.side-open .spd { left: 304px; } }
+@media (max-width: 760px) { .spd { left: 8px; bottom: 8px; } }
+@media print { .spd { display: none !important; } }

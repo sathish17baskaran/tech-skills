@@ -10,7 +10,22 @@
   var BG = { blue: '#dbeafe', green: '#d1fae5', purple: '#ede9fe', amber: '#fef3c7', red: '#fee2e2', teal: '#ccfbf1', slate: '#e2e8f0', pink: '#fce7f3', off: '#f1f5f9' };
   var REDUCE = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  /* Animation speed: one site-wide rate (0 = paused). The pill control is built at the end of this file. */
+  var SPEEDS = [0.25, 0.5, 0.75, 1, 1.5, 2], SPEED_KEY = 'tcp-anim-speed';
+  var speed = 1, rate = 1;
+  try { var saved = parseFloat(localStorage.getItem(SPEED_KEY)); if (SPEEDS.indexOf(saved) >= 0) speed = rate = saved; } catch (e) { }
+
+  /* Waits ms of animation time: slower speeds stretch the wait and pause freezes it. */
+  function sleep(ms) {
+    return new Promise(function (r) {
+      var left = ms, last = performance.now();
+      (function tick() {
+        var now = performance.now();
+        left -= (now - last) * rate; last = now;
+        if (left <= 0) r(); else setTimeout(tick, rate ? Math.min(left / rate, 250) : 250);
+      })();
+    });
+  }
   function svgEl(tag, attrs, parent) {
     var e = document.createElementNS(NS, tag);
     for (var k in attrs) e.setAttribute(k, attrs[k]);
@@ -48,8 +63,32 @@
   }
   function anim(node, frames, opts) {
     if (!node.animate) return { finished: Promise.resolve() };
-    return node.animate(frames, opts);
+    var a = node.animate(frames, opts);
+    tune(a, true);
+    return a;
   }
+
+  /* Apply the current rate to a Web Animation (viz animations, plus CSS animations and transitions in diagrams).
+     While paused, running animations freeze; new finite ones jump to their end so diagrams don't show half-drawn. */
+  var SCOPE = 'figure.viz, .flow, svg';
+  function tune(a, fresh) {
+    var t = a.effect && a.effect.target;
+    if (!t || !t.closest || !t.closest(SCOPE) || a.playState === 'finished') return;
+    if (rate) {
+      if (a.playbackRate !== rate) a.playbackRate = rate;
+      if (a._spdPaused) { a._spdPaused = false; a.play(); }
+    } else if (fresh && a.effect.getComputedTiming().endTime !== Infinity) {
+      a.finish();
+    } else if (a.playState === 'running') {
+      a.pause(); a._spdPaused = true;
+    }
+  }
+  function tuneAll() { if (document.getAnimations) document.getAnimations().forEach(function (a) { tune(a, false); }); }
+  ['animationstart', 'transitionrun'].forEach(function (ev) {
+    document.addEventListener(ev, function (e) {
+      if (e.target.getAnimations) e.target.getAnimations().forEach(function (a) { tune(a, true); });
+    }, true);
+  });
 
   /* ---------------- SEQUENCE DIAGRAM ---------------- */
   function seq(fig, s) {
@@ -349,4 +388,54 @@
       flow.querySelectorAll('.ar').forEach(function (a, i) { a.style.animationDelay = (i * 0.35) + 's'; });
     });
   }
+
+  /* Inline SVG (SMIL) animations have no playback rate, so at any speed other than 1x their clock is driven by hand. */
+  var smil = Array.prototype.filter.call(document.querySelectorAll('svg'), function (s) {
+    return s.pauseAnimations && !(s.parentElement && s.parentElement.closest('svg')) && s.querySelector('animate, animateTransform, animateMotion, set');
+  });
+  var smilRaf = 0, smilLast = 0;
+  function smilTick(now) {
+    var dt = (now - smilLast) / 1000; smilLast = now;
+    smil.forEach(function (s) { s.setCurrentTime(s.getCurrentTime() + dt * rate); });
+    smilRaf = requestAnimationFrame(smilTick);
+  }
+  function applySmil() {
+    cancelAnimationFrame(smilRaf); smilRaf = 0;
+    if (rate === 1) { smil.forEach(function (s) { s.unpauseAnimations(); }); return; }
+    smil.forEach(function (s) { s.pauseAnimations(); });
+    if (rate) { smilLast = performance.now(); smilRaf = requestAnimationFrame(smilTick); }
+  }
+
+  /* Speed control: a small pill (bottom left) on every page that has animations. */
+  if (!document.querySelector('figure.viz, .flow .ar') && !smil.length) return;
+  var spd = htmlEl('div', 'spd', null, document.body);
+  spd.setAttribute('role', 'group'); spd.setAttribute('aria-label', 'Animation speed');
+  htmlEl('span', 'spd-lab', 'Speed', spd).setAttribute('aria-hidden', 'true');
+  function spdBtn(cls, label, fn) {
+    var b = htmlEl('button', cls, null, spd);
+    b.type = 'button'; b.setAttribute('aria-label', label); b.title = label;
+    b.addEventListener('click', fn);
+    return b;
+  }
+  var bPause = spdBtn('spd-pause', 'Pause animations', function () { rate = rate ? 0 : speed; apply(); });
+  var bSlow = spdBtn('spd-step', 'Slower', function () { step(-1); });
+  var bVal = spdBtn('spd-val', 'Reset to normal speed', function () { speed = 1; rate = 1; apply(); });
+  var bFast = spdBtn('spd-step', 'Faster', function () { step(1); });
+  bSlow.textContent = '\u2212'; bFast.textContent = '+';
+  function step(d) {
+    var i = SPEEDS.indexOf(speed) + d;
+    if (i < 0 || i >= SPEEDS.length) return;
+    speed = rate = SPEEDS[i]; apply();
+  }
+  function apply() {
+    try { localStorage.setItem(SPEED_KEY, String(speed)); } catch (e) { }
+    bVal.textContent = rate ? speed + '\u00d7' : 'Paused';
+    bPause.textContent = rate ? '\u23f8' : '\u25b6';
+    bPause.setAttribute('aria-label', rate ? 'Pause animations' : 'Play animations'); bPause.title = bPause.getAttribute('aria-label');
+    bSlow.disabled = speed === SPEEDS[0]; bFast.disabled = speed === SPEEDS[SPEEDS.length - 1];
+    spd.classList.toggle('off', !rate);
+    tuneAll(); applySmil();
+  }
+  apply();
+  requestAnimationFrame(tuneAll);
 })();

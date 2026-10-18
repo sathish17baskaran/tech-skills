@@ -43,7 +43,7 @@ There's no framework and no build step. Every page is a hand-written HTML file t
 | `NN-name.html` | One page per section (01–29). The number is the page order; the menu groups pages by context (page 29, Role foundations, sits in Interview prep next to 25) |
 | `26-leadership-behavioural-questions.html` | Redirect stub to `26-solution-architect-behavioural-questions.html`. Keep it so old links work |
 | `assets/style.css` | All styles. Later rules override earlier ones, so append overrides at the end. Colour themes: each menu group has a `[data-theme]` block (`--th`, `--th2`; derived `--th-bg`, `--th-line`, `--th-grad`, `--th-grad-ink` for surfaces behind white text). `assets/menu.js` sets `data-theme` on the body, menu groups, roadmap cards and learning-path chips from the group's first word (e.g. "APIs & integration" → `apis`). Use `var(--th)` instead of fixed colours for page chrome. A new menu group needs a theme block |
-| `assets/viz.js` | Animated diagram renderer for `figure.viz` |
+| `assets/viz.js` | Animated diagram renderer for `figure.viz`, plus the site-wide animation speed pill (pause, slower, faster) |
 | `assets/app.js` | Copy buttons on posts, table-to-card labels on phones, SVG minimum widths and swipe hints |
 | `assets/menu.js` | Collapsible left menu, grouped by context, with filter |
 | `assets/menu-data.js` | **Generated** by `tools/build-menu.ps1`. Don't edit by hand |
@@ -147,6 +147,8 @@ Example:
 </script></figure>
 ```
 Long labels wrap or clip on phones, so keep node labels to a few words and put detail in `caption` or `sub`.
+
+The speed pill (bottom left, on every page with animations) scales every animation inside `figure.viz`, `.flow` and inline SVGs, including SMIL. The chosen speed is stored in `localStorage` as `tcp-anim-speed`; pause isn't stored. When you write a new viz type, time it with `viz.js`'s `sleep()` and `anim()` helpers so the speed control applies to it.
 
 ## Quick revise data (`assets/revise/NN.js`)
 Each page has a data file that drives its Quick revise panel, Revise mode and the `revise.html` hub. Pages are for reading; this layer is for last-minute recall, so keep it crisp.
