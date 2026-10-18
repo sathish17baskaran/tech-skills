@@ -61,6 +61,16 @@
     el('a', null, '⚡ Quick revise for page ' + nn, links).href = page.f + '#revise';
     var pr = el('a', null, '🖨 Print', links);
     pr.href = '#'; pr.addEventListener('click', function (e) { e.preventDefault(); window.print(); });
+    var dl = el('a', null, '⬇ Markdown', links);
+    dl.href = '#'; dl.title = 'Download this topic as a Markdown (.md) file';
+    dl.addEventListener('click', function (e) {
+      e.preventDefault();
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([markdown()], { type: 'text/markdown;charset=utf-8' }));
+      a.download = nn + '-' + id + '.md';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    });
 
     /* 1. What to say */
     if (s.say || (s.k && s.k.length) || (s.p && s.p.length)) {
@@ -138,6 +148,53 @@
       var a = text('a', 'tp-chip' + (t === topic ? ' on' : ''), t[1], all);
       a.href = topicHref(nn, t[0]);
     });
+
+    /* The same content as a Markdown file (the "Markdown" link in the hero). */
+    function markdown() {
+      var abs = function (h) { return new URL(h, location.href).href; };
+      var out = ['# ' + topic[1], '', '*' + nn + ' · ' + page.t + '* · [Full notes](' + abs(full) + ') · [Topic page](' + location.href + ')', ''];
+      if (one) out.push('> ' + inline(one.innerHTML), '');
+      if (s.say) out.push('## 🎤 Say this in 30 seconds', '', inline(s.say), '');
+      if (s.k && s.k.length) out.push('**Keywords:** ' + s.k.map(function (k) { return '`' + inline(k) + '`'; }).join(' · '), '');
+      if (s.p && s.p.length) out.push('### 🔑 Key points', '', s.p.map(function (t) { return '- ' + inline(t); }).join('\n'), '');
+      if (picks.length) out.push('## 📌 From the notes', '', picks.map(function (n) { return (n.classList.contains('remember') ? '#### 🧠 Points to remember\n\n' : '') + blocks(n); }).join('\n\n'), '');
+      if (R.approach && R.approach.length) {
+        out.push('## 🪜 How to answer', '', R.approach.map(function (a, i) { return (i + 1) + '. **' + inline(a[0]) + '**: ' + inline(a[1]); }).join('\n'), '');
+        if (R.traps && R.traps.length) out.push('### ⚠️ Avoid these', '', R.traps.map(function (t) { return '- ' + inline(t); }).join('\n'), '');
+      }
+      if (s.f && s.f.length) out.push('## 🃏 Flashcards', '', s.f.map(function (c) { return '**Q: ' + inline(c[0]) + '**  \nA: ' + inline(UI ? UI.starLines(c[1]) : c[1]).replace(/\n/g, '  \n'); }).join('\n\n'), '');
+      if (s.q && s.q.length) out.push('## ❓ Quiz', '', s.q.map(function (x, i) {
+        return '**' + (i + 1) + '. ' + inline(x.q) + '**\n\n' + x.o.map(function (o, oi) { return '- ' + 'ABCD'.charAt(oi) + '. ' + inline(o); }).join('\n') +
+          '\n\n**Answer:** ' + 'ABCD'.charAt(x.a) + '. ' + inline(x.o[x.a]) + (x.e ? '. ' + inline(x.e) : '');
+      }).join('\n\n'), '');
+      out.push('---', '', 'More on ' + page.t + ': ' + page.s.map(function (t) { return '[' + t[1] + '](' + abs(topicHref(nn, t[0])) + ')'; }).join(' · '), '');
+      return out.join('\n');
+    }
     finish();
+  }
+
+  /* HTML to Markdown, enough for this site's prose: bold, italics, code, links, line breaks. */
+  function inline(html) {
+    var d = document.createElement('div');
+    d.innerHTML = String(html == null ? '' : html)
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/?(b|strong)>/gi, '**')
+      .replace(/<\/?(i|em)>/gi, '*')
+      .replace(/<code>([\s\S]*?)<\/code>/gi, '`$1`')
+      .replace(/<a\b[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, function (m, h, t) { return '[' + t + '](' + new URL(h, new URL(page.f, location.href)).href + ')'; });
+    return d.textContent.replace(/[ \t]*\n[ \t]*/g, '\n').replace(/[ \t]+/g, ' ').trim();
+  }
+  function blocks(n) {
+    var tag = n.tagName;
+    if (tag === 'UL' || tag === 'OL') return Array.prototype.map.call(n.children, function (li, i) { return (tag === 'OL' ? (i + 1) + '. ' : '- ') + inline(li.innerHTML); }).join('\n');
+    if (/^H[1-6]$/.test(tag)) return '#### ' + inline(n.innerHTML);
+    if (tag === 'TABLE') {
+      var rows = Array.prototype.map.call(n.rows, function (r) { return '| ' + Array.prototype.map.call(r.cells, function (c) { return inline(c.innerHTML).replace(/\|/g, '\\|').replace(/\n/g, ' '); }).join(' | ') + ' |'; });
+      if (rows.length) rows.splice(1, 0, rows[0].replace(/[^|]+/g, ' --- '));
+      return rows.join('\n');
+    }
+    if (n.children.length && Array.prototype.some.call(n.children, function (c) { return /^(P|UL|OL|DIV|TABLE|H[1-6])$/.test(c.tagName); }))
+      return Array.prototype.map.call(n.children, blocks).filter(Boolean).join('\n\n');
+    return inline(n.innerHTML);
   }
 })();
