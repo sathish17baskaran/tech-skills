@@ -45,7 +45,8 @@ There's no framework and no build step. Every page is a hand-written HTML file t
 | `assets/style.css` | All styles. Later rules override earlier ones, so append overrides at the end. Colour themes: each menu group has a `[data-theme]` block (`--th`, `--th2`; derived `--th-bg`, `--th-line`, `--th-grad`, `--th-grad-ink` for surfaces behind white text). `assets/menu.js` sets `data-theme` on the body, menu groups, roadmap cards and learning-path chips from the group's first word (e.g. "APIs & integration" → `apis`). Use `var(--th)` instead of fixed colours for page chrome. A new menu group needs a theme block |
 | `assets/viz.js` | Animated diagram renderer for `figure.viz`, plus the site-wide animation speed pill (pause, slower, faster) |
 | `assets/app.js` | Copy buttons on posts, table-to-card labels on phones, SVG minimum widths and swipe hints |
-| `assets/menu.js` | Collapsible left menu, grouped by context, with filter |
+| `assets/menu.js` | Collapsible left menu, grouped by context, with search. Search matches topic and page titles plus each topic's keywords, `say`, key points and flashcard questions (it loads every `assets/revise/NN.js` on first use); results open `topic.html` |
+| `topic.html` + `assets/topic.js` | Last-minute page for one topic (`topic.html?p=NN&s=section-id`): 30-second answer, keywords, key points, "Points to remember" and interview-angle boxes from the section, how to answer, flashcards, quiz, full notes (folded) and the page's other topics. The section is fetched from its page, so the notes parts only appear over http(s), not from `file://` |
 | `assets/menu-data.js` | **Generated** by `tools/build-menu.ps1`. Don't edit by hand |
 | `tools/build-menu.ps1` | Builds the menu from each page's `<title>` and hero toc. The context groups are defined near the end |
 | `tools/build-nav.ps1` | Rewrites `nav.top` and the bottom pager on every page from its ordered `$pages` list |

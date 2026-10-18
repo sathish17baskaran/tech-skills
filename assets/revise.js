@@ -423,7 +423,7 @@
     sync();
   }
 
-  window.ReviseUI = { flashcards: flashcards, quiz: quiz, mindmap: mindmap, approach: approach, cardsOf: cardsOf, quizOf: quizOf, pageInfo: pageInfo, label: label, ids: ids };
+  window.ReviseUI = { flashcards: flashcards, quiz: quiz, mindmap: mindmap, approach: approach, cardsOf: cardsOf, quizOf: quizOf, pageInfo: pageInfo, label: label, ids: ids, starLines: starLines };
 
   var hubEl = document.getElementById('revise-hub');
   if (hubEl) { hub(hubEl); return; }

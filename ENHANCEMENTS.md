@@ -19,7 +19,8 @@ Each of these appears inside other sections, but has no dedicated concept sectio
 - [ ] A behavioural page for other roles if needed (e.g. Integration Architect, Enterprise Architect), in the same format as pages 26–28.
 
 ## Site features
-- [ ] **Full-text search** across all pages. The menu filter only matches page and section titles. One option: a generated JSON index plus a small client-side search box.
+- [x] **Topic search** in the menu: matches titles, keywords, 30-second answers, key points and flashcard questions; results open a last-minute page per topic (`topic.html`).
+- [ ] **Full-text search** of the page body text (tables, boxes, `.dotnet` code). One option: a generated JSON index.
 - [ ] **Progress tracking**: a "done" tick per section saved in `localStorage`, with a per-page percentage in the menu.
 - [x] **Flashcard / quiz mode**: done as the "Quick revise" panel on every page plus `revise.html` (see AGENTS.md "Quick revise data").
 - [ ] Spaced repetition for flashcards: show cards marked "Again" sooner, and track a per-page quiz best score.

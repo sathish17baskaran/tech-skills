@@ -30,8 +30,8 @@
   var tools = el('div', 'side-tools');
   var filter = el('input', 'side-filter');
   filter.type = 'search';
-  filter.placeholder = 'Filter topics\u2026';
-  filter.setAttribute('aria-label', 'Filter topics');
+  filter.placeholder = 'Search topics and keywords\u2026';
+  filter.setAttribute('aria-label', 'Search topics');
   var expand = el('button', null, 'Expand all');
   var collapse = el('button', null, 'Collapse all');
   expand.type = collapse.type = 'button';
@@ -147,26 +147,80 @@
   });
   collapse.addEventListener('click', function () { groups.forEach(function (g) { g.open = false; }); });
 
-  filter.addEventListener('input', function () {
+  /* Search: matches topic and page titles, plus each topic's keywords, 30-second answer, key points and
+     flashcard questions from assets/revise/NN.js (loaded on first use). A result opens topic.html,
+     which puts everything on that topic on one page for last-minute prep. */
+  var results = el('div', 'side-results');
+  results.hidden = true;
+  side.insertBefore(results, list);
+  var requested = false, queued = false;
+  function loadData() {
+    if (requested) return;
+    requested = true;
+    data.forEach(function (p) {
+      if ((window.REVISE || {})[p.n]) return;
+      var s = document.createElement('script');
+      s.src = 'assets/revise/' + p.n + '.js';
+      s.onload = function () {
+        if (queued || !filter.value.trim()) return;
+        queued = true;
+        requestAnimationFrame(function () { queued = false; search(); });
+      };
+      document.head.appendChild(s);
+    });
+  }
+  function plain(s) { return String(s || '').replace(/<[^>]+>/g, ' ').toLowerCase(); }
+  function search() {
     var q = filter.value.trim().toLowerCase();
-    groups.forEach(function (g) {
-      var pageHit = !q || g.querySelector('summary').textContent.toLowerCase().indexOf(q) >= 0;
-      var any = false;
-      g.querySelectorAll('li').forEach(function (li) {
-        var hit = !q || pageHit || li.textContent.toLowerCase().indexOf(q) >= 0;
-        li.hidden = !hit;
-        if (hit) any = true;
+    list.hidden = btns.hidden = !!q;
+    results.hidden = !q;
+    results.innerHTML = '';
+    if (!q) return;
+    var words = q.split(/\s+/), R = window.REVISE || {}, hits = [];
+    data.forEach(function (p, pi) {
+      p.s.forEach(function (s, si) {
+        var d = (R[p.n] && R[p.n].sections && R[p.n].sections[s[0]]) || {};
+        var title = s[1].toLowerCase(), keys = plain((d.k || []).join(' | ')), pageT = (p.n + ' ' + p.t).toLowerCase();
+        var body = plain([d.say].concat(d.p || [], (d.f || []).map(function (f) { return f[0]; })).join(' '));
+        var score = 0;
+        for (var i = 0; i < words.length; i++) {
+          var w = words[i], at = title.indexOf(w);
+          var sc = at >= 0 ? (at === 0 || /\W/.test(title.charAt(at - 1)) ? 12 : 8) : keys.indexOf(w) >= 0 ? 5 : pageT.indexOf(w) >= 0 ? 3 : body.indexOf(w) >= 0 ? 1 : 0;
+          if (!sc) { score = 0; break; }
+          score += sc;
+        }
+        if (score) hits.push({ p: p, s: s, k: (d.k || []).filter(function (k) { return words.some(function (w) { return k.toLowerCase().indexOf(w) >= 0; }); }), score: score, order: pi * 1000 + si });
       });
-      g.hidden = !(pageHit || any);
-      if (q) g.open = any; else g.open = g.classList.contains('current');
     });
-    ctxs.forEach(function (c) {
-      var nameHit = q && c.dataset.name.toLowerCase().indexOf(q) >= 0;
-      if (nameHit) c.querySelectorAll('.side-grp, li').forEach(function (e) { e.hidden = false; });
-      var visible = nameHit || c.querySelector('.side-grp:not([hidden])');
-      c.hidden = !visible;
-      c.open = q ? !!visible : (closed.indexOf(c.dataset.name) < 0 || c.classList.contains('has-current'));
+    hits.sort(function (a, b) { return b.score - a.score || a.order - b.order; });
+    results.appendChild(el('div', 'side-results-h', hits.length ? hits.length + (hits.length === 1 ? ' topic' : ' topics') + ' \u00b7 pick one for a last-minute summary' : 'No topics match. Try a shorter or different word.'));
+    hits.slice(0, 40).forEach(function (h) {
+      var a = el('a', 'side-hit');
+      a.href = 'topic.html?p=' + h.p.n + '&s=' + encodeURIComponent(h.s[0]);
+      a.dataset.theme = theme(h.p.g);
+      a.appendChild(el('span', 'side-hit-t', h.s[1]));
+      a.appendChild(el('span', 'side-hit-p', h.p.n + ' \u00b7 ' + h.p.t));
+      if (h.k.length) {
+        var ks = el('span', 'side-hit-k');
+        h.k.slice(0, 3).forEach(function (k) { ks.appendChild(el('i', null, k.replace(/<[^>]+>/g, ''))); });
+        a.appendChild(ks);
+      }
+      results.appendChild(a);
     });
+  }
+  filter.addEventListener('focus', loadData);
+  filter.addEventListener('input', function () { loadData(); search(); });
+  filter.addEventListener('keydown', function (e) {
+    var first = results.querySelector('.side-hit');
+    if (e.key === 'Enter' && first) location.href = first.href;
+    else if (e.key === 'ArrowDown' && first) { e.preventDefault(); first.focus(); }
+  });
+  results.addEventListener('keydown', function (e) {
+    var a = e.target.closest('.side-hit');
+    if (!a || (e.key !== 'ArrowDown' && e.key !== 'ArrowUp')) return;
+    e.preventDefault();
+    var next = e.key === 'ArrowDown' ? a.nextElementSibling : a.previousElementSibling;
+    if (next && next.classList.contains('side-hit')) next.focus(); else if (e.key === 'ArrowUp') filter.focus();
   });
 
   var cur = list.querySelector('.side-ctx.has-current');
