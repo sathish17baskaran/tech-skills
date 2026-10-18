@@ -44,12 +44,12 @@ $groups = @(
   @('Scale & distributed systems', @('03', '04', '05')),
   @('Data', @('06', '07')),
   @('APIs & integration', @('08', '09', '10')),
-  @('Architecture & governance', @('11', '17', '24')),
-  @('Security, cloud & operations', @('12', '13', '21')),
-  @('AI & GenAI', @('14', '15')),
-  @('Domain & system design practice', @('16', '18', '19')),
-  @('Engineering & .NET', @('20', '22', '23')),
-  @('Interview prep', @('25', '29', '26', '27', '28')))
+  @('Architecture & governance', @('11', '12', '13')),
+  @('Security, cloud & operations', @('14', '15', '16')),
+  @('AI & GenAI', @('17', '18')),
+  @('Domain & system design practice', @('19', '20', '21')),
+  @('Engineering & .NET', @('22', '23', '24')),
+  @('Interview prep', @('25', '26', '27', '28', '29')))
 $grouped = @()
 foreach ($g in $groups) {
   foreach ($p in $menu | Where-Object { $g[1] -contains $_.n }) { $p.g = $g[0]; $grouped += $p }

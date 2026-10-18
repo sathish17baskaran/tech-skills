@@ -13,7 +13,7 @@
 <header class="hero">
   <div class="kicker">Section 07</div>
   <h1>Data governance &amp; privacy</h1>
-  <p>Who owns the data, how sensitive it is, where it may live, how long you keep it, whether you can trust it, and how teams share it safely. Section 06 covers how data is stored and moved. This section covers the rules around it. Encryption, hashing, tokenisation and key management are taught in <a href="12-security-iam.html#hashing">12 Security</a>, and this page links to them.</p>
+  <p>Who owns the data, how sensitive it is, where it may live, how long you keep it, whether you can trust it, and how teams share it safely. Section 06 covers how data is stored and moved. This section covers the rules around it. Encryption, hashing, tokenisation and key management are taught in <a href="14-security-iam.html#hashing">14 Security</a>, and this page links to them.</p>
   <div class="toc">
     <a href="#governance" class="added">Governance basics</a>
     <a href="#classification" class="added">Data classification</a>
@@ -183,7 +183,7 @@ public static partial class Log
     <div class="box"><h4>🎯 Purpose limitation</h4><p>Use data for the purpose it was collected for, or a related one people would reasonably expect.</p></div>
     <div class="box"><h4>✅ Consent &amp; notice</h4><p>Tell people what you collect and why. Get consent where the law requires it (e.g. sensitive information).</p></div>
     <div class="box"><h4>🙋 Individual rights</h4><p>People can ask to access and correct their data. Some laws add erasure and portability.</p></div>
-    <div class="box"><h4>🔒 Security</h4><p>Reasonable technical and organisational steps to protect it. See <a href="12-security-iam.html#hashing">12.5</a> and <a href="12-security-iam.html#secrets">12.7</a>.</p></div>
+    <div class="box"><h4>🔒 Security</h4><p>Reasonable technical and organisational steps to protect it. See <a href="14-security-iam.html#hashing">14.5</a> and <a href="14-security-iam.html#secrets">14.7</a>.</p></div>
   </div>
 <figure class="viz" data-viz="frames"><script type="application/json">
 {"title":"One customer record, five ways to show it","interval":2800,
@@ -379,7 +379,7 @@ builder.Services.AddDataProtection()
     <div class="box"><h4>🗂️ Soft vs hard delete</h4><p>Soft delete (an <code>IsDeleted</code> flag) is handy for undo. It is <b>not</b> deletion for privacy or retention. Plan the hard delete too.</p></div>
     <div class="box"><h4>💾 Backups</h4><p>You usually can't edit backups. Let them age out on a short, documented cycle, and keep a <b>deletion log</b> that is replayed after any restore.</p></div>
     <div class="box"><h4>📜 Logs</h4><p>Keep personal information out of logs in the first place (see 7.2 redaction). Then log retention is easy.</p></div>
-    <div class="box green"><h4>🔑 Crypto-shredding</h4><p>Encrypt each customer's (or each period's) data with its own key. Delete the key, and every copy, including backups, becomes unreadable. Key management: <a href="12-security-iam.html#secrets">12.7</a>.</p></div>
+    <div class="box green"><h4>🔑 Crypto-shredding</h4><p>Encrypt each customer's (or each period's) data with its own key. Delete the key, and every copy, including backups, becomes unreadable. Key management: <a href="14-security-iam.html#secrets">14.7</a>.</p></div>
   </div>
   <div class="remember"><ul>
     <li>Over-retention is a risk, not a safety net: old data is breach exposure with no business value.</li>

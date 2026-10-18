@@ -1,173 +1,175 @@
-/* Quick-revision data for 17-architecture-documents.html. Schema: see AGENTS.md "Quick revise data". */
+/* Quick-revision data for 17-rag-genai.html. Schema: see AGENTS.md "Quick revise data". */
 (window.REVISE = window.REVISE || {})['17'] = {
   approach: [
-    ['Name the document and its question', 'ACD: why and what concept? AIA: what impact and risk? SO/HLD: what solution? LLD: how to build? ADR: why X over Y? SOP: how to operate?'],
-    ['Say who reads it and when', 'Audience and lifecycle stage set the level of detail: low for sponsors, high for developers.'],
-    ['List the core contents', 'Context diagram, options, NFRs, integrations, data, security, deployment, risks, linked ADRs.'],
-    ['Make it measurable and visual', 'C4 diagrams first; NFRs as numbers (p95, availability, RPO/RTO); trade-offs stated openly.'],
-    ['Show governance', 'Risk rating drives fast-track vs full review; guardrails and paved roads over gates; ADRs for exceptions.'],
-    ['Close with how it stays alive', 'Docs in the repo, diagrams as code, generated artefacts, owner and review date.']
+    ['Clarify the use case', 'Knowledge Q&A, extraction, or behaviour? Data freshness, who may see what, latency and cost budget.'],
+    ['Pick the lightest lever', 'Prompting first, RAG for missing knowledge, fine-tuning only for behaviour; smallest model that passes eval.'],
+    ['Design ingestion', 'Parse, structure-aware chunking with overlap, embed, store with metadata and ACLs.'],
+    ['Design retrieval', 'Query rewrite, hybrid search + metadata/security filters, retrieve wide, re-rank to the best 3-8.'],
+    ['Ground the answer', 'Answer only from context with citations; "I don\'t know" below a score threshold; low temperature.'],
+    ['Evaluate and operate', 'Golden set in CI (recall@K, groundedness), gateway with token quotas, tracing, caching, content safety.'],
+    ['Close with responsibility', 'Human oversight for high-impact decisions, transparency, audit trail of model and prompt versions.']
   ],
   traps: [
-    'Stopping at "it depends" without naming the drivers.',
-    'Writing NFRs like "the system should be fast" instead of measurable targets.',
-    'Editing an accepted ADR instead of superseding it.',
-    'Presenting the same level of detail to executives and engineers.',
-    'Signing a vendor deal with no exit plan.'
+    'Proposing fine-tuning to teach the model facts that change monthly.',
+    'Skipping security trimming, so RAG leaks documents the user cannot open.',
+    'Treating every bad answer as a model problem when it is a retrieval problem.',
+    'Sending K=50 chunks straight to the LLM without re-ranking.',
+    'Shipping prompt changes without an evaluation set.'
   ],
   sections: {
-    lifecycle: {
-      say: 'Architecture documents get more detailed as an initiative moves from idea to operations: ACD for the concept, AIA for impact and governance, SO or HLD for the solution, LLD for build detail, then SOPs and runbooks to operate. ADRs are written at any stage, one per significant decision.',
-      k: ['ACD', 'AIA', 'SO / HLD', 'LLD', 'ADR', 'SOP / runbook', 'audience'],
-      p: ['Detail rises from low (ACD) to high (LLD).', 'ADRs: one per significant decision, at any stage.', 'Acronyms vary by organisation: keep the purpose, adjust the names.'],
-      f: [
-        ['Which document answers "why are we doing this?"', 'The ACD: problem, business drivers, scope and target concept, read by business sponsors and enterprise architects.'],
-        ['Order the main documents from idea to operations.', 'ACD, AIA, SO or HLD, LLD, build and test, then SOP or runbook. ADRs run throughout.']
-      ],
-      q: [{ q: 'Which document is aimed mainly at developers and testers, with the highest level of detail?', o: ['LLD', 'ACD', 'AIA', 'SO'], a: 0, e: 'The LLD is the developer-ready blueprint: contracts, schemas, error handling and test approach.' }]
+    llm: {
+      say: 'An LLM predicts the next token from the tokens it has seen, so it knows only its training data plus your prompt. You pay per token, the context window caps prompt plus answer, and temperature controls randomness. It can hallucinate and has a knowledge cutoff, which RAG fixes by grounding answers in retrieved facts.',
+      k: ['token', 'context window', 'temperature / top-p', 'hallucination', 'knowledge cutoff', 'system prompt', 'lost in the middle'],
+      p: ['1 token is about 4 characters or 0.75 English words.', 'Low temperature (0-0.3) for factual RAG; higher for creative work.', 'Order: prompting, then RAG, then fine-tuning. RAG is for knowledge, fine-tuning for behaviour.', 'Reasoning models reject or ignore temperature/top-p.'],
+      f: [['What is a hallucination and how does RAG reduce it?', 'A confident but false answer. RAG grounds the model in retrieved facts and tells it to answer only from that context, with citations.'],
+          ['Is a bigger context window always better?', 'No. It costs more tokens and models can get "lost in the middle", missing facts buried in long contexts.'],
+          ['Prompting vs RAG vs fine-tuning in one line each?', 'Prompting: better instructions, lowest cost. RAG: inject fresh or private documents at query time. Fine-tuning: retrain weights for style or specialised behaviour, highest effort.']],
+      q: [{ q: 'Which temperature setting suits a factual RAG answer?', o: ['0.9', '1.5', '0 to 0.3', 'It does not matter'], a: 2, e: 'Low temperature keeps answers deterministic and close to the retrieved facts.' }]
     },
-    acd: {
-      say: 'The ACD, Architecture Concept or Context Document, is the earliest architecture artefact. It frames the problem, business drivers, scope, current state and target concept, with high-level options and a recommended direction. Keep it short and visual: its job is agreement on direction, not design detail.',
-      k: ['problem statement', 'business drivers', 'scope in / out', 'as-is / to-be', 'context diagram', 'options', 'strategic alignment'],
-      p: ['One context diagram (C4 level 1) beats pages of text.', 'Capture options early so later reviews do not reopen them.', 'Include assumptions, constraints, dependencies and risks.'],
-      f: [
-        ['What goes in an ACD?', 'Problem and drivers, scope and stakeholders, as-is context, to-be concept and affected capabilities, high-level options with a recommended direction, assumptions, constraints, risks and strategic alignment.'],
-        ['Why record options in the ACD?', 'So later reviews do not reopen decisions that were already weighed and agreed.']
-      ],
-      q: [{ q: 'What is the main job of an ACD?', o: ['Specify database schemas', 'Describe operating procedures', 'Record a single technical decision', 'Get agreement on the problem and direction'], a: 3, e: 'The ACD frames the problem and target concept so stakeholders agree on direction before detailed design.' }]
+    prompting: {
+      say: 'A prompt is a spec for the model. Set the role, rules and format in the system prompt, give a few examples, wrap untrusted data in delimiters and ask for schema-enforced structured output when code consumes the answer. Treat prompts as versioned, tested artefacts and log the prompt version with every response.',
+      k: ['system vs user prompt', 'few-shot', 'structured output', 'JSON schema', 'delimiters', 'chain-of-thought', 'reasoning effort', 'prompt caching'],
+      p: ['Delimiters reduce prompt injection but do not eliminate it; also limit what the model can do.', 'Reasoning models: no "think step by step"; give goal, constraints, success criteria.', 'Static content first, variable last, so providers cache the prefix.', 'Validate structured output in code anyway.'],
+      f: [['How do you get reliable JSON out of an LLM?', 'Schema-enforced structured output (a JSON schema or GetResponseAsync<T> in .NET), low temperature and an example or two. Then validate in code and retry or fall back if it fails.'],
+          ['How should you prompt a reasoning model differently?', 'Do not add "think step by step"; it already reasons. Keep the prompt short with the goal, constraints and success criteria, and tune reasoning effort instead of temperature.'],
+          ['Why version prompts in Git?', 'Each change is reviewed and evaluated against a golden set, and logging the version with each response lets you trace a bad answer back to its prompt.']],
+      q: [{ q: 'Why put the system prompt and examples first and the user data last?', o: ['Providers cache repeated prefixes, cutting cost and latency', 'Models read right to left', 'It disables prompt injection completely', 'It raises the temperature'], a: 0, e: 'An identical static prefix can be served from the provider\'s prompt cache.' }]
     },
-    aia: {
-      say: 'An AIA, Architecture Impact Assessment, assesses how a change affects existing applications, interfaces, data, security, operations and cost, then gives a risk rating that decides the governance path: fast-track or full review board. In AI programmes AIA can also mean AI Impact Assessment.',
-      k: ['change classification', 'impacted systems', 'data classification / PII', 'regulatory obligations', 'technical debt', 'risk rating', 'governance path'],
-      p: ['Risk rating decides fast-track vs full review board.', 'Be honest: impacts found later cost much more.', 'AI Impact Assessment covers fairness, transparency, data use, oversight, model risk.'],
-      f: [
-        ['What decides the governance path in an AIA?', 'The risk rating, based on the change classification and its impact on systems, data, security and operations: low risk can fast-track, high risk goes to the full review board.'],
-        ['Which data impacts does an AIA check?', 'Data classification, PII, residency and retention.']
-      ],
-      q: [{ q: 'An AIA rates a change as low risk and minor. What usually follows?', o: ['A full architecture review board', 'A new ACD', 'A fast-track governance path', 'Immediate production deployment without review'], a: 2, e: 'The AIA risk rating sets the governance path; low-risk changes take the lighter fast-track route.' }]
+    approach: {
+      say: 'Start with prompting. Add RAG when the model lacks knowledge, and fine-tune only when it lacks a behaviour. Then pick the smallest model that passes your own evaluation. Fine-tuning does not reliably teach facts and cannot cite sources. These combine: RAG for facts, a small tuned model for format, and a router sending hard questions to a big model.',
+      k: ['prompting', 'RAG', 'fine-tuning', 'LoRA / PEFT', 'distillation', 'small language model', 'quantisation', 'model routing'],
+      p: ['Knowledge = RAG; behaviour = fine-tune; always start with prompting.', 'LoRA freezes the base model and trains small adapters: much cheaper.', '4-bit quantised model needs about a quarter of the 16-bit memory, with a small quality loss.', 'Choose models with your own eval set, not leaderboards.'],
+      f: [['RAG or fine-tuning for internal policies that change monthly?', 'RAG. The facts change often and need citations and access control. Fine-tuning teaches behaviour, not frequently updated facts.'],
+          ['When would you choose a small language model?', 'For narrow, high-volume tasks like classification, extraction or routing, when latency or cost matters, or when data must stay on-prem or on device. Prove it with your eval set.'],
+          ['What is distillation?', 'A big teacher model generates answers and a small student model is trained to copy them on your task, keeping most of the quality at a fraction of the cost.']],
+      q: [{ q: 'A bank wants answers in a strict house style and format, on facts that rarely change. Which lever fits best after prompting?', o: ['Removing the system prompt', 'A bigger context window', 'Higher temperature', 'Fine-tuning (e.g. LoRA)'], a: 3, e: 'Style and format are behaviour, which fine-tuning targets; RAG is for knowledge.' },
+          { q: 'Which task suits a small or mini model?', o: ['Complex multi-step planning', 'High-volume classification and routing', 'Hard maths proofs', 'Long code generation across repos'], a: 1, e: 'Simple, high-volume, latency-sensitive tasks are where small models shine.' }]
     },
-    so: {
-      say: 'The Solution Outline describes the proposed solution: components, integrations, data flows, security, deployment and HA/DR, and how it meets functional and non-functional requirements. It bridges concept and detailed design. Show options, key decisions with linked ADRs, and the trade-offs you accept.',
-      k: ['requirements summary', 'C4 level 2', 'build vs buy', 'integration patterns', 'security architecture', 'HA / DR', 'options analysis'],
-      p: ['Explain how each NFR is met, e.g. availability target to zone redundancy plus DR region.', 'Reviewers trust designs that admit their weaknesses.', 'Link ADRs for key decisions.'],
-      f: [
-        ['How should an SO handle NFRs?', 'Map each NFR to the design feature that meets it, e.g. 99.95% availability via zone redundancy and a DR region, not just list them.'],
-        ['What integration detail belongs in an SO?', 'Interfaces, patterns (sync, async, batch) and protocols at overview level; exact contracts belong in the LLD.']
-      ],
-      q: [{ q: 'Which C4 level is typical for the main diagram in a Solution Outline?', o: ['Level 1 Context only', 'Level 2 Container', 'Level 3 Component', 'Level 4 Code'], a: 1, e: 'An SO shows the apps, APIs, databases and queues: the container level. Component and code levels belong in the LLD.' }]
+    rag: {
+      say: 'RAG retrieves relevant pieces of your knowledge, augments the prompt with them, and lets the LLM generate a grounded answer with citations. There are two pipelines: offline ingestion that loads, parses, chunks, embeds and stores; and online retrieval that rewrites the query, retrieves, re-ranks and generates. Retrieval quality caps answer quality.',
+      k: ['retrieve, augment, generate', 'ingestion pipeline', 'retrieval pipeline', 'grounding', 'citations', 'naive / advanced / modular RAG'],
+      p: ['Most RAG problems are search problems.', 'Tell the model: answer only from context, otherwise say you don\'t know.', 'Benefits: private and fresh data without retraining, citations, access control.'],
+      f: [['Name the steps of the RAG ingestion pipeline.', 'Load, clean and parse (OCR, tables, layout), chunk, embed, and store vectors with metadata and text.'],
+          ['Naive vs advanced vs modular RAG?', 'Naive: chunk, embed, top-k, generate. Advanced adds query rewriting, hybrid search, re-ranking and better chunking. Modular or agentic adds routing, tools, multi-step retrieval and self-correction.']],
+      q: [{ q: 'A RAG bot gives poor answers. Where should you usually look first?', o: ['The model\'s temperature', 'The UI colour scheme', 'Retrieval quality: did the right chunks come back?', 'The model\'s knowledge cutoff'], a: 2, e: 'Retrieval quality caps answer quality; most RAG problems are search problems.' }]
     },
-    hld: {
-      say: 'The HLD is the system-level design: major components, interactions, technology choices and deployment topology, with logical and physical diagrams and sequence diagrams for key flows. It also covers cross-cutting concerns like logging, monitoring, security and resilience. In many organisations the SO and HLD are one document.',
-      k: ['logical / physical diagram', 'sequence diagrams', 'technology stack', 'deployment topology', 'cross-cutting concerns', 'architecture tests'],
-      p: ['SO and HLD are often merged.', 'Cross-cutting: logging, monitoring, security, resilience.', 'Architecture tests (ArchUnitNET) can enforce the HLD layering in CI.'],
-      f: [
-        ['HLD vs LLD?', 'HLD covers which components exist and how they interact (system view). LLD covers how each component is built: contracts, schemas, logic and error handling (developer view).'],
-        ['How can you stop code drifting from the HLD?', 'Encode layering rules as architecture tests that fail the build, and describe the topology as code (e.g. an Aspire AppHost).']
-      ],
-      q: [{ q: 'Which of these belongs in an HLD rather than an LLD?', o: ['Table indexes and partitioning', 'Validation rules per field', 'Deployment topology and component interactions', 'Alert definitions per metric'], a: 2, e: 'The HLD is the system view: components, interactions, technology and topology. Field-level detail is LLD.' }]
+    chunking: {
+      say: 'Chunking splits documents into pieces precise enough to retrieve and complete enough to answer from. Start with 256 to 1024 tokens and 10 to 20 percent overlap, prefer structure-aware splits by headings, keep tables whole, and add context headers and metadata to every chunk. Tune sizes with evaluation, not guesswork.',
+      k: ['fixed-size + overlap', 'recursive splitting', 'structure-aware chunking', 'semantic chunking', 'parent-child (small-to-big)', 'contextual chunk headers', 'metadata'],
+      p: ['Start at 256-1024 tokens with 10-20% overlap.', 'Keep tables whole; repeat headers in row-wise text.', 'Store source, page, section, date and access level with each chunk.'],
+      f: [['Why chunk documents at all?', 'Whole-document embeddings blur meaning, context windows and tokens are limited, and chunks become precise citations.'],
+          ['What is parent-child (small-to-big) chunking?', 'Search over small chunks for precise matching, then send their larger parent section to the LLM for richer context.'],
+          ['Why add overlap between chunks?', 'So an idea that spans a chunk boundary is not cut in half and lost.']],
+      q: [{ q: 'Which chunking strategy starts a new chunk where sentence similarity drops?', o: ['Semantic chunking', 'Fixed-size', 'Sliding window', 'Recursive character'], a: 0, e: 'Semantic chunking uses embedding similarity between sentences to find topic shifts.' }]
     },
-    lld: {
-      say: 'The LLD is the developer-ready blueprint: component internals, API contracts, message schemas, database schema, detailed sequences including error paths, validation, retries, idempotency, configuration, logging and test approach. Keep it close to the code, in the repo, and prefer generated artefacts like OpenAPI and DDL over hand-copied tables.',
-      k: ['OpenAPI contract', 'message schemas', 'database schema', 'error paths', 'idempotency / retries', 'feature flags', 'docs as code'],
-      p: ['Detailed enough to build and test without guessing.', 'Include error handling, retries, idempotency and timeouts.', 'Generated artefacts do not drift; hand-copied tables do.'],
-      f: [
-        ['Name five things an LLD must contain.', 'API contracts, message schemas, database schema with keys and indexes, sequence diagrams including error paths, and error handling with retries, idempotency and timeouts. Also config, logging and test approach.'],
-        ['How do you keep an LLD from drifting?', 'Store it in the repo as Markdown with diagrams as code, and generate OpenAPI and schema DDL from the code instead of copying them.']
-      ],
-      q: [{ q: 'What is the best way to keep the API contract in an LLD accurate?', o: ['Generate the OpenAPI document from the code', 'Copy it into a Word table each release', 'Describe it in prose only', 'Leave it to the testers'], a: 0, e: 'Generated artefacts stay in sync with the code; hand-maintained tables drift.' }]
+    embedding: {
+      say: 'An embedding turns text or images into a vector of numbers so that similar meaning ends up close together. Dense embeddings capture meaning, sparse ones like BM25 capture keywords, and hybrid search uses both. Use the same model for documents and queries, benchmark on your own data, and protect the vector store like the source.',
+      k: ['embedding', 'vector', 'dimensions', 'dense vs sparse', 'multimodal', 'Matryoshka', 'MTEB'],
+      p: ['Same embedding model for documents and queries; changing it means re-embedding everything.', 'More dimensions = more nuance, but more storage and slower search.', 'Embeddings can leak information: secure the vector store.'],
+      f: [['What happens if you switch embedding models?', 'Old and new vectors live in different spaces and cannot be compared, so you must re-embed every document.'],
+          ['Dense vs sparse vectors?', 'Dense vectors (embeddings) capture meaning and synonyms. Sparse vectors (BM25, SPLADE) capture keyword weights and exact terms. Hybrid search combines them.']],
+      q: [{ q: 'Documents were embedded with model A. Queries now use model B. What happens?', o: ['Search improves', 'Only latency changes', 'Nothing changes', 'Similarity scores become meaningless until documents are re-embedded'], a: 3, e: 'Different models produce incompatible vector spaces.' }]
     },
-    adr: {
-      say: 'An ADR is a short, immutable record of one significant decision: its context, the options, the choice and its consequences. Write one for decisions that are hard to reverse or often questioned. Never edit an accepted ADR; supersede it with a new one so the history stays.',
-      k: ['context', 'decision', 'consequences', 'status', 'supersede', 'Nygard format', 'MADR'],
-      p: ['Write ADRs for hard-to-reverse or often-questioned decisions.', 'Never edit an accepted ADR: supersede it.', 'Store them in the repo, e.g. /docs/adr.'],
-      f: [
-        ['When do you write an ADR?', 'For any decision that is significant, costly to reverse or likely to be questioned later: technology choice, integration pattern, data store, security approach.'],
-        ['A team wants to change an accepted ADR. What do you do?', 'Write a new ADR that supersedes it and mark the old one superseded, so the reasoning history is kept.']
-      ],
-      q: [{ q: 'Six months later the team reverses a decision recorded in an accepted ADR. What is the right action?', o: ['Edit the original ADR', 'Delete the original ADR', 'Record it only in meeting minutes', 'Write a new ADR that supersedes it'], a: 3, e: 'ADRs are immutable. A superseding ADR keeps the full history of why things changed.' }]
+    vector: {
+      say: 'Vector search finds the stored vectors nearest the query vector, usually by cosine similarity. Exact kNN compares against every vector, which is fine up to about 100k. At millions you need approximate nearest neighbour indexes like HNSW, trading a little recall for huge speed gains, and tuning parameters such as efSearch.',
+      k: ['cosine similarity', 'dot product', 'Euclidean (L2)', 'exact kNN', 'ANN', 'HNSW', 'IVF / PQ', 'recall vs latency'],
+      p: ['Dot product equals cosine on normalised vectors.', 'Exact kNN: 100% recall, O(n), fine to about 100k vectors.', 'HNSW: fast, high recall, memory-hungry; tune M, efConstruction, efSearch.', 'DiskANN for billion scale with low RAM.'],
+      f: [['Exact kNN vs ANN?', 'Exact kNN compares every vector: perfect recall but O(n). ANN uses index structures like HNSW to trade a little recall for big speed gains, needed at millions of vectors.'],
+          ['What is HNSW?', 'Hierarchical Navigable Small World: a multi-layer proximity graph index. Fast with high recall, but uses a lot of memory.']],
+      q: [{ q: 'Which ANN index is the most popular, fast with high recall but memory-hungry?', o: ['IVF', 'HNSW', 'Product quantisation', 'B-tree'], a: 1, e: 'HNSW is a multi-layer graph with excellent speed and recall at a memory cost.' }]
     },
-    sop: {
-      say: 'An SOP gives step-by-step instructions for a routine operational task so anyone trained does it the same way every time. It covers purpose, roles, prerequisites, numbered steps with expected results, verification, rollback, escalation, and an owner and review date.',
-      k: ['purpose and scope', 'RACI', 'prerequisites', 'numbered steps', 'verification', 'rollback', 'escalation', 'review date'],
-      p: ['Each step has an expected result.', 'Always include rollback or exception handling.', 'Examples: certificate rotation, DR failover test, DLQ replay.'],
-      f: [
-        ['Give three examples of SOPs.', 'Certificate renewal and rotation, the monthly DR failover test, onboarding a new API consumer in APIM, replaying messages from a DLQ, patching and release deployment.'],
-        ['What makes an SOP usable at 3 a.m.?', 'Prerequisites and access listed up front, numbered steps with expected results, clear verification, rollback, and escalation contacts.']
-      ],
-      q: [{ q: 'Which section is essential in an SOP so an operator can recover if a step goes wrong?', o: ['Business drivers', 'Rollback or exception handling', 'Options analysis', 'Architecture diagram'], a: 1, e: 'SOPs must say how to back out or handle exceptions, not just the happy path.' }]
+    topk: {
+      say: 'Top-K returns the K most similar chunks, and K trades recall against noise. Too small misses facts; too large adds noise, cost and lost-in-the-middle problems. The sweet spot is to retrieve wide, around 20 to 50, re-rank, and send the best 3 to 8. Add a score threshold and use MMR to avoid near-duplicates.',
+      k: ['top-K', 'recall', 'noise', 'similarity threshold', 'MMR', 'lost in the middle'],
+      p: ['Retrieve 20-50, re-rank, send 3-8.', 'Below the threshold, say "I don\'t know".', 'MMR picks chunks that are relevant and different from each other.'],
+      f: [['What goes wrong if K is too large?', 'Noise, cost and latency rise, and the key facts get lost in the middle of the context.'],
+          ['What is MMR?', 'Maximal Marginal Relevance: selects chunks that are relevant to the query but different from each other, so you do not send five near-duplicates.']],
+      q: [{ q: 'What is a sensible default retrieval shape?', o: ['Retrieve 3 and send 3', 'Retrieve 100 and send all 100', 'Retrieve 20-50, re-rank, send the best 3-8', 'Retrieve 1 only'], a: 2, e: 'Wide recall first, then precise re-ranking keeps the context small and relevant.' }]
     },
-    nfr: {
-      say: 'Functional requirements say what the system does; NFRs say how well it does it. Cover performance, availability, scalability, recoverability, security, compliance, observability, maintainability and cost, and make every one measurable, for example p95 under 300 ms at 500 TPS, or RPO 5 minutes and RTO 1 hour.',
-      k: ['p95 latency', 'availability %', 'RPO / RTO', 'scalability', 'security', 'compliance', 'observability', 'cost per transaction'],
-      p: ['Bad: "should be fast". Good: "95% of balance enquiries within 300 ms at 1,000 req/s".', 'Availability needs a window and exclusions, e.g. 99.95% monthly excl. planned maintenance.', 'Prove performance NFRs with load tests before go-live.'],
-      f: [
-        ['Rewrite "the system should be fast" as an NFR.', '"95% of balance enquiries respond within 300 ms at 1,000 requests per second."'],
-        ['Name six NFR categories.', 'Performance, availability, scalability, recoverability, security, compliance, observability, maintainability and cost.']
-      ],
-      q: [{ q: 'Which is a well-formed NFR?', o: ['p95 latency under 300 ms at 500 TPS', 'The system should be highly available', 'The API should be quick for users', 'The system must scale as needed'], a: 0, e: 'A good NFR is measurable: a percentile, a threshold and the load it applies at.' }]
+    metadata: {
+      say: 'Metadata filtering narrows search with structured attributes such as date, product, region and access level, as well as semantic similarity. Pre-filtering filters first, so results always match; post-filtering can return fewer than K. Security trimming filters by the user\'s groups from the validated token, so RAG never leaks documents they cannot open.',
+      k: ['pre-filtering', 'post-filtering', 'security trimming', 'ACL', 'self-query', 'filtered ANN'],
+      p: ['Read user groups from the validated token on the server, never from the prompt.', 'Post-filtering with a strict filter can return few or zero results.', 'Filter operator support varies by store; test against the real store.'],
+      f: [['How do you stop RAG leaking confidential documents?', 'Index ACLs as metadata and filter on the user\'s identity at query time (security trimming), plus PII redaction and output guardrails.'],
+          ['Pre-filtering vs post-filtering?', 'Pre-filtering applies the filter before vector search, so every result matches. Post-filtering searches first and then filters, which can leave fewer than K results.']],
+      q: [{ q: 'Where should a RAG system get the user\'s group memberships for security trimming?', o: ['From claims in the validated token on the server', 'From the user\'s prompt text', 'From the LLM\'s answer', 'From a browser cookie the user can edit'], a: 0, e: 'Only server-validated identity can be trusted; prompts can be manipulated.' }]
     },
-    c4: {
-      say: 'The C4 model gives four zoom levels of diagrams, like Google Maps for software: context, container, component and code. The ACD uses level 1, SO and HLD use levels 1 and 2, and the LLD levels 3 and 4. Write them as code with Structurizr, PlantUML or Mermaid.',
-      k: ['Context', 'Container', 'Component', 'Code', 'zoom levels', 'diagrams as code', 'Structurizr'],
-      p: ['Level 4 (code) is rarely drawn.', 'Container = apps, APIs, databases, queues.', 'Diagrams as code live in the repo and render in CI.'],
-      f: [
-        ['Name the four C4 levels.', 'Context (system, users, external systems), Container (apps, APIs, databases, queues), Component (modules inside one container), Code (classes, rarely drawn).'],
-        ['Which C4 level goes in which document?', 'ACD: level 1. SO/HLD: levels 1-2. LLD: levels 3-4.']
-      ],
-      q: [{ q: 'A diagram shows the web app, the API, the database and a message queue. Which C4 level is it?', o: ['Context', 'Component', 'Code', 'Container'], a: 3, e: 'Separately deployable apps and data stores are containers in C4.' }]
+    hybrid: {
+      say: 'Hybrid search runs keyword search, BM25 for exact terms, and vector search for meaning together, then fuses the results, usually with Reciprocal Rank Fusion. Keywords win for codes, account numbers and acronyms; vectors win for paraphrases. Hybrid usually beats pure vector search on enterprise data, so it is a sensible default.',
+      k: ['BM25', 'keyword search', 'vector search', 'Reciprocal Rank Fusion', 'k = 60', 'weighted fusion'],
+      p: ['RRF score = sum of 1 / (k + rank), with k about 60.', 'RRF uses ranks, so no need to normalise BM25 vs cosine scores.', 'Exact codes like error IDs need keyword search.'],
+      f: [['Why does RRF not need score normalisation?', 'It uses each document\'s rank in each list, not the raw scores, so BM25 and cosine scales never need to match.'],
+          ['Hybrid search vs RAG Fusion?', 'Hybrid fuses two retrieval methods (keyword + vector) for one query. RAG Fusion fuses results from multiple query variants. Both typically use RRF.']],
+      q: [{ q: 'A user searches for error code "AADSTS50076". Which retrieval method most reliably finds it?', o: ['Pure vector search', 'HyDE only', 'Random sampling', 'Keyword / BM25 search'], a: 3, e: 'Exact codes and identifiers are matched best by keyword search.' }]
     },
-    threat: {
-      say: 'Threat modelling means systematically asking "what could go wrong?" on your data-flow diagram before attackers do. STRIDE gives the categories: Spoofing, Tampering, Repudiation, Information disclosure, Denial of service and Elevation of privilege, each with a typical control.',
-      k: ['STRIDE', 'data-flow diagram', 'spoofing', 'tampering', 'repudiation', 'information disclosure', 'denial of service', 'elevation of privilege'],
-      p: ['Spoofing: MFA, mTLS. Tampering: signatures, TLS.', 'Repudiation: audit logs, signing.', 'Elevation of privilege: least privilege, authZ checks.'],
-      f: [
-        ['What does STRIDE stand for?', 'Spoofing, Tampering, Repudiation, Information disclosure, Denial of service, Elevation of privilege.'],
-        ['Which STRIDE threat do audit logs address?', 'Repudiation: a user denying they performed an action. Logs and signing provide proof.']
-      ],
-      q: [{ q: 'A user claims they never approved a payment, and there is no record either way. Which STRIDE threat is this?', o: ['Spoofing', 'Tampering', 'Repudiation', 'Elevation of privilege'], a: 2, e: 'Repudiation is denying an action; audit logs and signatures are the control.' }]
+    ranking: {
+      say: 'First-stage retrieval is fast but rough. A re-ranker re-scores the shortlist: a bi-encoder retriever embeds query and document separately and is fast; a cross-encoder reads them together and is much more accurate but too slow for millions, ideal for about 50. Then put the best chunks first because of lost in the middle.',
+      k: ['bi-encoder', 'cross-encoder', 're-ranker', 'semantic ranker', 'business signals', 'lost in the middle'],
+      p: ['Retrieve ~50 fast, cross-encoder re-rank, send ~5.', 'Boost recency and authority (official policy over an email).', 'LLMs focus on the start and end of context: best chunks first, or first and last.'],
+      f: [['Why use a re-ranker if you already have vector search?', 'Bi-encoder retrieval is fast but approximate. A cross-encoder reads query and chunk together and scores relevance much more accurately on a small shortlist.'],
+          ['Bi-encoder vs cross-encoder?', 'A bi-encoder embeds query and documents separately so document vectors are precomputed: fast, less precise. A cross-encoder scores each query-document pair jointly: accurate, slow.']],
+      q: [{ q: 'Why is a cross-encoder not used for first-stage retrieval over a million chunks?', o: ['It cannot read text', 'It must score every query-document pair, which is too slow at that scale', 'It only works on images', 'It needs BM25 scores'], a: 1, e: 'Cross-encoders cannot precompute document vectors, so they suit only a small shortlist.' }]
     },
-    runbook: {
-      say: 'An SOP covers routine, planned tasks. A runbook gives specific operational or incident steps for one system or alert, such as what to do when DLQ depth exceeds 100, and is often automated. A playbook is a broader cross-team response strategy for a scenario like a cyber incident or regional outage.',
-      k: ['SOP', 'runbook', 'playbook', 'alert-driven', 'automation', 'cross-team response'],
-      p: ['SOP = how we always do X.', 'Runbook = one system or alert, often automated.', 'Playbook = scenario-level strategy across teams.'],
-      f: [
-        ['Runbook vs playbook?', 'A runbook is the specific steps for one system or alert. A playbook is the broader strategy across teams for a scenario such as a cyber incident or regional outage.'],
-        ['"If DLQ depth is over 100, do..." Which document is that?', 'A runbook: specific incident steps tied to one alert, often automated.']
-      ],
-      q: [{ q: 'Which document coordinates several teams during a regional cloud outage?', o: ['SOP', 'Playbook', 'Runbook', 'ADR'], a: 1, e: 'Playbooks cover scenario-wide response strategy across teams; runbooks are per system or alert.' }]
+    query: {
+      say: 'Query transformation rewrites messy questions into ones that retrieve better before you search. Techniques include rewriting, condensing follow-ups into standalone questions, multi-query expansion, HyDE, step-back prompting, decomposition, routing and filter extraction. Each is an extra LLM call adding latency and cost, so use them where evaluation shows a gain.',
+      k: ['query rewriting', 'conversational condensing', 'multi-query expansion', 'HyDE', 'step-back prompting', 'decomposition', 'routing', 'self-query'],
+      p: ['Each transformation = extra LLM call, latency and cost.', 'Use a small, cheap model for rewriting.', 'Routing: "my balance" goes to an API tool, not RAG.'],
+      f: [['What is HyDE?', 'Hypothetical Document Embeddings: the LLM writes a fake answer, and you embed and search with that, because it sits closer to real answer chunks than the short question does.'],
+          ['Why condense a follow-up question?', '"What about for business?" means nothing alone. Rewriting it with chat history into a standalone question makes retrieval work.']],
+      q: [{ q: '"Compare the fees of card A and card B." Which technique helps most?', o: ['HyDE', 'Raising temperature', 'Decomposition into sub-questions', 'Removing metadata'], a: 2, e: 'Decomposition splits the multi-hop question into fees(A) and fees(B) and retrieves for each.' }]
     },
-    frameworks: {
-      say: 'TOGAF is a framework for running enterprise architecture; its ADM cycles from Vision through Business, Information Systems and Technology architectures to migration planning, governance and change, with requirements management at the centre. Well-Architected, from Azure and AWS, is a pillar-based checklist for reviewing cloud workloads.',
-      k: ['TOGAF ADM', 'architecture vision', 'requirements management', 'migration planning', 'Well-Architected pillars', 'reliability / security / cost'],
-      p: ['ADM phases: Preliminary, A Vision, B Business, C Information Systems, D Technology, E Opportunities, F Migration, G Governance, H Change.', 'Azure pillars: Reliability, Security, Cost Optimisation, Operational Excellence, Performance Efficiency.', 'AWS adds a sixth pillar: Sustainability.'],
-      f: [
-        ['Name the five Azure Well-Architected pillars.', 'Reliability, Security, Cost Optimisation, Operational Excellence and Performance Efficiency. AWS adds Sustainability.'],
-        ['What sits at the centre of the TOGAF ADM?', 'Requirements Management, which feeds every phase of the cycle.']
-      ],
-      q: [{ q: 'Which pillar does AWS Well-Architected have that the Azure list on this page does not?', o: ['Reliability', 'Security', 'Sustainability', 'Cost Optimisation'], a: 2, e: 'AWS adds Sustainability to the five shared pillars.' }]
+    fusion: {
+      say: 'RAG Fusion generates several versions of the user\'s query, retrieves for each in parallel, then fuses the ranked lists with Reciprocal Rank Fusion so documents found by many queries rise. It boosts recall and robustness to vague questions, but costs N retrievals plus an extra LLM call, and generated queries can drift.',
+      k: ['multi-query', 'Reciprocal Rank Fusion', 'recall', 'consensus ranking', 'query drift', 'parallel retrieval'],
+      p: ['RAG Fusion = multi-query expansion + RRF.', 'Overkill for simple, precise questions.', 'Can combine with hybrid search.'],
+      f: [['What are the pros and cons of RAG Fusion?', 'Pros: higher recall, robust to vague questions, consensus cuts flukes. Cons: N retrievals plus an extra LLM call, more latency and cost, and possible off-topic query drift.']],
+      q: [{ q: 'What does RAG Fusion fuse?', o: ['Result lists from multiple generated query variants', 'Keyword and vector results for one query', 'Two different LLM answers', 'Chunks from two embedding models'], a: 0, e: 'It runs several phrasings and merges their ranked lists with RRF.' }]
     },
-    softskills: {
-      say: 'Architecture is decisions plus persuasion. Never stop at "it depends": name the drivers and which way each pushes. Lead with the recommendation, then the reason and the trade-off you accept, and say what would change your mind. Tailor the depth to the audience, and finish every review with a recorded decision.',
-      k: ['"it depends on what"', 'options table', 'recommendation first', 'trade-off accepted', 'influence without authority', 'pre-wire', 'decision memo'],
-      p: ['2-3 genuine options including "do nothing", same criteria for each.', 'Executives: one page, decision and risk. Engineers: reasoning and constraints.', 'Say no with data, and offer a "yes, if...".', 'End reviews with decisions, actions, owners, recorded as ADRs.'],
-      f: [
-        ['How do you present a trade-off to executives vs engineers?', 'Executives: one page, recommendation first, cost, risk and time, and the decision you need. Engineers: the drivers, rejected options and why, diagrams, NFRs and constraints.'],
-        ['What are the six parts of a one-page decision memo?', 'Decision and deadline, context, options against the same criteria, recommendation and why, trade-offs accepted, and the ask.'],
-        ['How do you influence without authority?', 'Build relationships early, frame proposals around stakeholders\' goals, co-design with the teams who will build it, and pre-wire decisions in 1:1s before the big meeting.']
-      ],
-      q: [{ q: 'A delivery lead asks "Kafka or Service Bus?". What is the strongest response?', o: ['Name the drivers, score both options, and lead with a recommendation and the accepted trade-off', '"It depends."', 'Pick whichever you used last', 'Ask the vendor to decide'], a: 0, e: 'Turn "it depends" into "it depends on X, Y, Z", then make a recommendation and own the trade-off.' }]
+    eval: {
+      say: 'Evaluate retrieval and generation separately. Retrieval metrics include recall at K, precision at K, hit rate, MRR and nDCG. Generation metrics include faithfulness or groundedness, answer relevance, correctness and citation accuracy, plus safety, latency and cost. Build a golden set of 50 to 200 real questions early and run evaluations in CI.',
+      k: ['recall@K', 'precision@K', 'MRR', 'nDCG', 'faithfulness / groundedness', 'answer relevance', 'golden dataset', 'LLM-as-judge'],
+      p: ['Golden set of 50-200 real questions, including "not in the docs" ones.', 'Calibrate LLM-as-judge against human labels.', 'Run evals in CI to catch regressions before release.'],
+      f: [['Recall@K vs precision@K?', 'Recall@K: share of all relevant chunks found in the top K. Precision@K: share of the top K that are relevant.'],
+          ['What is faithfulness or groundedness?', 'Whether every claim in the answer is supported by the retrieved context, i.e. the model did not make things up.'],
+          ['Why include "not in the docs" questions in the golden set?', 'To check the system says "I don\'t know" instead of hallucinating when the answer is not there.']],
+      q: [{ q: 'The answer contains a fee that appears nowhere in the retrieved chunks. Which metric catches this?', o: ['Recall@K', 'Hit rate', 'MRR', 'Faithfulness / groundedness'], a: 3, e: 'Groundedness checks claims against the context; retrieval metrics do not judge the answer.' },
+          { q: 'Which metric rewards putting the first relevant result as high as possible?', o: ['Precision@K', 'MRR', 'Token cost', 'Answer relevance'], a: 1, e: 'Mean Reciprocal Rank measures how high the first relevant result ranks.' }]
     },
-    buildbuy: {
-      say: 'Build only what differentiates you; buy or subscribe for commodity capabilities. Compare three-to-five-year TCO, time to market, lock-in, skills and regulatory fit, and write the exit plan before you sign. Manage technical debt deliberately with a register, a budget and fitness functions, and govern with guardrails and paved roads rather than gates.',
-      k: ['differentiation', 'TCO 3-5 years', 'exit plan', 'Fowler\'s debt quadrant', 'debt register', 'fitness functions', 'paved road', 'guardrails over gates'],
-      p: ['Debt budget: often 15-20% of each sprint or quarter.', 'Only prudent, deliberate debt is a real choice: log it, plan repayment.', 'Teams on the paved road need little review; leaving it needs an ADR.', 'CPS 230: regulated entities must be able to exit a material provider in an orderly way.'],
-      f: [
-        ['How do you decide build vs buy?', 'Build what differentiates the business, buy or SaaS for commodity. Compare 3-5 year TCO including the team to run it, time to market, lock-in, skills and regulatory fit, and write the exit plan first.'],
-        ['What is Fowler\'s technical debt quadrant?', 'Reckless vs prudent crossed with deliberate vs inadvertent. Prudent, deliberate debt ("ship now, fix later") is legitimate if logged and repaid; reckless debt needs better skills and guardrails.'],
-        ['What is a fitness function?', 'An automated check in CI that guards an architecture characteristic, such as dependency rules, p95 latency or no vulnerable packages.'],
-        ['Guardrails vs gates?', 'Gates are review boards approving every design: slow bottlenecks. Guardrails are automated policies plus paved roads that make the right way the easy way; keep gates for high-risk, hard-to-reverse decisions.']
-      ],
-      q: [{ q: '"We know the right design, but we\'ll ship this shortcut now and fix it next sprint." Which quadrant is this debt?', o: ['Reckless, deliberate', 'Reckless, inadvertent', 'Prudent, inadvertent', 'Prudent, deliberate'], a: 3, e: 'A conscious, reasoned shortcut with a repayment plan is prudent, deliberate debt.' }]
+    advanced: {
+      say: 'Advanced RAG patterns handle harder questions and data. GraphRAG builds a knowledge graph for global and multi-hop questions. Agentic RAG lets an agent decide when and where to retrieve. Corrective RAG grades retrieved documents and falls back if they are poor; Self-RAG reflects on its answer. Use text-to-SQL for numbers and a semantic cache for repeats.',
+      k: ['GraphRAG', 'agentic RAG', 'Corrective RAG', 'Self-RAG', 'contextual retrieval', 'multimodal RAG', 'semantic cache', 'text-to-SQL'],
+      p: ['GraphRAG suits "main themes across all complaints" questions.', 'For numbers and tables, query the database rather than embedding it.', 'Partition a semantic cache by user permissions.', 'Text-to-SQL runs with a read-only login and a row limit.'],
+      f: [['When would you use GraphRAG?', 'For global questions across a whole corpus, like main themes in all complaints, and multi-hop reasoning over entities and relationships.'],
+          ['What does Corrective RAG do?', 'It grades the retrieved documents; if they are poor, it rewrites the query or falls back to another source before generating.'],
+          ['Why must a semantic cache be partitioned by permission?', 'Otherwise a cached answer built from restricted documents could be served to a user who is not allowed to see them.']],
+      q: [{ q: 'Users ask "What was total card spend by region last quarter?" Which approach fits best?', o: ['Embedding the transactions table', 'HyDE', 'Text-to-SQL against the database', 'Larger chunk size'], a: 2, e: 'Numbers and aggregates come from querying structured data, not from similarity search.' }]
+    },
+    failures: {
+      say: 'Map the symptom to the cause. "Not found" though it is in the docs means parsing, chunking or retrieval. Right docs but a wrong answer means ranking, noise or lost in the middle. Outdated answers mean a stale index. Hallucinations mean weak grounding. Restricted content means no security trimming. Slow and expensive means too many calls or big contexts.',
+      k: ['parsing', 'retrieval failure', 'stale index', 'groundedness check', 'security trimming', 'tracing', 'caching'],
+      p: ['Outdated answers: incremental re-indexing plus a "current version" filter.', 'Hallucination: answer-only-from-context, citations, low temperature, groundedness checks.', 'Trace prompt, retrieved chunks, tokens and latency to debug answers.'],
+      f: [['The right documents are retrieved but the answer is wrong. What do you fix?', 'Ranking and context: add a re-ranker, reduce K, put the best chunks first, and clarify the prompt.'],
+          ['The bot gives last year\'s policy. Likely cause and fix?', 'A stale index or no version filter. Re-index incrementally and filter on "current version" metadata.']],
+      q: [{ q: 'A user sees content from an HR document they cannot open in SharePoint. What is missing?', o: ['Security trimming with ACL filters', 'Re-ranking', 'HyDE', 'Higher K'], a: 0, e: 'Without ACL metadata filters per user, retrieval ignores document permissions.' }]
+    },
+    llmops: {
+      say: 'LLMOps is DevOps for LLM apps. Put one gateway in front of every model for auth, token quotas, routing and fallback, semantic caching and metering. Control token cost with output caps, prefix caching and right-sized models. Version prompt, model and parameters together, evaluate in CI, canary changes, trace with OpenTelemetry and enforce content safety and privacy.',
+      k: ['LLM gateway', 'token rate limits', 'routing / fallback', 'semantic caching', 'prompt caching', 'model pinning', 'OpenTelemetry GenAI conventions', 'content safety'],
+      p: ['Output tokens usually cost several times more than input: cap them.', 'Pin model versions; providers retire models on a schedule.', 'Keep raw prompts and answers out of traces by default.', '"Global" deployments may process data in any region; choose regional or data-zone for residency.'],
+      f: [['What does an LLM gateway give you?', 'Central auth and keys, token quotas per app, routing and failover across deployments, semantic caching, cost metering for chargeback, and one place for content safety and logging.'],
+          ['Name four ways to cut token cost.', 'Cap output tokens, keep a stable prefix for prompt caching, cache responses, send fewer re-ranked chunks, route easy tasks to a small model, and batch non-urgent jobs.'],
+          ['How do you release a prompt or model change safely?', 'Open a PR, run the golden set in CI with quality gates (groundedness, relevance, safety, cost), canary to a small share of traffic, then monitor feedback, drift and cost.']],
+      q: [{ q: 'Why limit tokens per minute per app rather than just requests?', o: ['Requests are free', 'Models ignore request limits', 'Tokens are easier to log', 'One app sending huge prompts could starve others even at low request counts'], a: 3, e: 'Token volume drives capacity and cost, so quotas must be in tokens.' },
+          { q: 'Which is usually the most expensive part of an LLM call?', o: ['The HTTP headers', 'Output tokens', 'The system prompt when cached', 'TLS handshake'], a: 1, e: 'Output tokens usually cost several times more than input tokens, so cap answer length.' }]
+    },
+    responsible: {
+      say: 'Responsible AI turns ethics into engineering controls. Microsoft\'s six principles are fairness, reliability and safety, privacy and security, inclusiveness, transparency and accountability. Australia\'s principles add contestability, and current national guidance has six essential practices. In practice: human oversight for high-impact decisions, model cards, red teaming, harm evaluations in CI and an audit trail.',
+      k: ['fairness', 'transparency', 'accountability', 'contestability', 'human-in-the-loop', 'red teaming', 'model card', 'audit trail'],
+      p: ['Australia\'s AI Ethics Principles (2019): 8 voluntary principles, including contestability.', 'Guidance for AI Adoption (Oct 2025): 6 essential practices, condensing the 10 guardrails.', 'All voluntary; privacy, consumer, anti-discrimination law and APRA standards still apply.', 'A named human owner answers for the system.'],
+      f: [['Name Microsoft\'s six Responsible AI principles.', 'Fairness, reliability and safety, privacy and security, inclusiveness, transparency, and accountability.'],
+          ['How do you make a GenAI system responsible in practice?', 'Impact assessment, red teaming, harm and fairness evaluations in CI, a transparency note, a human in the loop for high-impact decisions, a way to contest outcomes, and an audit trail of model and prompt versions.'],
+          ['What does contestability mean?', 'People affected by an AI decision must be able to challenge it and get it reviewed.']],
+      q: [{ q: 'Which principle does Australia\'s framework add beyond Microsoft\'s six?', o: ['Inclusiveness', 'Fairness', 'Contestability', 'Accountability'], a: 2, e: 'Australia\'s AI Ethics Principles include contestability: people can challenge an AI outcome.' }]
     }
   }
 };

@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<nav class="top"><a href="10-integration-messaging.html">← Integration</a><span class="here">11 · Architecture Patterns</span><a href="12-security-iam.html">Next: Security &amp; IAM →</a></nav>
+<nav class="top"><a href="10-integration-messaging.html">← Integration</a><span class="here">11 · Architecture Patterns</span><a href="12-architecture-documents.html">Next: Architecture Docs →</a></nav>
 <main>
 
 <header class="hero">
@@ -1084,7 +1084,7 @@ builder.Services.AddRateLimiter(o =&gt;
   <details class="qa"><summary>How do you query data owned by several microservices?</summary><p>For simple reads, use API composition: call the owning services in parallel and merge the results, with a timeout per call and a partial response when an optional part is slow. For large joins, search, sorting or paging, build a CQRS read model fed by events. Never read another service's tables directly.</p></details>
 </div>
 
-<div class="pager"><a href="10-integration-messaging.html">← 10 · Integration &amp; Messaging</a><a class="next" href="12-security-iam.html">12 · Security &amp; IAM →</a></div>
+<div class="pager"><a href="10-integration-messaging.html">← 10 · Integration &amp; Messaging</a><a class="next" href="12-architecture-documents.html">12 · Architecture Documents →</a></div>
 </main>
 <footer>Tech Concepts Prep · Section 11</footer>
 <script src="assets/menu-data.js"></script>

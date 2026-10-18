@@ -1,138 +1,122 @@
-/* Quick-revision data for 19-design-case-studies.html. Schema: see AGENTS.md "Quick revise data". */
+/* Quick-revision data for 19-banking-payments.html. Schema: see AGENTS.md "Quick revise data". */
 (window.REVISE = window.REVISE || {})['19'] = {
   approach: [
-    ['Requirements', 'Pick 2-3 core features; pin the NFRs as numbers: users, read:write ratio, latency percentile, availability, consistency. Say what is out of scope.'],
-    ['Estimates', 'Requests/s average and peak, storage per year, bandwidth, connections or key space. Name what the numbers force: cache, shard, queue or CDN.'],
-    ['API and data model', 'Main endpoints or events with idempotency keys and cursor pagination; tables with partition key, unique keys and why SQL or NoSQL.'],
-    ['High-level design', 'Draw client, edge, gateway, services, stores and async parts; walk the write path and the hot read path end to end.'],
-    ['Deep dives', 'The one hard problem per case (key generation, atomic counters, ordering, fan-out, transcoding, double-entry), then failure modes and hot keys.'],
-    ['Testing', 'Duplicate and retry tests, concurrency races, failover (store down, provider down), load test at peak, and an SLO you can measure.'],
-    ['Trade-offs', 'Close with "I chose X because..., at the cost of..." and how the design scales or evolves in v2.']
+    ['Name the rail', 'NPP, PayTo, BECS, cards, HVCS or SWIFT: each has its own speed, settlement model, format and cut-offs.'],
+    ['Separate clearing from settlement', 'Who exchanges the messages, and when central-bank money actually moves (real-time gross or batched net).'],
+    ['Design for money safety', 'Idempotency key and end-to-end ID from the start, state machine per payment, outbox for events, no blind retries.'],
+    ['Cover the failure model', 'Timeouts are "unknown", returns and dishonours arrive days later on batch rails, real-time rails decline instantly.'],
+    ['Map regulation to design', 'CPS 230 tolerance levels become RTO/RPO, CPS 234 becomes security controls, AML becomes monitoring, PCI DSS becomes scope reduction.'],
+    ['Close with the ledger', 'Double-entry, immutable, exactly-once postings, ledger vs available balance, daily reconciliation.']
   ],
   traps: [
-    'Skipping the estimate, so nothing justifies the cache, shards or queues.',
-    'Promising exactly-once or global ordering instead of at-least-once with dedupe and per-key ordering.',
-    'Putting slow work (analytics, fan-out, transcoding) on the synchronous request path.',
-    'Not saying what happens when Redis, a provider or a region fails.',
-    'Ignoring hot keys: viral links, huge tenants, celebrities, settlement accounts.'
+    'Mixing up clearing and settlement.',
+    'Retrying a timed-out payment send without first querying its status.',
+    'Storing money as a floating-point double.',
+    'Saying BECS shuts down on a fixed date: there is currently no agreed end date.',
+    'Treating a card authorisation as if money has moved.'
   ],
   sections: {
-    url: {
-      say: 'A URL shortener is a read-heavy key-value lookup with one hard part: unique short keys. At 100 million links a month that is about 40 writes and 4,000 reads per second. Seven base62 characters give about 3.5 trillion codes. Use a counter with base62 or a key-generation service, cache-aside in Redis, 302 redirects, and async click analytics.',
-      k: ['base62', 'key generation service (KGS)', 'counter + base62', '301 vs 302', 'cache-aside', 'negative caching', 'async analytics', 'open redirect'],
-      p: ['Writes ~40/s, reads ~4,000/s (100:1), ~3 TB over 5 years.', '7 base62 chars = about 3.5 trillion codes.', 'Redirect path: one cache lookup, nothing else.', 'Validate URLs at creation (http/https only) to avoid an open redirect.'],
+    landscape: {
+      say: 'Several rails move money between Australian banks. Each one clears, meaning banks exchange instructions and work out who owes whom, then settles, moving central-bank money between Exchange Settlement Accounts at the RBA in RITS. NPP and high-value payments settle gross, one by one; BECS and cards settle net in batches.',
+      k: ['clearing', 'settlement', 'ESA', 'RITS / RTGS', 'gross vs net', 'AP+', 'AusPayNet'],
+      p: ['Clearing = exchanging messages. Settlement = moving central-bank money.', 'Real-time gross settlement removes credit risk between banks.', 'AP+ brings BPAY, eftpos and NPP Australia under one company.', 'Bank payment platforms are mostly adapters between channels, ledger and rails.'],
       f: [
-        ['How do you avoid two links getting the same code?', 'Encode a unique counter in base62, or give each server a block of pre-generated keys from a key service. If you hash the URL, check for a collision and retry with a salt.'],
-        ['301 or 302 for the redirect?', '302 when you need click analytics, expiry or abuse blocking, because every click reaches you. 301 lets browsers cache it, which saves load but loses analytics and control.'],
-        ['Why shuffle or encrypt a counter before base62?', 'Sequential codes are guessable, and the NFR says codes should not be easy to guess.'],
-        ['How do you protect the DB from bots scanning random codes?', 'Cache "not found" results briefly (negative caching) and rate limit; most requests then never reach the DB.'],
-        ['Test scenarios for a URL shortener?', 'Create the same alias twice (expect a conflict), redirect an expired link (expect 410), submit a javascript: URL (expect rejection), and load test redirects at 10,000/s with the cache cold and warm.'],
-        ['How do you handle a viral link?', 'An in-process L1 cache on each node plus a CDN with a short TTL in front of GET /{code}, so the hot key never hammers Redis or the DB.']
+        ['Clearing vs settlement?', 'Clearing is exchanging payment instructions and working out obligations. Settlement is the final movement of central-bank money between banks\' Exchange Settlement Accounts in RITS.'],
+        ['Gross vs net settlement?', 'Gross settles each payment on its own (NPP, HVCS). Net adds many payments up and settles only the difference (BECS, cards). Gross removes interbank credit risk; net saves liquidity.'],
+        ['Who runs what in Australian payments?', 'AP+ runs NPP, BPAY and eftpos; AusPayNet administers frameworks like BECS and HVCS; the RBA runs RITS and regulates the payments system.']
       ],
-      q: [
-        { q: 'The product team needs per-click analytics and the ability to expire links. Which redirect should you return?', o: ['302 Found (temporary)', '301 Moved Permanently', '200 with a meta refresh', '404 Not Found'], a: 0, e: 'Browsers cache 301s and skip your service, so you lose clicks and control. A 302 sends every click through you.' },
-        { q: 'Each API node grabs a block of 1,000 pre-generated codes and then crashes. What is the impact?', o: ['Duplicate codes will be issued', 'All existing links break', 'The key service must be rebuilt', 'The unused codes in that block are lost, which is acceptable'], a: 3, e: 'Lost keys are harmless with trillions available; collisions cannot happen because each block is handed out once.' }
-      ]
+      q: [{ q: 'Which statement about settlement is correct?', o: ['It is the final movement of funds between banks\' accounts at the RBA', 'It is the exchange of payment messages between banks', 'It happens before clearing', 'It only applies to card payments'], a: 0, e: 'Clearing exchanges instructions; settlement moves central-bank money between Exchange Settlement Accounts, and it is final.' }]
     },
-    ratelimiter: {
-      say: 'A distributed rate limiter shares one bucket per client across all gateway nodes, usually in Redis. Use a token bucket, and run refill-and-take as one atomic Lua script using Redis server time. At a million checks per second, shard Redis by key. Decide fail-open or fail-closed per endpoint, and return 429 with Retry-After.',
-      k: ['token bucket', 'sliding window counter', 'Lua script (atomic)', 'Redis Cluster sharding', 'fail-open vs fail-closed', '429 + Retry-After', 'per-region limits', 'hot tenant'],
-      p: ['Budget: under 2 ms p99 added; ~5 ms timeout on the Redis call.', '1M checks/s / ~100k ops per shard = ~10 shards, ~20 with headroom.', 'Built-in .NET limiters count per instance; a shared limit needs a shared store.', 'Limit after authentication so attackers cannot invent new keys.'],
+    npp: {
+      say: 'The New Payments Platform is Australia\'s fast-payment rail: account-to-account payments that clear and settle in seconds, 24/7, through the RBA\'s Fast Settlement Service. PayID lets you pay a phone, email or ABN, and messages are rich ISO 20022. The trade-off: no batch window, so fraud checks must happen before the money goes.',
+      k: ['NPP', 'Fast Settlement Service (FSS)', 'PayID', 'Osko', 'overlay service', 'ISO 20022 pacs.008', 'Confirmation of Payee'],
+      p: ['Funds can be released immediately because each payment settles with finality.', 'Fraud scoring needs a sub-second budget: no "catch it tomorrow".', 'A send timeout is "unknown", not "failed": query by end-to-end ID first.', '24/7 rails need a 24/7 core ledger, fraud and liquidity monitoring.'],
       f: [
-        ['Why must the check be a Lua script?', 'Read-then-write from two gateways is a race: both see one token and both allow. A Lua script runs atomically inside Redis: refill, take, save, return.'],
-        ['What happens if Redis goes down?', 'Decide per endpoint. Most APIs fail open with a local in-memory limiter as a safety net; login, OTP and payment initiation fail closed because abuse costs more than downtime.'],
-        ['How do you handle multiple regions?', 'Usually per-region limits (limit divided by regions) with no cross-region calls. Global CRDT counters can overshoot briefly. Never make a synchronous cross-region call per request.'],
-        ['Why use Redis server time?', 'So clock skew between gateway nodes does not distort refill calculations.'],
-        ['Test scenarios for a rate limiter?', 'Fire concurrent requests from many nodes at one key and assert the limit is not exceeded; kill Redis and check fail-open or fail-closed per endpoint; check 429 and Retry-After headers; burst at a window edge.'],
-        ['One huge tenant overloads a shard. Fix?', 'Split its quota into N sub-buckets across keys, or give it a local limiter.']
+        ['Why can an NPP payment be released to the payee immediately?', 'Because the RBA\'s Fast Settlement Service settles each payment individually and with finality, 24/7, so there is no interbank credit risk to cover.'],
+        ['A payment send to the scheme times out. Do you retry?', 'Not blindly. A timeout means unknown. Query the status by end-to-end ID, and only resend with the same idempotency key if the scheme confirms it never received it.'],
+        ['What does a payments hub do?', 'Orchestrates each payment as a state machine, maps to ISO 20022, routes to the right rail and publishes events through an outbox.'],
+        ['What breaks when you move a flow to 24/7 real-time payments?', 'The batch window disappears, so the core ledger, fraud, monitoring and liquidity management all need weekend-grade availability.']
       ],
-      q: [
-        { q: 'Two gateways each read "1 token left" from Redis and both allow the request. What fixes this?', o: ['A longer TTL on the key', 'Adding a read replica', 'Doing refill and take in one atomic Lua script', 'Switching to fixed windows'], a: 2, e: 'The race is between read and write. An atomic server-side script removes it.' },
-        { q: 'Redis is unreachable. Which endpoint should fail closed?', o: ['Product catalogue search', 'OTP verification', 'Public status page', 'Image thumbnails'], a: 1, e: 'For login, OTP and payment initiation, abuse costs more than a short outage, so deny when you cannot check.' }
-      ]
+      q: [{ q: 'An outbound NPP payment call times out. What should the system do first?', o: ['Resend immediately with a new ID', 'Mark it failed and refund the customer', 'Wait for the next business day batch', 'Query the payment status by its end-to-end ID'], a: 3, e: 'A timeout is an unknown outcome. Check status before any retry, and reuse the same idempotency key, or you risk paying twice.' }]
     },
-    chat: {
-      say: 'A chat app keeps long-lived WebSocket connections on stateless gateways, with chat logic behind them. Each conversation gets its own sequence number, messages go to a wide-column store partitioned by conversation and month, and Redis holds sessions and presence. Persist before you ack, dedupe on the client message ID, and use push only to wake the app.',
-      k: ['WebSockets', 'gateway / session map', 'per-conversation sequence', 'wide-column store', 'clientMsgId dedupe', 'presence heartbeat + TTL', 'read up to seq N', 'pub/sub backplane'],
-      p: ['~23k messages/s, ~70k/s peak; ~146 TB/year before replication.', '10M connections / ~50k per server = ~200 gateway servers.', 'Store first, then ack, then deliver.', 'Order within a conversation only; global order does not scale.'],
+    payto: {
+      say: 'PayTo is a digital payment agreement, or mandate, that the customer authorises in their own banking app, so a business can pull payments over the NPP in real time. Agreements live in the Mandate Management Service and the customer can pause, amend or cancel them. It is the modern replacement for BECS direct debits.',
+      k: ['payment agreement / mandate', 'Mandate Management Service (MMS)', 'authorise in banking app', 'pause / amend / cancel', 'Migrated DDR Mandates', 'real-time decline'],
+      p: ['The bank, not the merchant, holds the source of truth for consent.', 'Model an agreement as a state machine: created, active, paused, cancelled.', 'Payment requests can be declined instantly: design the merchant flow for a "no".'],
       f: [
-        ['How do you keep messages in order?', 'A sequence number per conversation (Redis INCR or one stream partition per conversation). Clients sort by it and fetch any gaps.'],
-        ['How do you make sure no message is lost or duplicated?', 'Persist before acking; the client resends until acked; the server dedupes on clientMsgId; offline users catch up with /sync since their last seq.'],
-        ['How do you do presence cheaply?', 'A heartbeat every ~30 s sets a Redis key with a TTL. If it expires, the user is offline. Only push presence to people who have the chat open.'],
-        ['How are read receipts stored?', 'As "read up to seq N" per member, not a flag on every message.'],
-        ['Big channel vs small group delivery?', 'Small groups fan out on write to each online member\'s gateway. Big channels store once and notify, and clients pull.'],
-        ['Test scenarios for chat?', 'Drop the ack and resend (expect one message), disconnect and reconnect (expect /sync to fill gaps), deploy gateways (expect jittered reconnects, no storm), and send from two devices at once (expect stable seq order).']
+        ['How is PayTo different from a BECS direct debit?', 'The agreement is stored centrally in the MMS and authorised by the customer in their banking app; payments settle in real time; the customer can pause or cancel it. With BECS the bank never sees the mandate and failures show up days later.'],
+        ['How would you migrate a biller from BECS direct debits to PayTo?', 'Notify customers, create Migrated DDR Mandates in the MMS, run both rails in parallel, cancel the old BECS authorities, and handle real-time declines, pauses and cancellations.'],
+        ['How should a merchant system handle MMS change notifications?', 'Receive them, queue them and process them idempotently, updating the agreement state machine and rejecting illegal status changes.']
       ],
-      q: [
-        { q: 'When should the server send the sender\'s single "stored" tick?', o: ['As soon as the message arrives at the gateway', 'After the recipient reads it', 'After the message is persisted', 'After the push notification is sent'], a: 2, e: 'Persist before you ack, so an acked message can never be lost.' },
-        { q: 'Why partition messages by (conversation, month) rather than conversation alone?', o: ['To stop one busy chat from creating a huge partition', 'To give global ordering', 'To make presence faster', 'To support end-to-end encryption'], a: 0, e: 'Time bucketing bounds partition size for very active conversations.' }
-      ]
+      q: [{ q: 'Where is the source of truth for a PayTo agreement\'s status?', o: ['The merchant\'s billing database', 'A signed paper Direct Debit Request', 'The NPP Mandate Management Service, via the customer\'s bank', 'The card scheme'], a: 2, e: 'Agreements are stored centrally in the MMS and authorised through the customer\'s bank, so the customer\'s control is real.' }]
     },
-    notification: {
-      say: 'A shared notification platform takes one API call, returns 202, and routes by user preferences and quiet hours to separate queues per channel and per priority, so marketing never delays an OTP. Workers rate-limit themselves to each provider, retry only transient errors, fail over behind circuit breakers, and dedupe on notification and channel.',
-      k: ['202 Accepted', 'Idempotency-Key', 'priority queues per channel', 'preferences / quiet hours', 'provider rate limit', 'circuit breaker + failover', 'DLQ + replay', 'templates per locale'],
-      p: ['100M/day = ~1,200/s average; a 10M campaign in 15 min adds ~11k/s.', 'Reserve provider capacity for high priority (e.g. 30% of SMS rate).', 'An OTP 10 minutes late is useless: give it a TTL.', 'With 5 worker replicas, each gets 1/5 of the provider rate, or share a Redis bucket.'],
+    becs: {
+      say: 'BECS, or Direct Entry, carries batch payments like payroll, welfare and direct debits as fixed-width ABA files, exchanged and net-settled on business days. Files have header, detail and total records with control totals. It fails late: returns and dishonours arrive days later. BECS is being wound down, but there is currently no fixed end date.',
+      k: ['ABA file', 'fixed-width 120 chars', 'type 0 / 1 / 7 records', 'control totals', 'cut-offs', 'returns & dishonours', 'reconciliation'],
+      p: ['Every record is exactly 120 characters, CRLF separated.', 'Make file processing idempotent: hash the file, track batch IDs.', 'Amounts are whole cents: parse as integer or decimal, never double.', 'No fixed BECS end date: the June 2030 target was removed in December 2025.'],
       f: [
-        ['How do you stop a campaign delaying OTPs?', 'Separate queues and worker pools per priority, with reserved provider capacity for high priority. A priority field inside one queue is not enough.'],
-        ['Where do you dedupe?', 'Twice: the API Idempotency-Key, and (notificationId, channel) just before calling the provider.'],
-        ['What do you retry and what not?', 'Retry timeouts, 429s and 5xx with exponential backoff and jitter. Do not retry hard bounces. After max attempts, dead-letter and replay after the fix.'],
-        ['Transactional vs marketing messages?', 'Transactional and security messages cannot be fully opted out of; marketing is opt-in and must honour unsubscribe under spam laws such as the Spam Act 2003.'],
-        ['Test scenarios for the platform?', 'Send the same Idempotency-Key twice (one notification), run a 10M campaign while sending OTPs (OTP latency stays under 5 s), force the primary SMS provider to fail (traffic switches to backup), and send during quiet hours (deferred in the user\'s time zone).']
+        ['What are the three ABA record types?', 'Type 0 descriptive header (one per batch), type 1 detail (one per payment, with BSB, account, amount in cents, lodgement reference and trace details), type 7 file total with control totals.'],
+        ['How do you stop a re-uploaded payroll file paying staff twice?', 'Store a hash of the file and the batch ID with a unique index, and reject any file already processed.'],
+        ['What changes when a flow moves from BECS to NPP?', 'The error model changes from "fails tomorrow" (returns, dishonours) to "fails now" (instant decline), which is usually better for customers and operations.'],
+        ['What is the status of the BECS wind-down?', 'Industry intends to move off BECS, but AusPayNet removed the June 2030 target and no new date will be set until there is an agreed roadmap. Batch skills will be needed for years.']
       ],
-      q: [
-        { q: 'An SMS provider allows 100 messages/s and you run 5 worker replicas, each with its own in-memory token bucket. What should each bucket allow?', o: ['100/s each', '500/s each', 'No limit; rely on the provider\'s 429s', '20/s each, or use one shared Redis bucket'], a: 3, e: 'A local limiter only limits its own worker. Split the rate across replicas or share a bucket.' },
-        { q: 'Which design keeps a marketing blast from delaying OTPs?', o: ['A priority field on messages in one queue', 'Separate queues and workers per priority', 'Larger message batches', 'A longer visibility timeout'], a: 1, e: 'Physically separate queues and worker pools isolate high-priority traffic.' }
-      ]
+      q: [{ q: 'A bank rejects an uploaded ABA file whose type 7 totals do not match the detail records. What is the type 7 record?', o: ['The descriptive header', 'The file total with control totals and record count', 'A single payment detail line', 'The return record'], a: 1, e: 'Type 7 holds net, credit and debit totals and the record count. Mismatched control totals get the file rejected.' }]
     },
-    feed: {
-      say: 'A news feed is about when you do the work. Fan-out on write pushes each post ID into followers\' Redis sorted sets, making reads one lookup; fan-out on read merges at read time. The answer is hybrid: push for normal authors, pull for celebrities above a follower threshold. Feeds store only IDs, and paging uses cursors.',
-      k: ['fan-out on write (push)', 'fan-out on read (pull)', 'hybrid', 'celebrity problem', 'Redis sorted set', 'cursor pagination', 'ranking', 'hydration'],
-      p: ['~23k feed reads/s; fan-out on write ~230k inserts/s.', 'Cap each feed at ~800 entries; cache only active users.', 'Skip fan-out for followers inactive 30+ days; rebuild on first visit.', 'Cursor = last (score, post_id), opaque; offsets break as posts arrive.'],
+    cards: {
+      say: 'A card payment follows the four-party model: cardholder and issuer, merchant and acquirer, linked by a scheme. It runs in three steps: authorisation in seconds, which is only a promise and a hold, then clearing and net settlement later. For PCI DSS, the cheapest control is never touching the card number: use tokenisation and hosted fields.',
+      k: ['four-party model', 'issuer / acquirer / scheme', 'authorisation hold', 'ISO 8583', 'network tokens', '3-D Secure', 'chargeback', 'PCI DSS scope'],
+      p: ['Authorisation is not settlement: no money moves at auth time.', 'Holds can expire or be partly captured: the ledger must model both.', 'Prefer network tokens: higher approval rates and automatic card updates.', 'PCI DSS v4.0.1 is the active version; shrink scope, never log the PAN.'],
       f: [
-        ['What is the celebrity problem?', 'With fan-out on write, one post by an account with millions of followers means millions of feed writes. Fix: push for normal accounts, pull celebrity posts at read time and merge.'],
-        ['Why store only post IDs in the feed?', 'Post bodies are cached once and shared by everyone; feeds stay small, and edits or deletes do not need rewriting every feed.'],
-        ['Why cursors, not offsets?', 'New posts shift offsets, so users see duplicates or skip items. A cursor of last (score, post_id) stays stable.'],
-        ['How do you handle unfollow and delete?', 'Filter at read time, which is cheap, and clean up feeds lazily.'],
-        ['Test scenarios for the feed?', 'Post from a celebrity above the threshold (no fan-out, still appears via pull), scroll while new posts arrive (no duplicates or gaps), delete a post (gone on next read), and check a new post shows up for followers within ~10 s.']
+        ['What happens at card authorisation?', 'The issuer checks funds and fraud and places a hold. It is a promise; money moves later through clearing and net settlement.'],
+        ['Network token vs PSP vault token?', 'A network token is issued by the scheme, tied to a device or merchant, and updates when a card is reissued. A PSP token is a reference only that provider can use.'],
+        ['Name four ways to reduce PCI DSS scope.', 'Hosted payment fields or redirect pages, tokenisation, point-to-point encryption terminals, network segmentation, and never logging the PAN.'],
+        ['What does 3-D Secure give the merchant?', 'Issuer authentication for online payments, mostly frictionless and risk-based. A successful check usually shifts fraud liability to the issuer.']
       ],
-      q: [
-        { q: 'An account with 10M followers posts. In a hybrid design, what happens?', o: ['Fan-out is skipped; followers pull the post at read time and merge it', '10M feed inserts are written immediately', 'The post is rejected', 'Only the first 800 followers see it'], a: 0, e: 'Above the follower threshold, pull avoids a write storm while normal authors still get fast push.' },
-        { q: 'Why does offset pagination break an infinite-scroll feed?', o: ['Offsets are slower to compute in SQL', 'Redis does not support offsets', 'Offsets leak user data', 'New posts shift positions, causing duplicates or skipped items'], a: 3, e: 'Cursors anchor on the last item seen, so inserts at the top do not shift the next page.' }
-      ]
+      q: [{ q: 'A customer taps their phone and the purchase is approved. What has happened to the money?', o: ['It has settled to the merchant', 'It moved in real time through the FSS', 'The issuer has placed a hold; clearing and settlement come later', 'It has been debited from the acquirer'], a: 2, e: 'Authorisation is a promise and a hold. Clearing and net settlement happen later in batches.' }]
     },
-    video: {
-      say: 'A video platform has a one-off processing pipeline per upload and a huge read path carried by the CDN. Clients upload chunks straight to blob storage with a short-lived write-only URL. Videos are split at keyframes, encoded in parallel into a bitrate ladder, packaged once as CMAF for HLS and DASH. The player picks the bitrate; egress and hit ratio decide the bill.',
-      k: ['resumable chunked upload', 'write-only SAS / pre-signed URL', 'bitrate ladder', 'HLS / DASH / CMAF', 'adaptive bitrate', 'CDN hit ratio', 'origin shield', 'DRM'],
-      p: ['Peak egress 15 Tbps: each 1% of CDN misses = 150 Gbps on the origin.', '~80 MB per video minute for a 5-rung ladder; ~88 PB/year.', 'Jobs idempotent per (video, segment, rung), so retries and Spot evictions are safe.', 'Same GOP length on every rung so the player can switch at any segment.'],
+    swift: {
+      say: 'Cross-border payments hop between correspondent banks that hold nostro and vostro accounts with each other, using Swift messages. Payment instructions are now ISO 20022 under CBPR+, so pacs.008 replaces MT103. Every payment carries a UETR for gpi tracking. The big win is structured data for sanctions screening and AML.',
+      k: ['correspondent banking', 'nostro / vostro', 'CBPR+', 'pacs.008 / pacs.009', 'UETR', 'gpi tracker', 'structured data'],
+      p: ['MT103 to pacs.008; MT202 to pacs.009; MT940/950 to camt.053.', 'Coexistence for cross-border payment instructions ended 22 November 2025.', 'Never truncate rich ISO data into an MT-shaped internal model.', 'Store the UETR so ops can answer "where is my money?".'],
       f: [
-        ['Why cut a video into segments at several bitrates?', 'Segments allow parallel encoding (minutes, not hours) and let the player switch quality at each boundary. The ladder gives every network a playable rung, and immutable segments cache well.'],
-        ['Why not upload through your API servers?', 'Streaming gigabytes through the API wastes capacity. A short-lived, write-only URL for one blob lets the client upload blocks in parallel and resume only the missing ones.'],
-        ['What is the biggest cost and how do you cut it?', 'Egress. Keep the cache hit ratio high, use per-title encoding and newer codecs where supported, multi-CDN deals, and cooler storage tiers for the long tail.'],
-        ['How do you protect content?', 'The play API signs a manifest URL that expires in minutes to stop hotlinking; premium content adds DRM, with the licence server checking entitlement.'],
-        ['How are view counts done?', 'INCR in Redis, flushed to the DB every minute; unique viewers with HyperLogLog. Counts lag a little by design.'],
-        ['Test scenarios for the video platform?', 'Drop an upload midway and resume (only missing blocks resent), kill a transcode worker (job retries idempotently), throttle bandwidth in the player (switches rung without stalling), and expire a signed URL (playback denied).']
+        ['What is the ISO 20022 equivalent of MT103?', 'pacs.008, the customer credit transfer. MT202 maps to pacs.009, and statements like MT940 map to camt.053.'],
+        ['What is a UETR for?', 'A unique end-to-end reference carried by every gpi payment, so banks and customers can track it through the chain, including fees deducted.'],
+        ['Why is converting ISO 20022 back to an MT-shaped model risky?', 'It truncates structured names, addresses and purpose data, which loses information and can break sanctions screening and compliance.']
       ],
-      q: [
-        { q: 'Who chooses which bitrate rung to fetch next in adaptive streaming?', o: ['The origin server', 'The CDN edge', 'The player, based on measured throughput and buffer', 'The DRM licence server'], a: 2, e: 'ABR is client-driven: the player picks each next segment\'s rung.' },
-        { q: 'At 15 Tbps peak, why is CDN hit ratio the key metric?', o: ['It sets encoding speed', 'Each 1% of misses adds about 150 Gbps of origin load and egress', 'It decides DRM licence cost', 'It controls upload resumability'], a: 1, e: 'Misses go back to the origin; a small change in hit ratio is a huge change in traffic and cost.' }
-      ]
+      q: [{ q: 'What is the main business benefit of ISO 20022 for cross-border payments?', o: ['Structured data that improves sanctions screening and AML', 'Smaller message sizes', 'Removal of correspondent banks', 'Instant settlement worldwide'], a: 0, e: 'Rich, structured fields (names, addresses, purpose) make screening and monitoring far more accurate. Correspondent hops and settlement times still exist.' }]
+    },
+    cdr: {
+      say: 'The Consumer Data Right lets consumers tell their bank to share their data with an accredited data recipient through standard, highly secured APIs, with consent they can withdraw any time. Security builds on FAPI: mTLS, PAR with PKCE, JARM and certificate-bound tokens. Consent is a first-class entity with a lifecycle.',
+      k: ['Consumer Data Right', 'data holder', 'accredited data recipient', 'FAPI', 'mTLS', 'PAR + PKCE', 'certificate-bound tokens', 'consent dashboard'],
+      p: ['Think "mTLS everywhere + sender-constrained tokens + signed requests".', 'Revocation must work from either side.', 'Payment initiation in Australia happens through PayTo, not the CDR.', 'CDR APIs expose core data directly: poor data quality becomes a compliance issue.'],
+      f: [
+        ['Name the core security pieces of a CDR data holder.', 'An API gateway with mTLS that trusts only the CDR certificate authority, a FAPI-conformant authorisation server (PAR, JARM, private_key_jwt), short-lived certificate-bound tokens, and a consent store.'],
+        ['Why is consent modelled as an entity, not a checkbox?', 'It has a lifecycle: what was shared, with whom, for how long, and it can be revoked from either side. It is the source of truth for every data request.'],
+        ['Can a fintech initiate payments through the CDR today?', 'Not yet. The action-initiation framework is legislated, but no action types have been declared; account-to-account payment initiation happens through PayTo.']
+      ],
+      q: [{ q: 'What does a certificate-bound access token prevent in the CDR?', o: ['Consent expiry', 'Rate limiting', 'Data quality issues', 'A stolen token being used by a different client'], a: 3, e: 'The token is bound to the client\'s mTLS certificate (cnf), so it is useless to anyone without that certificate.' }]
+    },
+    regulation: {
+      say: 'Banking rules become design requirements. CPS 230 tolerance levels for critical operations become RTO, RPO and degraded-mode SLOs, plus exit plans for material service providers. CPS 234 drives security controls and 72-hour incident notification. AML/CTF drives monitoring and record keeping, and PCI DSS drives card-data scope reduction.',
+      k: ['CPS 230', 'tolerance levels', 'material service provider', 'CPS 234', 'AML/CTF', 'AUSTRAC', 'PCI DSS', 'exit plan'],
+      p: ['Tolerance level in numbers: max outage, max data loss, min service level.', 'CPS 234: notify APRA within 72 hours of a material security incident.', 'CPS 230: notify APRA within 24 hours of a disruption outside tolerance.', 'Logs are evidence: complete, tamper-evident, retained, free of secrets and PANs.'],
+      f: [
+        ['How does CPS 230 change your DR design?', 'You design to board-approved tolerance levels per critical operation, map every dependency including material service providers, prove it with severe-but-plausible scenario tests, and keep a tested exit plan for key vendors.'],
+        ['What does CPS 230 mean for a cloud provider?', 'Core cloud and SaaS vendors can be material service providers: register them, set contract terms, and design for exit with portable data, IaC and a tested plan B.'],
+        ['Is PCI DSS a law?', 'No. It is an industry standard enforced through card schemes and acquirers.']
+      ],
+      q: [{ q: 'Under CPS 230, what should a "tolerance level" for payments translate into in your design?', o: ['A marketing SLA', 'Concrete RTO, RPO and minimum service-level targets', 'A list of approved vendors', 'An encryption standard'], a: 1, e: 'Tolerance levels set max outage, max data loss and minimum service in disruption, which map directly to RTO, RPO and degraded-mode SLOs.' }]
     },
     ledger: {
-      say: 'A payment ledger favours correctness over speed. Each transfer is a balanced set of append-only double entries in integer minor units. Entries, the conditional balance update and an outbox row commit in one ACID transaction, with a unique idempotency key. Reversals add opposite entries, and nightly reconciliation proves stored balances equal the sum of entries.',
-      k: ['double-entry', 'append-only', 'minor units (cents)', 'idempotency key', 'conditional update', 'transactional outbox', 'saga + suspense account', 'reconciliation'],
-      p: ['50M transactions/day = ~580/s, ~5k/s peak; ~7 TB of entries per year.', 'Read the available balance from the primary, never a stale cache.', 'Update accounts in ID order to avoid deadlocks.', 'Hot account: split into N sub-accounts, or batch its postings.'],
+      say: 'A ledger records every money movement as balanced, immutable double entries; balances are derived from them, and every posting must happen exactly once. Fix mistakes with reversing entries, never updates. Distinguish the ledger balance from the available balance, which subtracts holds. Use decimal or integer cents, never double, and reconcile daily.',
+      k: ['double entry', 'immutable journal', 'reversing entry', 'idempotent posting', 'ledger vs available balance', 'holds', 'optimistic concurrency', 'reconciliation'],
+      p: ['Every journal\'s debits equal its credits.', 'Available = ledger minus holds (plus any overdraft limit).', 'Unique index on the posting key makes replays harmless.', 'Reconcile: entries = balances = what the rails and RITS say.'],
       f: [
-        ['Why store a balance if you can sum the entries?', 'Summing is slow for busy accounts and makes the overdraw check expensive. Store it, update it in the same transaction as the entries, and check nightly that it equals the sum.'],
-        ['How do you stop double charges and overdraws?', 'A unique index on the idempotency key makes retries return the original result, and a conditional update WHERE available >= amount stops two withdrawals racing.'],
-        ['How do you fix a wrong posting?', 'Never update or delete. Post a reversal: new entries opposite to the original.'],
-        ['How do you post across shards or to another bank?', 'A saga through a holding or suspense account, with compensating entries if a later step fails.'],
-        ['Test scenarios for a ledger?', 'Retry with the same idempotency key (one posting, same response), two concurrent withdrawals exceeding the balance (one fails), opposite transfers A to B and B to A at once (no deadlock), and assert every transaction\'s entries sum to zero.'],
-        ['What gives auditors tamper evidence?', 'SQL ledger tables or hash-chained entries, plus append-only design and traced transactions.']
+        ['Ledger balance vs available balance?', 'Ledger is what has posted. Available is ledger minus holds, plus any overdraft limit. Customers care about available.'],
+        ['How do you make postings exactly-once?', 'Give each posting a unique key, such as the scheme\'s transaction ID, and insert it with the journal in one transaction behind a unique index, so a replay fails harmlessly.'],
+        ['How do you correct a wrong posting?', 'Never update or delete it. Post a reversing entry so the history itself is the audit trail.']
       ],
-      q: [
-        { q: 'A client retries POST /transfers after a timeout with the same Idempotency-Key. What should the ledger do?', o: ['Post the transfer again', 'Reject it as a fraud attempt', 'Return the original stored result and post nothing new', 'Reverse the first transfer'], a: 2, e: 'The unique idempotency key gives an exactly-once effect: duplicates return the first result.' },
-        { q: 'Two transfers run at once: A to B and B to A. How do you avoid a deadlock?', o: ['Lock accounts in a fixed order, such as by account ID', 'Lock accounts in from/to order', 'Use a read replica', 'Disable transactions'], a: 0, e: 'A consistent lock order means both transactions request locks in the same sequence, so neither waits on the other in a cycle.' }
-      ]
+      q: [{ q: 'A $80 card authorisation is approved on an account with $500 posted. What are the balances?', o: ['Ledger $500, available $420', 'Ledger $420, available $420', 'Ledger $420, available $500', 'Ledger $500, available $500'], a: 0, e: 'An authorisation places a hold: available drops, but the ledger only changes when the transaction posts.' }]
     }
   }
 };

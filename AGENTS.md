@@ -40,8 +40,8 @@ There's no framework and no build step. Every page is a hand-written HTML file t
 | Path | What it is |
 |---|---|
 | `index.html` | Roadmap: hero, learning path, section cards, LinkedIn kit |
-| `NN-name.html` | One page per section (01–29). The number is the page order; the menu groups pages by context (page 29, Role foundations, sits in Interview prep next to 25) |
-| `26-leadership-behavioural-questions.html` | Redirect stub to `26-solution-architect-behavioural-questions.html`. Keep it so old links work |
+| `NN-name.html` | One page per section (01–29). The menu groups pages by context, and the numbers run 01–29 down the menu, so the menu, pager and page numbers always agree |
+| Redirect stubs | `26-leadership-behavioural-questions.html` and the old names of pages renumbered in October 2026 (e.g. `12-security-iam.html` → `14-security-iam.html`). Keep them so old links, including `#section` links, still work. `check-revise.mjs` and `build-menu.ps1` skip them |
 | `assets/style.css` | All styles. Later rules override earlier ones, so append overrides at the end. Colour themes: each menu group has a `[data-theme]` block (`--th`, `--th2`; derived `--th-bg`, `--th-line`, `--th-grad`, `--th-grad-ink` for surfaces behind white text). `assets/menu.js` sets `data-theme` on the body, menu groups, roadmap cards and learning-path chips from the group's first word (e.g. "APIs & integration" → `apis`). Use `var(--th)` instead of fixed colours for page chrome. A new menu group needs a theme block |
 | `assets/viz.js` | Animated diagram renderer for `figure.viz`, plus the site-wide animation speed pill (pause, slower, faster) |
 | `assets/app.js` | Copy buttons on posts, table-to-card labels on phones, SVG minimum widths and swipe hints |
@@ -188,7 +188,7 @@ Each page has a data file that drives its Quick revise panel, Revise mode and th
   3. Write its `assets/revise/NN.js`.
   4. Run all three, then `check-pages` and `check-revise`.
 - **Rename or remove a page:** leave a redirect stub at the old file name. A page with `<meta http-equiv="refresh">` is skipped by the menu builder. Then update all links.
-- **Change the menu grouping:** edit `$groups` in `tools/build-menu.ps1`. Pages keep their numbers, and the pager stays in number order.
+- **Change the menu grouping:** edit `$groups` in `tools/build-menu.ps1`. Within a group the menu lists pages in number order, so keep the numbers running down the menu: moving a page to another group means renumbering pages (file names, `span.num`, title, kicker, footer, `assets/revise/NN.js`, cross-links and "see N.M" references, the three build scripts) and leaving redirect stubs at the old names.
 
 ## Running the tools
 - Run with Windows PowerShell 5.1 from the repo root: `powershell -ExecutionPolicy Bypass -File tools\build-menu.ps1`. Do the same for `build-nav.ps1`, `build-index.ps1` and `check-pages.ps1`.

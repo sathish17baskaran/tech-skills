@@ -569,7 +569,7 @@ Interlocked.CompareExchange(ref _config, newConfig, oldConfig);  // swap only if
   <h3>Key ideas</h3>
   <ul>
     <li><b>Event loop</b>: async I/O lets one thread juggle thousands of waits (<a href="#sync-async">1.3</a>). Node.js moves CPU work to <code>worker_threads</code>. .NET async uses the same idea on a <b>thread pool</b>, so it gets both.</li>
-    <li><b>Actors</b>: no shared memory and no locks. Erlang and Akka.NET add <b>supervisors</b> ("let it crash"). Orleans adds <b>virtual actors</b> that the runtime places and activates for you (<a href="22-dotnet-engineering-deep-dive.html#orleans">22.10</a>).</li>
+    <li><b>Actors</b>: no shared memory and no locks. Erlang and Akka.NET add <b>supervisors</b> ("let it crash"). Orleans adds <b>virtual actors</b> that the runtime places and activates for you (<a href="23-dotnet-engineering-deep-dive.html#orleans">23.10</a>).</li>
     <li><b>CSP</b>: "Don't communicate by sharing memory; share memory by communicating" (Go proverb).</li>
     <li><b>Data parallelism</b> is parallelism, not concurrency (<a href="#concurrency">1.2</a>). Amdahl's law still caps the speed-up.</li>
   </ul>
@@ -652,7 +652,7 @@ public sealed class AccountActor
     <tr><td><b>Virtual memory</b></td><td>Private address space per process, mapped to RAM in <b>pages</b> (often 4 KB)</td><td>Reserved is not used</td></tr>
     <tr><td><b>OOM kill</b></td><td>Container hits its memory limit; kernel sends <b>SIGKILL</b>: exit <b>137</b>, <code>OOMKilled</code></td><td>No exception, no log line</td></tr>
     <tr><td><b>File descriptors</b></td><td>Every open file and socket is an fd, capped per process (<code>ulimit -n</code>)</td><td>"Too many open files"</td></tr>
-    <tr><td><b>Port exhaustion</b></td><td>Each outbound connection uses a local <b>ephemeral port</b>; closed ones linger in <b>TIME_WAIT</b></td><td>See <a href="22-dotnet-engineering-deep-dive.html#httpclient">22.7 HttpClient</a></td></tr>
+    <tr><td><b>Port exhaustion</b></td><td>Each outbound connection uses a local <b>ephemeral port</b>; closed ones linger in <b>TIME_WAIT</b></td><td>See <a href="23-dotnet-engineering-deep-dive.html#httpclient">23.7 HttpClient</a></td></tr>
     <tr><td><b>Context switch</b></td><td>Swap one thread's registers for another's: microseconds, plus cold caches</td><td>10k threads = switching, not working</td></tr>
   </table></div>
   <p class="tip">Processes, threads and stacks are in <a href="#process-thread">1.1</a>. The caller's view of waiting is in <a href="#sync-async">1.3</a>, and the event loop as a programming model in <a href="#concurrency-models">1.7</a>.</p>
@@ -693,7 +693,7 @@ public sealed class AccountActor
     <li><b>137 / OOMKilled</b> = memory limit. Compare it with working set; hunt unbounded caches and queues.</li>
     <li>"Too many open files" = fd limit. <code>SocketException</code> under load = port exhaustion. Both say: <b>reuse connections</b>.</li>
     <li>Async scales because a waiting request holds <b>a kernel registration, not a thread</b>.</li>
-    <li>Low CPU + high latency = threads blocked, not busy. See <a href="22-dotnet-engineering-deep-dive.html#threadpool">22.4</a>.</li>
+    <li>Low CPU + high latency = threads blocked, not busy. See <a href="23-dotnet-engineering-deep-dive.html#threadpool">23.4</a>.</li>
   </ul></div>
 
   <div class="dotnet">
@@ -802,7 +802,7 @@ dotnet-dump analyze &lt;dump-file&gt;   # then: dumpheap -stat, gcroot &lt;addre
   <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
   <table>
     <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
-    <tr><td><b>Span&lt;T&gt; / Memory&lt;T&gt;</b></td><td><span class="pill builtin">built-in</span> <code>System</code></td><td>Slice contiguous memory without copies (see <a href="22-dotnet-engineering-deep-dive.html#perf">22.9</a>)</td></tr>
+    <tr><td><b>Span&lt;T&gt; / Memory&lt;T&gt;</b></td><td><span class="pill builtin">built-in</span> <code>System</code></td><td>Slice contiguous memory without copies (see <a href="23-dotnet-engineering-deep-dive.html#perf">23.9</a>)</td></tr>
     <tr><td><b>ArrayPool&lt;T&gt;.Shared</b></td><td><span class="pill builtin">built-in</span> <code>System.Buffers</code></td><td>Reuse I/O buffers instead of allocating new ones</td></tr>
     <tr><td><b>Struct arrays, [StructLayout]</b></td><td><span class="pill builtin">built-in</span> <code>System.Runtime.InteropServices</code></td><td>An array of structs is contiguous; an array of classes is an array of pointers</td></tr>
     <tr><td><b>FileStream + FileStreamOptions</b></td><td><span class="pill builtin">built-in</span> <code>System.IO</code></td><td><code>BufferSize</code>, <code>FileOptions.SequentialScan</code>, <code>FileOptions.WriteThrough</code>; <code>Flush(true)</code> asks the OS to flush to disk</td></tr>
@@ -885,10 +885,10 @@ await ParquetSerializer.SerializeAsync(transactions, "tx-2026-10.parquet");</cod
   <ul>
     <li><b>Answer frame:</b> access pattern → structure → cost.</li>
     <li><b>Leaderboard</b> → skip list (Redis sorted set).</li>
-    <li><b>Typeahead</b> → trie (<a href="20-dotnet-system-design-use-cases.html#autocomplete">20.3</a>).</li>
-    <li><b>Nearby ATMs</b> → geohash (<a href="20-dotnet-system-design-use-cases.html#proximity">20.4</a>, <a href="06-databases-data.html#geo">6.6</a>).</li>
+    <li><b>Typeahead</b> → trie (<a href="22-dotnet-system-design-use-cases.html#autocomplete">22.3</a>).</li>
+    <li><b>Nearby ATMs</b> → geohash (<a href="22-dotnet-system-design-use-cases.html#proximity">22.4</a>, <a href="06-databases-data.html#geo">6.6</a>).</li>
   </ul>
-  <p class="tip">Deeper: <a href="06-databases-data.html#indexing">indexing</a>, <a href="06-databases-data.html#search">search</a>, <a href="05-caching.html#probabilistic">Bloom filter &amp; HyperLogLog</a>, <a href="23-software-design-coding.html#bigo">Big-O &amp; .NET collections</a>.</p>
+  <p class="tip">Deeper: <a href="06-databases-data.html#indexing">indexing</a>, <a href="06-databases-data.html#search">search</a>, <a href="05-caching.html#probabilistic">Bloom filter &amp; HyperLogLog</a>, <a href="24-software-design-coding.html#bigo">Big-O &amp; .NET collections</a>.</p>
 
   <div class="remember"><ul>
     <li>Hash = O(1) but <b>no ranges</b>. Need order → tree or skip list.</li>
@@ -952,12 +952,12 @@ var logs = Channel.CreateBounded&lt;string&gt;(new BoundedChannelOptions(10_000)
   {"icon":"🗂️","t":"Check caches","d":"browser HTTP cache, browser + OS DNS cache, hosts file","c":"slate","indent":1},
   {"icon":"🌐","t":"DNS lookup","d":"recursive resolver → root → TLD → authoritative; answer cached for its <b>TTL</b>","tag":"2.4 DNS","href":"02-networking-protocols.html#dns","c":"teal"},
   {"icon":"🤝","t":"TCP handshake","d":"SYN, SYN-ACK, ACK (1 RTT); or <b>QUIC</b> over UDP for HTTP/3","tag":"2.2 TCP/UDP","href":"02-networking-protocols.html#tcp-udp","c":"blue"},
-  {"icon":"🔒","t":"TLS 1.3 handshake","d":"key share + certificate; browser checks chain, hostname, expiry (1 RTT)","tag":"12.6 TLS","href":"12-security-iam.html#tls","c":"purple"},
+  {"icon":"🔒","t":"TLS 1.3 handshake","d":"key share + certificate; browser checks chain, hostname, expiry (1 RTT)","tag":"14.6 TLS","href":"14-security-iam.html#tls","c":"purple"},
   {"icon":"📨","t":"HTTP request","d":"GET /accounts, cookies, Accept-Encoding; HTTP/2 or HTTP/3","tag":"2.3 HTTP","href":"02-networking-protocols.html#http","c":"blue"},
   {"icon":"🛡️","t":"CDN edge + WAF","d":"nearest PoP; cache hit returns here; WAF and DDoS filter","tag":"5.6 CDN","href":"05-caching.html#cdn","c":"teal","indent":1},
   {"icon":"⚖️","t":"Load balancer","d":"healthy instance, L4 or L7","tag":"3.3 LB","href":"03-scalability-reliability.html#lb","c":"slate","indent":1},
   {"icon":"🚪","t":"API gateway","d":"validate token, rate limit, route","tag":"9.3 APIM","href":"09-apim.html#policies","c":"purple","indent":1},
-  {"icon":"⚙️","t":"App server","d":"middleware, auth, business logic","tag":"18.1 E2E","href":"18-system-design-playbook.html#e2e","c":"blue","indent":1},
+  {"icon":"⚙️","t":"App server","d":"middleware, auth, business logic","tag":"20.1 E2E","href":"20-system-design-playbook.html#e2e","c":"blue","indent":1},
   {"icon":"⚡","t":"Cache, then database","d":"cache-aside; indexed query on a miss","tag":"5.2 Caching","href":"05-caching.html#strategies","c":"red","indent":1},
   {"icon":"📦","t":"Response","d":"200 + <b>Content-Encoding: br</b>, <b>Cache-Control</b>, ETag","c":"green"},
   {"icon":"🎨","t":"Browser renders","d":"HTML → <b>DOM</b>, CSS → <b>CSSOM</b> → render tree → layout → paint","c":"pink"}
@@ -1090,7 +1090,7 @@ app.Run();</code></pre>
     <tr><td><b>Workers</b></td><td>Process jobs off the request path</td><td>Emails, reports, video, retries</td><td><a href="10-integration-messaging.html#kafka">10.9</a></td></tr>
     <tr><td><b>Object storage</b></td><td>Cheap, durable files/blobs</td><td>Uploads, media, backups</td><td><a href="06-databases-data.html#storage">6.8</a></td></tr>
     <tr><td><b>Search index</b></td><td>Full-text and faceted queries</td><td>"Search" or "filter" requirement</td><td><a href="06-databases-data.html#search">6.5</a></td></tr>
-    <tr><td><b>Observability</b></td><td>Logs, metrics, traces, alerts</td><td>Always, from day one</td><td><a href="13-devops-deployment-observability.html#observability">13.9</a></td></tr>
+    <tr><td><b>Observability</b></td><td>Logs, metrics, traces, alerts</td><td>Always, from day one</td><td><a href="15-devops-deployment-observability.html#observability">15.9</a></td></tr>
   </table></div>
 
   <h3>Gaps worth knowing</h3>
@@ -1179,7 +1179,7 @@ app.Run();
 
   <div class="grid">
     <div class="box blue"><h4>Functional (FR)</h4><p>Features and behaviour: "a customer can <b>transfer money</b>", "an admin can <b>reverse</b> a payment". Write as <b>user stories</b> or use cases; they shape the <b>APIs and data model</b>.</p></div>
-    <div class="box purple"><h4>Non-functional (NFR)</h4><p>Qualities and constraints: speed, uptime, security, cost. They shape the <b>architecture</b>: replicas, caches, regions, queues. Full catalogue: <a href="17-architecture-documents.html#nfr">17.9</a>; trade-offs: <a href="24-architecture-practice.html#quality">24.2</a>.</p></div>
+    <div class="box purple"><h4>Non-functional (NFR)</h4><p>Qualities and constraints: speed, uptime, security, cost. They shape the <b>architecture</b>: replicas, caches, regions, queues. Full catalogue: <a href="12-architecture-documents.html#nfr">12.9</a>; trade-offs: <a href="13-architecture-practice.html#quality">13.2</a>.</p></div>
   </div>
 
   <h3>Quantify every "-ility"</h3>
@@ -1232,7 +1232,7 @@ app.Run();
 </script></figure>
 
   <div class="grid">
-    <div class="box green"><h4>🎯 Interview angle</h4><p><b>Classic:</b> "Design X" (the first 5 min), "What NFRs matter here?", "How would you prove p99?"<br><b>1. Split</b> FR and NFR out loud; write them on the board.<br><b>2. Put a number</b> on each NFR, or state your assumption.<br><b>3. Rank</b> the top 2-3 qualities; name what you trade away.<br><b>4. Tie each design choice</b> back to an NFR. Framework: <a href="18-system-design-playbook.html#framework">18.2</a>.</p></div>
+    <div class="box green"><h4>🎯 Interview angle</h4><p><b>Classic:</b> "Design X" (the first 5 min), "What NFRs matter here?", "How would you prove p99?"<br><b>1. Split</b> FR and NFR out loud; write them on the board.<br><b>2. Put a number</b> on each NFR, or state your assumption.<br><b>3. Rank</b> the top 2-3 qualities; name what you trade away.<br><b>4. Tie each design choice</b> back to an NFR. Framework: <a href="20-system-design-playbook.html#framework">20.2</a>.</p></div>
     <div class="box amber"><h4>⚠️ Common slips</h4><p>"It must be fast and highly available" with no numbers. Using <b>average</b> latency. Asking 20 questions instead of assuming and moving on.</p></div>
   </div>
 
@@ -1432,7 +1432,7 @@ string subKey = $"{merchantId}#{Random.Shared.Next(8)}";</code></pre>
     <tr><td><b>Graph</b></td><td>Many-hop relationships: fraud rings</td><td>Neo4j</td></tr>
     <tr><td><b>Time-series</b></td><td>Metrics by time, downsampling</td><td>InfluxDB, TimescaleDB</td></tr>
     <tr><td><b>Search</b></td><td>Full-text, relevance, facets</td><td>Elasticsearch, OpenSearch</td></tr>
-    <tr><td><b>Vector</b></td><td>Similarity search for AI (<a href="14-rag-genai.html#vector">14.7</a>)</td><td>pgvector, Qdrant</td></tr>
+    <tr><td><b>Vector</b></td><td>Similarity search for AI (<a href="17-rag-genai.html#vector">17.7</a>)</td><td>pgvector, Qdrant</td></tr>
   </table></div>
 
   <h3>Model and workload</h3>
@@ -1592,7 +1592,7 @@ await foreach (var p in channel.Reader.ReadAllAsync(ct))
            {"label":"merge","items":[{"t":"Pre-built feed","sub":"push","c":"green"},{"t":"Star's posts","sub":"pull","c":"amber"}]}]}
  ]}
 </script></figure>
-  <p>Write: <b>fast reads</b>, costly writes. Read: <b>cheap writes</b>, slow reads. Real feeds are <b>hybrid</b> (<a href="19-design-case-studies.html#feed">19.5</a>).</p>
+  <p>Write: <b>fast reads</b>, costly writes. Read: <b>cheap writes</b>, slow reads. Real feeds are <b>hybrid</b> (<a href="21-design-case-studies.html#feed">21.5</a>).</p>
 
   <h3>Pagination: offset vs cursor</h3>
   <div class="tablewrap"><table>
@@ -1734,7 +1734,7 @@ var page = await db.Transactions
     <li><b>Heartbeat:</b> "alive" every T; dead after k misses. Short timeout = fast failover but <b>false alarms</b>.</li>
     <li><b>Liveness:</b> process alive? Fail = restart. Keep it <b>shallow</b>.</li>
     <li><b>Readiness:</b> can take traffic? Fail = out of the load balancer.</li>
-    <li>More: <a href="03-scalability-reliability.html#ft">3.5</a>, probes <a href="13-devops-deployment-observability.html#k8s">13.8</a>.</li>
+    <li>More: <a href="03-scalability-reliability.html#ft">3.5</a>, probes <a href="15-devops-deployment-observability.html#k8s">15.8</a>.</li>
   </ul>
 
   <h3>Timeouts, retries, backoff, jitter</h3>
@@ -1759,7 +1759,7 @@ var page = await db.Transactions
   <h3>Overload: shed load, degrade gracefully</h3>
   <div class="cols2">
     <div class="box red"><h4>Load shedding</h4><ul><li>Reject excess <b>early and cheaply</b> (503 + Retry-After) so admitted requests meet the SLO.</li><li>Signals: in-flight count, queue length or wait.</li><li>Drop requests already past their deadline.</li></ul></div>
-    <div class="box amber"><h4>Graceful degradation</h4><ul><li><b>Drop first:</b> batch, analytics, recommendations. <b>Keep:</b> login, balances, payments.</li><li><b>Kill-switch</b> feature flags (<a href="13-devops-deployment-observability.html#flags">13.6</a>).</li><li>Stale cache, static fallback, read-only.</li></ul></div>
+    <div class="box amber"><h4>Graceful degradation</h4><ul><li><b>Drop first:</b> batch, analytics, recommendations. <b>Keep:</b> login, balances, payments.</li><li><b>Kill-switch</b> feature flags (<a href="15-devops-deployment-observability.html#flags">15.6</a>).</li><li>Stale cache, static fallback, read-only.</li></ul></div>
   </div>
 
   <h3>Split brain and fencing tokens</h3>
@@ -1778,7 +1778,7 @@ var page = await db.Transactions
   </ul>
 
   <div class="grid">
-    <div class="box green"><h4>🎤 "What happens when X fails?"</h4><p><b>1. Draw the path</b>, list components.<br><b>2. For each:</b> detection, blast radius, automatic response.<br><b>3. Data:</b> RPO, duplicates, split brain.<br><b>4. Slow, not down:</b> timeouts, shedding.<br><b>5. Close:</b> RTO/RPO and how you test it (<a href="13-devops-deployment-observability.html#chaos">13.16</a>).</p></div>
+    <div class="box green"><h4>🎤 "What happens when X fails?"</h4><p><b>1. Draw the path</b>, list components.<br><b>2. For each:</b> detection, blast radius, automatic response.<br><b>3. Data:</b> RPO, duplicates, split brain.<br><b>4. Slow, not down:</b> timeouts, shedding.<br><b>5. Close:</b> RTO/RPO and how you test it (<a href="15-devops-deployment-observability.html#chaos">15.16</a>).</p></div>
     <div class="box amber"><h4>⚠️ Common slips</h4><p>Retries at every layer. DB checks in liveness. Unrehearsed failover.</p></div>
   </div>
 
@@ -1933,7 +1933,7 @@ app.MapPost("/payments", PayAsync).RequireRateLimiting("shed");</code></pre>
   <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
   <table>
     <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
-    <tr><td><b>Orleans membership</b></td><td><code>Microsoft.Orleans.Server</code> 10.x + a clustering provider, e.g. <code>Microsoft.Orleans.Clustering.AzureStorage</code></td><td>Silos probe each other and vote dead silos out via a membership table. See <a href="22-dotnet-engineering-deep-dive.html#orleans">22.10</a></td></tr>
+    <tr><td><b>Orleans membership</b></td><td><code>Microsoft.Orleans.Server</code> 10.x + a clustering provider, e.g. <code>Microsoft.Orleans.Clustering.AzureStorage</code></td><td>Silos probe each other and vote dead silos out via a membership table. See <a href="23-dotnet-engineering-deep-dive.html#orleans">23.10</a></td></tr>
     <tr><td><b>DistributedLock</b></td><td><code>DistributedLock</code> 2.8 (meta-package; or one provider, e.g. <code>DistributedLock.SqlServer</code>, <code>DistributedLock.Azure</code>)</td><td>Locks / leader-only work over SQL Server, Postgres, Redis, Azure blob leases, ZooKeeper; <code>HandleLostToken</code> tells you the lock was lost</td></tr>
     <tr><td><b>BlobLeaseClient</b></td><td><code>Azure.Storage.Blobs</code> 12.x</td><td>Lease-based leader (15&ndash;60 s, renewable). Example in <a href="04-distributed-systems.html#consensus">4.4</a></td></tr>
     <tr><td><b>Service discovery</b></td><td><code>Microsoft.Extensions.ServiceDiscovery</code> 10.x</td><td>Client-side: <code>https+http://accounts</code> resolves from config, Aspire or Kubernetes DNS</td></tr>
@@ -2003,21 +2003,21 @@ bool inSync = MerkleRoot(replicaA).AsSpan().SequenceEqual(MerkleRoot(replicaB));
   <h3>Security baseline (primer)</h3>
   <div class="tablewrap"><table>
     <tr><th>Control</th><th>Say this</th><th>Deep dive</th></tr>
-    <tr><td><b>AuthN vs AuthZ</b></td><td>OIDC / OAuth tokens prove identity; policies decide access</td><td><a href="12-security-iam.html#authn-authz">12.1</a></td></tr>
-    <tr><td><b>Least privilege</b></td><td>Managed identities, scoped roles, no shared admin</td><td><a href="12-security-iam.html#iam">12.2</a></td></tr>
-    <tr><td><b>In transit</b></td><td>TLS everywhere; mTLS service-to-service</td><td><a href="12-security-iam.html#tls">12.6</a></td></tr>
-    <tr><td><b>At rest</b></td><td>Encrypted storage; customer-managed keys if required</td><td><a href="12-security-iam.html#keys">12.4</a></td></tr>
-    <tr><td><b>Secrets</b></td><td>Vault + rotation, never in code or config</td><td><a href="12-security-iam.html#secrets">12.7</a></td></tr>
-    <tr><td><b>Input / OWASP</b></td><td>Validate at the edge; object-level authZ checks</td><td><a href="12-security-iam.html#owasp">12.9</a></td></tr>
-    <tr><td><b>Zero trust</b></td><td>Verify every call; no trusted network</td><td><a href="12-security-iam.html#zerotrust">12.8</a></td></tr>
+    <tr><td><b>AuthN vs AuthZ</b></td><td>OIDC / OAuth tokens prove identity; policies decide access</td><td><a href="14-security-iam.html#authn-authz">14.1</a></td></tr>
+    <tr><td><b>Least privilege</b></td><td>Managed identities, scoped roles, no shared admin</td><td><a href="14-security-iam.html#iam">14.2</a></td></tr>
+    <tr><td><b>In transit</b></td><td>TLS everywhere; mTLS service-to-service</td><td><a href="14-security-iam.html#tls">14.6</a></td></tr>
+    <tr><td><b>At rest</b></td><td>Encrypted storage; customer-managed keys if required</td><td><a href="14-security-iam.html#keys">14.4</a></td></tr>
+    <tr><td><b>Secrets</b></td><td>Vault + rotation, never in code or config</td><td><a href="14-security-iam.html#secrets">14.7</a></td></tr>
+    <tr><td><b>Input / OWASP</b></td><td>Validate at the edge; object-level authZ checks</td><td><a href="14-security-iam.html#owasp">14.9</a></td></tr>
+    <tr><td><b>Zero trust</b></td><td>Verify every call; no trusted network</td><td><a href="14-security-iam.html#zerotrust">14.8</a></td></tr>
     <tr><td><b>Classification</b></td><td>Tag PII / confidential; mask in logs</td><td><a href="07-data-governance-privacy.html#classification">7.2</a></td></tr>
     <tr><td><b>Audit log</b></td><td>Append-only record of who changed what; kept apart from debug logs</td><td>&mdash;</td></tr>
   </table></div>
 
   <h3>Observability baseline (primer)</h3>
   <div class="grid">
-    <div class="box blue"><h4>Three signals</h4><ul><li><b>Logs</b>: structured events (<a href="13-devops-deployment-observability.html#logging">13.10</a>).</li><li><b>Metrics</b>: cheap numbers over time (<a href="13-devops-deployment-observability.html#metrics">13.11</a>).</li><li><b>Traces</b>: one request across services (<a href="13-devops-deployment-observability.html#observability">13.9</a>).</li></ul></div>
-    <div class="box green"><h4>SLIs, SLOs, alerts</h4><ul><li><b>SLI</b>: measured, e.g. % of 2xx under 300 ms.</li><li><b>SLO</b>: target, e.g. 99.9% over 30 days (<a href="13-devops-deployment-observability.html#sre">13.14</a>).</li><li>Alert on <b>symptoms</b> users feel, not CPU (<a href="13-devops-deployment-observability.html#alerting">13.12</a>).</li></ul></div>
+    <div class="box blue"><h4>Three signals</h4><ul><li><b>Logs</b>: structured events (<a href="15-devops-deployment-observability.html#logging">15.10</a>).</li><li><b>Metrics</b>: cheap numbers over time (<a href="15-devops-deployment-observability.html#metrics">15.11</a>).</li><li><b>Traces</b>: one request across services (<a href="15-devops-deployment-observability.html#observability">15.9</a>).</li></ul></div>
+    <div class="box green"><h4>SLIs, SLOs, alerts</h4><ul><li><b>SLI</b>: measured, e.g. % of 2xx under 300 ms.</li><li><b>SLO</b>: target, e.g. 99.9% over 30 days (<a href="15-devops-deployment-observability.html#sre">15.14</a>).</li><li>Alert on <b>symptoms</b> users feel, not CPU (<a href="15-devops-deployment-observability.html#alerting">15.12</a>).</li></ul></div>
     <div class="box teal"><h4>Correlation ID</h4><ul><li>W3C <b>traceparent</b> header flows through every hop and message.</li><li>Every log line carries the trace ID: one search finds the whole request.</li></ul></div>
   </div>
 
@@ -2058,7 +2058,7 @@ bool inSync = MerkleRoot(replicaA).AsSpan().SequenceEqual(MerkleRoot(replicaB));
   <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> How to implement it</div>
   <table>
     <tr><th>Library / API</th><th>Package</th><th>Use it for</th></tr>
-    <tr><td><b>Authentication / authorisation</b></td><td><span class="pill builtin">built-in</span> ASP.NET Core + <code>Microsoft.AspNetCore.Authentication.JwtBearer</code> 10.0</td><td>Validate bearer tokens; policies with <code>RequireAuthorization</code>. See <a href="22-dotnet-engineering-deep-dive.html#authn-authz">22.15</a></td></tr>
+    <tr><td><b>Authentication / authorisation</b></td><td><span class="pill builtin">built-in</span> ASP.NET Core + <code>Microsoft.AspNetCore.Authentication.JwtBearer</code> 10.0</td><td>Validate bearer tokens; policies with <code>RequireAuthorization</code>. See <a href="23-dotnet-engineering-deep-dive.html#authn-authz">23.15</a></td></tr>
     <tr><td><b>Microsoft Identity Web</b></td><td><code>Microsoft.Identity.Web</code> 4.x</td><td>Entra ID sign-in and token validation helpers</td></tr>
     <tr><td><b>Key Vault configuration</b></td><td><code>Azure.Extensions.AspNetCore.Configuration.Secrets</code> 1.5 + <code>Azure.Identity</code> 1.x</td><td>Load secrets into <code>IConfiguration</code> using a managed identity</td></tr>
     <tr><td><b>OpenTelemetry host</b></td><td><code>OpenTelemetry.Extensions.Hosting</code> 1.x</td><td>Wire traces, metrics and logs into DI</td></tr>

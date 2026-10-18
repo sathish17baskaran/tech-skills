@@ -346,7 +346,7 @@ modelBuilder.Entity&lt;Order&gt;().Property(o =&gt; o.Id).UseHiLo("OrderIds");</
     <tr><td><b>Azure AI Search</b></td><td>Fully managed search service on Azure</td><td>Azure apps: indexers, BM25, semantic ranker, vector and hybrid search</td></tr>
     <tr><td><b>Database full-text</b></td><td>PostgreSQL <code>tsvector</code> + GIN index, SQL Server full-text</td><td>Modest needs; avoid running another system</td></tr>
   </table></div>
-  <p class="tip">For GenAI, <b>hybrid search</b> runs keyword (BM25) and vector search together and merges the results. See <a href="14-rag-genai.html#hybrid">14 · Hybrid search</a>.</p>
+  <p class="tip">For GenAI, <b>hybrid search</b> runs keyword (BM25) and vector search together and merges the results. See <a href="17-rag-genai.html#hybrid">17 · Hybrid search</a>.</p>
   <div class="remember"><ul>
     <li>Inverted index = term → list of documents. That's why search is fast and <code>LIKE '%x%'</code> isn't.</li>
     <li>Relevance is BM25 by default; tune it with field boosts, synonyms and analysers before anything fancy.</li>

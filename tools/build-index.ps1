@@ -18,19 +18,19 @@ $cards = @(
  @('09-apim','SECTION 09','API Management (APIM)'),
  @('10-integration-messaging','SECTION 10','Integration &amp; Messaging'),
  @('11-architecture-patterns','SECTION 11','Architecture Patterns'),
- @('12-security-iam','SECTION 12','Security, IAM &amp; Cryptography'),
- @('13-devops-deployment-observability','SECTION 13','DevOps, Deployment &amp; Observability'),
- @('14-rag-genai','SECTION 14','RAG &amp; GenAI'),
- @('15-agentic-ai','SECTION 15','Agentic AI'),
- @('16-banking-payments','SECTION 16','Banking &amp; Payments Domain'),
- @('17-architecture-documents','SECTION 17','Architecture Documents &amp; Governance'),
- @('18-system-design-playbook',('SECTION 18 ' + $DOT + ' CAPSTONE'),'End-to-End System Design Playbook'),
- @('19-design-case-studies',('SECTION 19 ' + $DOT + ' PRACTICE'),'Design Case Studies'),
- @('20-dotnet-system-design-use-cases',('SECTION 20 ' + $DOT + ' PRACTICE'),'Top 10 System Design Use Cases in .NET'),
- @('21-cloud-cheat-sheet',('SECTION 21 ' + $DOT + ' REFERENCE'),'Cloud Cheat Sheet: Azure vs AWS vs GCP'),
- @('22-dotnet-engineering-deep-dive','SECTION 22','.NET Engineering Deep Dive'),
- @('23-software-design-coding','SECTION 23','Software Design &amp; Coding Fundamentals'),
- @('24-architecture-practice','SECTION 24','Architecture Practice'),
+ @('12-architecture-documents','SECTION 12','Architecture Documents &amp; Governance'),
+ @('13-architecture-practice','SECTION 13','Architecture Practice'),
+ @('14-security-iam','SECTION 14','Security, IAM &amp; Cryptography'),
+ @('15-devops-deployment-observability','SECTION 15','DevOps, Deployment &amp; Observability'),
+ @('16-cloud-cheat-sheet',('SECTION 16 ' + $DOT + ' REFERENCE'),'Cloud Cheat Sheet: Azure vs AWS vs GCP'),
+ @('17-rag-genai','SECTION 17','RAG &amp; GenAI'),
+ @('18-agentic-ai','SECTION 18','Agentic AI'),
+ @('19-banking-payments','SECTION 19','Banking &amp; Payments Domain'),
+ @('20-system-design-playbook',('SECTION 20 ' + $DOT + ' CAPSTONE'),'End-to-End System Design Playbook'),
+ @('21-design-case-studies',('SECTION 21 ' + $DOT + ' PRACTICE'),'Design Case Studies'),
+ @('22-dotnet-system-design-use-cases',('SECTION 22 ' + $DOT + ' PRACTICE'),'Top 10 System Design Use Cases in .NET'),
+ @('23-dotnet-engineering-deep-dive','SECTION 23','.NET Engineering Deep Dive'),
+ @('24-software-design-coding','SECTION 24','Software Design &amp; Coding Fundamentals'),
  @('25-interview-readiness',('SECTION 25 ' + $DOT + ' INTERVIEW'),'Interview Readiness'),
  @('26-solution-architect-behavioural-questions',('SECTION 26 ' + $DOT + ' INTERVIEW'),'Solution Architect Behavioural Questions (STAR)'),
  @('27-solution-designer-behavioural-questions',('SECTION 27 ' + $DOT + ' INTERVIEW'),'Solution Designer Behavioural Questions (STAR)'),
@@ -64,13 +64,13 @@ $path = @"
     $(N '' '06 Databases &amp; Data')$ar$(N '' '07 Data Governance')$ar$(N ' p' '08 API Design')$ar$(N ' p' '09 APIM')$ar$(N ' p' '10 Integration &amp; Messaging')
   </div>
   <div class="flow">
-    $(N ' p' '11 Architecture Patterns')$ar$(N ' a' '12 Security &amp; IAM')$ar$(N ' a' '13 DevOps &amp; Observability')$ar$(N ' g' '14 RAG &amp; GenAI')$ar$(N ' g' '15 Agentic AI')
+    $(N ' p' '11 Architecture Patterns')$ar$(N ' t' '12 Architecture Docs')$ar$(N ' p' '13 Architecture Practice')$ar$(N ' a' '14 Security &amp; IAM')$ar$(N ' a' '15 DevOps &amp; Observability')
   </div>
   <div class="flow">
-    $(N ' t' '16 Banking &amp; Payments')$ar$(N ' t' '17 Architecture Docs')$ar$(N ' fill' '18 E2E Playbook')$ar$(N ' fill' '19 Case Studies')$ar$(N ' fill' '20 .NET Use Cases')
+    $(N ' s' '16 Cloud Cheat Sheet')$ar$(N ' g' '17 RAG &amp; GenAI')$ar$(N ' g' '18 Agentic AI')$ar$(N ' t' '19 Banking &amp; Payments')$ar$(N ' fill' '20 E2E Playbook')
   </div>
   <div class="flow">
-    $(N ' s' '21 Cloud Cheat Sheet')$ar$(N ' a' '22 .NET Deep Dive')$ar$(N ' a' '23 Design &amp; Coding')$ar$(N ' p' '24 Architecture Practice')
+    $(N ' fill' '21 Case Studies')$ar$(N ' fill' '22 .NET Use Cases')$ar$(N ' a' '23 .NET Deep Dive')$ar$(N ' a' '24 Design &amp; Coding')
   </div>
   <div class="flow">
     $(N ' fill' '25 Interview Readiness')$ar$(N ' fill' '26 Solution Architect Questions')$ar$(N ' fill' '27 Solution Designer Questions')$ar$(N ' fill' '28 Engineering Manager Questions')$ar$(N ' fill' '29 Role Foundations')

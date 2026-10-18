@@ -8,13 +8,13 @@ The assistant should read [AGENTS.md](AGENTS.md) first. It has the site rules, p
 Each of these appears inside other sections, but has no dedicated concept section yet. Search the site first so a new section links to, rather than repeats, the existing mentions.
 - [x] Kafka and event streaming (10.9)
 - [x] GraphQL (8.8)
-- [x] Chaos engineering and game days (13.16)
-- [x] Platform engineering and internal developer platforms (24.9)
-- [x] FinOps and cloud cost optimisation (21.14)
-- [ ] ISO 20022 message basics for payments (page 16)
+- [x] Chaos engineering and game days (15.16)
+- [x] Platform engineering and internal developer platforms (13.9)
+- [x] FinOps and cloud cost optimisation (16.14)
+- [ ] ISO 20022 message basics for payments (page 19)
 
 ## Content: more practice
-- [ ] More design case studies on page 19 (it has URL shortener, rate limiter, chat, notifications, news feed, video and payment ledger). Candidates: ride matching, hotel booking at scale, collaborative document editing, metrics/monitoring system, open banking API gateway.
+- [ ] More design case studies on page 21 (it has URL shortener, rate limiter, chat, notifications, news feed, video and payment ledger). Candidates: ride matching, hotel booking at scale, collaborative document editing, metrics/monitoring system, open banking API gateway.
 - [ ] A Principal Software Engineer behavioural page (STAR, same format as pages 26–28). Page 29.5 has four starter prompts.
 - [ ] A behavioural page for other roles if needed (e.g. Integration Architect, Enterprise Architect), in the same format as pages 26–28.
 

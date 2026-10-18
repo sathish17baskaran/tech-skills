@@ -1,112 +1,173 @@
-/* Quick-revision data for 12-security-iam.html. Schema: see AGENTS.md "Quick revise data". */
+/* Quick-revision data for 12-architecture-documents.html. Schema: see AGENTS.md "Quick revise data". */
 (window.REVISE = window.REVISE || {})['12'] = {
   approach: [
-    ['Name the asset and the threat', 'What data or action are we protecting, from whom: outsider, insider, compromised service?'],
-    ['Identity first', 'Who is calling (human or workload), how they authenticate (OIDC, MFA, managed identity, mTLS).'],
-    ['Then authorisation', 'Least privilege: RBAC/ABAC per endpoint plus ownership checks per object (BOLA).'],
-    ['Protect the data', 'TLS 1.2+ in transit, encryption at rest with keys in a vault/HSM, hashing or tokenisation where it fits.'],
-    ['Assume breach', 'Zero Trust: segment, log and trace every access, limit the blast radius, rotate secrets.'],
-    ['Shift left in the pipeline', 'SAST, SCA, secret and IaC scanning, SBOM, signed artifacts.'],
-    ['Close with .NET and governance', 'JwtBearer / Microsoft.Identity.Web, Key Vault via Azure.Identity, access reviews and audit logs.']
+    ['Name the document and its question', 'ACD: why and what concept? AIA: what impact and risk? SO/HLD: what solution? LLD: how to build? ADR: why X over Y? SOP: how to operate?'],
+    ['Say who reads it and when', 'Audience and lifecycle stage set the level of detail: low for sponsors, high for developers.'],
+    ['List the core contents', 'Context diagram, options, NFRs, integrations, data, security, deployment, risks, linked ADRs.'],
+    ['Make it measurable and visual', 'C4 diagrams first; NFRs as numbers (p95, availability, RPO/RTO); trade-offs stated openly.'],
+    ['Show governance', 'Risk rating drives fast-track vs full review; guardrails and paved roads over gates; ADRs for exceptions.'],
+    ['Close with how it stays alive', 'Docs in the repo, diagrams as code, generated artefacts, owner and review date.']
   ],
   traps: [
-    'Mixing up authentication (401) and authorisation (403), or OAuth 2.0 (access) with OIDC (login).',
-    'Encrypting passwords instead of using a slow, salted hash.',
-    'Calling Base64 "encryption".',
-    'Trusting internal traffic because it is "inside the network".',
-    'Checking roles on the endpoint but never checking who owns the record.'
+    'Stopping at "it depends" without naming the drivers.',
+    'Writing NFRs like "the system should be fast" instead of measurable targets.',
+    'Editing an accepted ADR instead of superseding it.',
+    'Presenting the same level of detail to executives and engineers.',
+    'Signing a vendor deal with no exit plan.'
   ],
   sections: {
-    'authn-authz': {
-      say: 'Authentication proves who you are, with a password, MFA or a certificate. Authorisation decides what you may do, using roles, scopes or policies. Authentication always comes first: failing it returns 401, failing authorisation returns 403. Add accounting, the audit log, and you have AAA.',
-      k: ['authentication', 'authorisation', '401 Unauthorized', '403 Forbidden', 'AAA', 'ClaimsPrincipal', 'resource-based authorisation'],
-      p: ['AuthN first, then AuthZ.', 'AuthN failure = 401; AuthZ failure = 403.', 'AAA: Authentication, Authorization, Accounting (audit).', 'Resource-based checks run after you load the record.'],
-      f: [['A logged-in user calls an admin-only endpoint. 401 or 403?', '403 Forbidden. They are authenticated, so we know who they are, but they are not authorised for that action. 401 means we do not know who they are.'],
-          ['How does ASP.NET Core split AuthN and AuthZ?', 'Authentication handlers (JwtBearer, OpenIdConnect, Certificate, cookies) build the ClaimsPrincipal. Authorization policies and IAuthorizationService then decide if that principal may do the action.']],
-      q: [{ q: 'An API receives a request with an expired bearer token. What should it return?', o: ['403 Forbidden', '404 Not Found', '401 Unauthorized', '500 Internal Server Error'], a: 2, e: 'An invalid or expired token means the caller is not authenticated, so 401. 403 is for a known caller who lacks permission.' }]
+    lifecycle: {
+      say: 'Architecture documents get more detailed as an initiative moves from idea to operations: ACD for the concept, AIA for impact and governance, SO or HLD for the solution, LLD for build detail, then SOPs and runbooks to operate. ADRs are written at any stage, one per significant decision.',
+      k: ['ACD', 'AIA', 'SO / HLD', 'LLD', 'ADR', 'SOP / runbook', 'audience'],
+      p: ['Detail rises from low (ACD) to high (LLD).', 'ADRs: one per significant decision, at any stage.', 'Acronyms vary by organisation: keep the purpose, adjust the names.'],
+      f: [
+        ['Which document answers "why are we doing this?"', 'The ACD: problem, business drivers, scope and target concept, read by business sponsors and enterprise architects.'],
+        ['Order the main documents from idea to operations.', 'ACD, AIA, SO or HLD, LLD, build and test, then SOP or runbook. ADRs run throughout.']
+      ],
+      q: [{ q: 'Which document is aimed mainly at developers and testers, with the highest level of detail?', o: ['LLD', 'ACD', 'AIA', 'SO'], a: 0, e: 'The LLD is the developer-ready blueprint: contracts, schemas, error handling and test approach.' }]
     },
-    iam: {
-      say: 'IAM makes sure the right identities get the right access to the right resources at the right time. It covers human and non-human identities, authentication, authorisation models like RBAC and ABAC, the joiner-mover-leaver lifecycle, privileged access and federation. The core rule is least privilege, and in the cloud prefer managed identities over secrets.',
-      k: ['least privilege', 'RBAC / ABAC / ReBAC', 'joiner-mover-leaver', 'SCIM', 'PIM / just-in-time', 'managed identity', 'access reviews', 'federation'],
-      p: ['Least privilege: minimum access, for the minimum time.', 'Prefer managed identities over secrets for service-to-service.', 'De-provision leavers immediately; orphaned accounts are a top audit finding.', 'Azure scope: management group > subscription > resource group > resource. Assign at the lowest scope that works.'],
-      f: [['RBAC vs ABAC?', 'RBAC grants access by role: simple, but leads to role explosion. ABAC uses attributes and context like dept=Finance AND region=AU: fine-grained and flexible, but harder to govern.'],
-          ['What does a managed identity solve?', 'It removes credentials from code and config. The cloud platform issues and rotates tokens for the workload automatically.'],
-          ['What is PIM / just-in-time access?', 'Admins hold no standing privilege. They request time-bound elevation with approval, sessions can be recorded, and break-glass accounts cover emergencies.'],
-          ['Name three IGA controls an auditor will ask about.', 'A joiner-mover-leaver process with automated provisioning (SCIM), periodic access reviews or recertification, and segregation of duties.']],
-      q: [{ q: 'A document app should let only the owner of a doc and people they shared it with edit it. Which model fits best?', o: ['ReBAC', 'RBAC', 'ACL-free network rules', 'Basic authentication'], a: 0, e: 'Relationship-based access control decides from relationships like "owner of" or "shared with", which roles alone cannot express well.' },
-          { q: 'What is the preferred way for an Azure-hosted API to reach Key Vault?', o: ['A client secret in appsettings.json', 'An API key in an environment variable', 'A shared admin account', 'A managed identity'], a: 3, e: 'A managed identity has no secret to leak or rotate; the platform issues tokens for the workload.' }]
+    acd: {
+      say: 'The ACD, Architecture Concept or Context Document, is the earliest architecture artefact. It frames the problem, business drivers, scope, current state and target concept, with high-level options and a recommended direction. Keep it short and visual: its job is agreement on direction, not design detail.',
+      k: ['problem statement', 'business drivers', 'scope in / out', 'as-is / to-be', 'context diagram', 'options', 'strategic alignment'],
+      p: ['One context diagram (C4 level 1) beats pages of text.', 'Capture options early so later reviews do not reopen them.', 'Include assumptions, constraints, dependencies and risks.'],
+      f: [
+        ['What goes in an ACD?', 'Problem and drivers, scope and stakeholders, as-is context, to-be concept and affected capabilities, high-level options with a recommended direction, assumptions, constraints, risks and strategic alignment.'],
+        ['Why record options in the ACD?', 'So later reviews do not reopen decisions that were already weighed and agreed.']
+      ],
+      q: [{ q: 'What is the main job of an ACD?', o: ['Specify database schemas', 'Describe operating procedures', 'Record a single technical decision', 'Get agreement on the problem and direction'], a: 3, e: 'The ACD frames the problem and target concept so stakeholders agree on direction before detailed design.' }]
     },
-    sso: {
-      say: 'SAML and OpenID Connect log users in; OAuth 2.0 grants an app delegated access to an API. SAML uses XML assertions and suits legacy enterprise web SSO. OIDC adds a JWT ID token on top of OAuth 2.0 and is the modern choice for web, mobile and SPAs.',
-      k: ['SAML 2.0', 'XML assertion', 'OAuth 2.0', 'access token', 'OpenID Connect', 'ID token', 'delegated access', 'federation'],
-      p: ['OAuth 2.0 is authorisation, not login.', 'OIDC = authentication on top of OAuth 2.0 (ID token + access token).', 'SAML is poor for mobile and SPAs.', 'ASP.NET Core has no built-in SAML handler: often let Entra ID federate SAML and speak OIDC only.'],
-      f: [['Why is "login with OAuth 2.0" technically wrong?', 'OAuth 2.0 only grants an app access to an API; it says nothing standard about who the user is. OIDC adds the ID token that carries the user identity.'],
-          ['When would you still use SAML?', 'For enterprise web SSO with legacy SaaS apps or IdPs that only speak SAML. For new apps, prefer OIDC.']],
-      q: [{ q: 'A new mobile app needs users to sign in and then call the bank API. Which protocol fits?', o: ['SAML 2.0 only', 'OpenID Connect (with OAuth 2.0 access tokens)', 'Basic auth over HTTPS', 'WS-Federation'], a: 1, e: 'OIDC gives an ID token for login and an OAuth 2.0 access token for the API, and it works well on mobile.' }]
+    aia: {
+      say: 'An AIA, Architecture Impact Assessment, assesses how a change affects existing applications, interfaces, data, security, operations and cost, then gives a risk rating that decides the governance path: fast-track or full review board. In AI programmes AIA can also mean AI Impact Assessment.',
+      k: ['change classification', 'impacted systems', 'data classification / PII', 'regulatory obligations', 'technical debt', 'risk rating', 'governance path'],
+      p: ['Risk rating decides fast-track vs full review board.', 'Be honest: impacts found later cost much more.', 'AI Impact Assessment covers fairness, transparency, data use, oversight, model risk.'],
+      f: [
+        ['What decides the governance path in an AIA?', 'The risk rating, based on the change classification and its impact on systems, data, security and operations: low risk can fast-track, high risk goes to the full review board.'],
+        ['Which data impacts does an AIA check?', 'Data classification, PII, residency and retention.']
+      ],
+      q: [{ q: 'An AIA rates a change as low risk and minor. What usually follows?', o: ['A full architecture review board', 'A new ACD', 'A fast-track governance path', 'Immediate production deployment without review'], a: 2, e: 'The AIA risk rating sets the governance path; low-risk changes take the lighter fast-track route.' }]
     },
-    keys: {
-      say: 'Symmetric encryption uses one shared key: very fast, like AES-GCM, but sharing the key safely is the problem. Asymmetric uses a public and private key pair: slow, but solves key exchange and enables signatures. TLS combines them: asymmetric to agree a session key, symmetric to encrypt the data.',
-      k: ['AES-GCM', 'RSA / ECC', 'public / private key', 'digital signature', 'hybrid encryption', 'ECDHE', 'RS256 vs HS256', 'ML-KEM'],
-      p: ['Encrypt with the receiver\'s public key; sign with the sender\'s private key.', 'Asymmetric is roughly 100-1000x slower; use it for key exchange and signing.', 'JWT HS256 = shared secret; RS256/ES256 = API only needs the public key (better).', 'Post-quantum work (ML-KEM) is mostly about asymmetric algorithms.'],
-      f: [['Why does TLS use both symmetric and asymmetric crypto?', 'Asymmetric (ECDHE) safely agrees a session key over an open network; symmetric (AES-GCM) then encrypts the bulk data fast. Best of both.'],
-          ['Why prefer RS256 over HS256 for JWTs?', 'With RS256 the API validates with the public key only, so it cannot forge tokens. With HS256 every validator holds the shared secret that can also sign.'],
-          ['Which key do you use to sign, and which to verify?', 'Sign with the sender\'s private key; anyone verifies with the sender\'s public key.']],
-      q: [{ q: 'Alice wants to send Bob a message only Bob can read. Which key does she encrypt with?', o: ['Alice\'s private key', 'Bob\'s private key', 'Bob\'s public key', 'Alice\'s public key'], a: 2, e: 'What Bob\'s public key locks, only Bob\'s private key can unlock.' },
-          { q: 'Which is a symmetric algorithm suitable for bulk data?', o: ['AES-256-GCM', 'ECDSA P-256', 'RSA-2048', 'Ed25519'], a: 0, e: 'AES-GCM is symmetric authenticated encryption; the others are asymmetric.' }]
+    so: {
+      say: 'The Solution Outline describes the proposed solution: components, integrations, data flows, security, deployment and HA/DR, and how it meets functional and non-functional requirements. It bridges concept and detailed design. Show options, key decisions with linked ADRs, and the trade-offs you accept.',
+      k: ['requirements summary', 'C4 level 2', 'build vs buy', 'integration patterns', 'security architecture', 'HA / DR', 'options analysis'],
+      p: ['Explain how each NFR is met, e.g. availability target to zone redundancy plus DR region.', 'Reviewers trust designs that admit their weaknesses.', 'Link ADRs for key decisions.'],
+      f: [
+        ['How should an SO handle NFRs?', 'Map each NFR to the design feature that meets it, e.g. 99.95% availability via zone redundancy and a DR region, not just list them.'],
+        ['What integration detail belongs in an SO?', 'Interfaces, patterns (sync, async, batch) and protocols at overview level; exact contracts belong in the LLD.']
+      ],
+      q: [{ q: 'Which C4 level is typical for the main diagram in a Solution Outline?', o: ['Level 1 Context only', 'Level 2 Container', 'Level 3 Component', 'Level 4 Code'], a: 1, e: 'An SO shows the apps, APIs, databases and queues: the container level. Component and code levels belong in the LLD.' }]
     },
-    hashing: {
-      say: 'Encoding like Base64 is just formatting, anyone can reverse it. Encryption is reversible with a key and gives confidentiality. Hashing is one-way, for integrity and password storage with a slow salted hash. Tokenisation swaps sensitive data such as a card number for a meaningless token, which cuts PCI DSS scope.',
-      k: ['encoding (Base64)', 'encryption', 'hashing', 'salt', 'bcrypt / Argon2', 'HMAC', 'tokenisation', 'masking'],
-      p: ['Base64 is not security.', 'Passwords: slow, salted hash (bcrypt, scrypt, Argon2, PBKDF2), never plain SHA-256.', 'HMAC = integrity + authenticity with a shared secret (webhooks); compare in constant time.', 'Tokenisation: only the vault can map the token back.'],
-      f: [['Why not encrypt passwords instead of hashing them?', 'Encrypted passwords can be decrypted if the key leaks. Slow, salted hashes cannot be reversed and make brute force expensive.'],
-          ['How do you verify a webhook really came from the provider?', 'Check its HMAC-SHA256 signature with the shared secret, comparing with a constant-time function such as FixedTimeEquals.'],
-          ['How does tokenisation reduce PCI DSS scope?', 'Your systems store only a meaningless token; the real card number lives in the token vault, so far fewer systems handle card data.']],
-      q: [{ q: 'Which transform should you use to store user passwords?', o: ['AES-256 encryption', 'Base64 encoding', 'Plain SHA-256', 'Argon2 or bcrypt with a salt'], a: 3, e: 'Password storage needs a one-way, deliberately slow, salted hash. Fast SHA-256 is easy to brute force.' }]
+    hld: {
+      say: 'The HLD is the system-level design: major components, interactions, technology choices and deployment topology, with logical and physical diagrams and sequence diagrams for key flows. It also covers cross-cutting concerns like logging, monitoring, security and resilience. In many organisations the SO and HLD are one document.',
+      k: ['logical / physical diagram', 'sequence diagrams', 'technology stack', 'deployment topology', 'cross-cutting concerns', 'architecture tests'],
+      p: ['SO and HLD are often merged.', 'Cross-cutting: logging, monitoring, security, resilience.', 'Architecture tests (ArchUnitNET) can enforce the HLD layering in CI.'],
+      f: [
+        ['HLD vs LLD?', 'HLD covers which components exist and how they interact (system view). LLD covers how each component is built: contracts, schemas, logic and error handling (developer view).'],
+        ['How can you stop code drifting from the HLD?', 'Encode layering rules as architecture tests that fail the build, and describe the topology as code (e.g. an Aspire AppHost).']
+      ],
+      q: [{ q: 'Which of these belongs in an HLD rather than an LLD?', o: ['Table indexes and partitioning', 'Validation rules per field', 'Deployment topology and component interactions', 'Alert definitions per metric'], a: 2, e: 'The HLD is the system view: components, interactions, technology and topology. Field-level detail is LLD.' }]
     },
-    tls: {
-      say: 'TLS encrypts data in transit and proves the server\'s identity with a certificate that chains up to a trusted root CA. mTLS makes the client present a certificate too, which is common for B2B, open banking and service meshes. Use TLS 1.2 or higher, prefer 1.3, and automate certificate renewal.',
-      k: ['TLS 1.3', 'mTLS', 'chain of trust', 'root CA', 'intermediate CA', 'leaf certificate', 'certificate rotation'],
-      p: ['TLS 1.2+ (prefer 1.3); disable old ciphers.', 'Certificate expiry causes many outages: automate renewal and monitor expiry.', 'Behind a load balancer the client cert may arrive in a header: AddCertificateForwarding.'],
-      f: [['TLS vs mTLS?', 'TLS: only the server proves its identity. mTLS: both sides present certificates, so the server also knows which client is calling.'],
-          ['How do you stop certificate-expiry outages?', 'Automate issuance and renewal (Key Vault, cert-manager, ACME) and alert on expiry dates well in advance.']],
-      q: [{ q: 'A partner bank must prove its identity at the transport layer when calling your API. What do you use?', o: ['Server-side TLS only', 'Mutual TLS (client certificates)', 'Base64 headers', 'CORS'], a: 1, e: 'mTLS requires the client to present a certificate the server validates.' }]
+    lld: {
+      say: 'The LLD is the developer-ready blueprint: component internals, API contracts, message schemas, database schema, detailed sequences including error paths, validation, retries, idempotency, configuration, logging and test approach. Keep it close to the code, in the repo, and prefer generated artefacts like OpenAPI and DDL over hand-copied tables.',
+      k: ['OpenAPI contract', 'message schemas', 'database schema', 'error paths', 'idempotency / retries', 'feature flags', 'docs as code'],
+      p: ['Detailed enough to build and test without guessing.', 'Include error handling, retries, idempotency and timeouts.', 'Generated artefacts do not drift; hand-copied tables do.'],
+      f: [
+        ['Name five things an LLD must contain.', 'API contracts, message schemas, database schema with keys and indexes, sequence diagrams including error paths, and error handling with retries, idempotency and timeouts. Also config, logging and test approach.'],
+        ['How do you keep an LLD from drifting?', 'Store it in the repo as Markdown with diagrams as code, and generate OpenAPI and schema DDL from the code instead of copying them.']
+      ],
+      q: [{ q: 'What is the best way to keep the API contract in an LLD accurate?', o: ['Generate the OpenAPI document from the code', 'Copy it into a Word table each release', 'Describe it in prose only', 'Leave it to the testers'], a: 0, e: 'Generated artefacts stay in sync with the code; hand-maintained tables drift.' }]
     },
-    secrets: {
-      say: 'Never hard-code secrets. Keep them in a vault such as Key Vault or HashiCorp Vault, access them by identity, rotate them automatically and audit every use. For data, envelope encryption uses a data key to encrypt the data and a key-encryption key in an HSM to encrypt that data key.',
-      k: ['Key Vault', 'HSM', 'envelope encryption', 'DEK / KEK', 'CMK / BYOK', 'rotation', 'secret scanning', 'Always Encrypted'],
-      p: ['Protect data at rest, in transit and in use.', 'HSM keys never leave the hardware (FIPS 140-2/3).', 'dotnet user-secrets is for local development only.', 'Scan repos for leaked secrets (GitHub secret scanning, Gitleaks).'],
-      f: [['Explain envelope encryption.', 'Data is encrypted with a data encryption key (DEK). The DEK is encrypted (wrapped) by a key encryption key (KEK) kept in an HSM or Key Vault. Rotating the KEK only rewraps DEKs, not all the data.'],
-          ['What are the three data protection states?', 'At rest (disk, TDE, blob encryption), in transit (TLS/mTLS everywhere, including internal), and in use (confidential computing, column-level encryption).']],
-      q: [{ q: 'In envelope encryption, what protects the data encryption key?', o: ['The user\'s password', 'Base64 encoding', 'A key encryption key held in an HSM or vault', 'A TLS certificate'], a: 2, e: 'The DEK is wrapped by a KEK that never leaves the HSM or Key Vault.' }]
+    adr: {
+      say: 'An ADR is a short, immutable record of one significant decision: its context, the options, the choice and its consequences. Write one for decisions that are hard to reverse or often questioned. Never edit an accepted ADR; supersede it with a new one so the history stays.',
+      k: ['context', 'decision', 'consequences', 'status', 'supersede', 'Nygard format', 'MADR'],
+      p: ['Write ADRs for hard-to-reverse or often-questioned decisions.', 'Never edit an accepted ADR: supersede it.', 'Store them in the repo, e.g. /docs/adr.'],
+      f: [
+        ['When do you write an ADR?', 'For any decision that is significant, costly to reverse or likely to be questioned later: technology choice, integration pattern, data store, security approach.'],
+        ['A team wants to change an accepted ADR. What do you do?', 'Write a new ADR that supersedes it and mark the old one superseded, so the reasoning history is kept.']
+      ],
+      q: [{ q: 'Six months later the team reverses a decision recorded in an accepted ADR. What is the right action?', o: ['Edit the original ADR', 'Delete the original ADR', 'Record it only in meeting minutes', 'Write a new ADR that supersedes it'], a: 3, e: 'ADRs are immutable. A superseding ADR keeps the full history of why things changed.' }]
     },
-    zerotrust: {
-      say: 'Zero Trust means never trust, always verify: being inside the network does not make you trusted. Three principles: verify explicitly on every request using identity, device and risk; least privilege with just-in-time access; and assume breach, so segment, encrypt everything and monitor to limit the blast radius.',
-      k: ['never trust, always verify', 'verify explicitly', 'least privilege', 'assume breach', 'micro-segmentation', 'blast radius', 'workload identity'],
-      p: ['Every service validates the token on every call, even internal ones.', 'Just-in-time, just-enough, time-bound access.', 'mTLS between services, or let a service mesh do it.'],
-      f: [['Name the three Zero Trust principles.', 'Verify explicitly, use least privilege access, and assume breach.'],
-          ['What does "assume breach" change in your design?', 'Micro-segment the network, encrypt internal traffic, log and trace every access, and limit the blast radius so one compromised service cannot reach everything.']],
-      q: [{ q: 'Which practice breaks Zero Trust?', o: ['Skipping auth for calls from inside the VNet', 'Validating tokens on internal service calls', 'Time-bound admin access', 'mTLS between services'], a: 0, e: 'Zero Trust gives no implicit trust to network location; internal calls are verified too.' }]
+    sop: {
+      say: 'An SOP gives step-by-step instructions for a routine operational task so anyone trained does it the same way every time. It covers purpose, roles, prerequisites, numbered steps with expected results, verification, rollback, escalation, and an owner and review date.',
+      k: ['purpose and scope', 'RACI', 'prerequisites', 'numbered steps', 'verification', 'rollback', 'escalation', 'review date'],
+      p: ['Each step has an expected result.', 'Always include rollback or exception handling.', 'Examples: certificate rotation, DR failover test, DLQ replay.'],
+      f: [
+        ['Give three examples of SOPs.', 'Certificate renewal and rotation, the monthly DR failover test, onboarding a new API consumer in APIM, replaying messages from a DLQ, patching and release deployment.'],
+        ['What makes an SOP usable at 3 a.m.?', 'Prerequisites and access listed up front, numbered steps with expected results, clear verification, rollback, and escalation contacts.']
+      ],
+      q: [{ q: 'Which section is essential in an SOP so an operator can recover if a step goes wrong?', o: ['Business drivers', 'Rollback or exception handling', 'Options analysis', 'Architecture diagram'], a: 1, e: 'SOPs must say how to back out or handle exceptions, not just the happy path.' }]
     },
-    owasp: {
-      say: 'The OWASP API Security Top 10 from 2023 lists the most critical API risks. Number one is Broken Object Level Authorization: change an id in the URL and see someone else\'s data, so check ownership on every object. Others include broken authentication, mass assignment, unrestricted resource consumption, function-level authorisation and SSRF.',
-      k: ['BOLA', 'broken authentication', 'mass assignment', 'rate limiting', 'BFLA', 'SSRF', 'API inventory'],
-      p: ['API1 BOLA: check ownership of each record, not just the role.', 'API3: never bind straight to EF entities; use DTOs and allowlist fields.', 'API4: rate limits, quotas, payload caps, paging caps.', 'API7 SSRF: fixed base addresses and host allow-lists; never fetch a user-supplied URL.'],
-      f: [['What is BOLA and how do you fix it?', 'Broken Object Level Authorization: changing /accounts/42 to /43 returns someone else\'s data. Load the record and check the caller owns it, e.g. with IAuthorizationService.AuthorizeAsync(user, resource, policy).'],
-          ['BOLA vs BFLA?', 'BOLA is about which object you can touch (someone else\'s account). BFLA is about which function you can call (a normal user hitting an admin endpoint).'],
-          ['What is SSRF in an API?', 'The API fetches a URL supplied by the attacker, letting them reach internal services. Validate and allowlist destinations.']],
-      q: [{ q: 'A user edits the JSON body to add "isAdmin": true and the API saves it. Which OWASP API risk is this?', o: ['BOLA', 'Improper Inventory Management', 'SSRF', 'Broken Object Property Level Authorization (mass assignment)'], a: 3, e: 'API3 covers exposing or allowing edits to fields the caller should not touch. Allowlist fields with DTOs.' },
-          { q: 'Forgotten v1 endpoints are still live and unpatched. Which risk is this?', o: ['Unsafe Consumption of APIs', 'Improper Inventory Management', 'Broken Authentication', 'Unrestricted Resource Consumption'], a: 1, e: 'API9: keep an inventory of APIs and retire old versions.' }]
+    nfr: {
+      say: 'Functional requirements say what the system does; NFRs say how well it does it. Cover performance, availability, scalability, recoverability, security, compliance, observability, maintainability and cost, and make every one measurable, for example p95 under 300 ms at 500 TPS, or RPO 5 minutes and RTO 1 hour.',
+      k: ['p95 latency', 'availability %', 'RPO / RTO', 'scalability', 'security', 'compliance', 'observability', 'cost per transaction'],
+      p: ['Bad: "should be fast". Good: "95% of balance enquiries within 300 ms at 1,000 req/s".', 'Availability needs a window and exclusions, e.g. 99.95% monthly excl. planned maintenance.', 'Prove performance NFRs with load tests before go-live.'],
+      f: [
+        ['Rewrite "the system should be fast" as an NFR.', '"95% of balance enquiries respond within 300 ms at 1,000 requests per second."'],
+        ['Name six NFR categories.', 'Performance, availability, scalability, recoverability, security, compliance, observability, maintainability and cost.']
+      ],
+      q: [{ q: 'Which is a well-formed NFR?', o: ['p95 latency under 300 ms at 500 TPS', 'The system should be highly available', 'The API should be quick for users', 'The system must scale as needed'], a: 0, e: 'A good NFR is measurable: a percentile, a threshold and the load it applies at.' }]
     },
-    devsecops: {
-      say: 'DevSecOps builds security checks into every delivery step: SAST, SCA, secret, IaC and container scanning, plus DAST on the running app. Supply chain security proves that what runs is what you built: generate an SBOM, sign builds and images, follow SLSA levels, and block dependency confusion. Gate on severity with time-boxed exceptions.',
-      k: ['SAST / DAST', 'SCA', 'SBOM (SPDX, CycloneDX)', 'signed artifacts (cosign)', 'SLSA', 'dependency confusion', 'package source mapping', 'shift left'],
-      p: ['Shift left to catch issues cheaply; shift right for what only shows in production.', 'An SBOM is only useful if you store it and re-scan it when new CVEs land.', 'net10.0 projects audit transitive packages by default (NuGetAuditMode=all).', 'Pipelines use OIDC workload identity federation, not long-lived cloud secrets.'],
-      f: [['What is an SBOM and why does it matter?', 'A machine-readable list of every component and version in a build, in SPDX or CycloneDX. When a new CVE lands you can find affected systems in minutes, not weeks.'],
-          ['What is dependency confusion and how do you prevent it in .NET?', 'An attacker publishes a public package with your internal name, often a higher version. Use NuGet package source mapping, commit lock files and restore with --locked-mode, and reserve your ID prefix.'],
-          ['SAST vs DAST vs SCA?', 'SAST scans your source code, DAST attacks the running app from outside, and SCA finds known CVEs and licence issues in third-party packages, including transitive ones.'],
-          ['What do the SLSA build levels mean?', 'L1: provenance exists. L2: signed provenance from a hosted build platform. L3: a hardened, isolated build platform.']],
-      q: [{ q: 'Which control lets the cluster refuse images your pipeline did not produce?', o: ['SAST', 'DAST', 'Signed images verified at deploy (e.g. cosign or Notation)', 'An SBOM stored in a wiki'], a: 2, e: 'Signing artifacts in the pipeline and verifying signatures at admission blocks anything not built by you.' },
-          { q: 'Your build pulls a public package that shares a name with an internal one. What stops this in NuGet?', o: ['Package source mapping in nuget.config', 'TreatWarningsAsErrors', 'A larger build agent', 'DAST scanning'], a: 0, e: 'Source mapping makes internal prefixes resolve only from the internal feed.' }]
+    c4: {
+      say: 'The C4 model gives four zoom levels of diagrams, like Google Maps for software: context, container, component and code. The ACD uses level 1, SO and HLD use levels 1 and 2, and the LLD levels 3 and 4. Write them as code with Structurizr, PlantUML or Mermaid.',
+      k: ['Context', 'Container', 'Component', 'Code', 'zoom levels', 'diagrams as code', 'Structurizr'],
+      p: ['Level 4 (code) is rarely drawn.', 'Container = apps, APIs, databases, queues.', 'Diagrams as code live in the repo and render in CI.'],
+      f: [
+        ['Name the four C4 levels.', 'Context (system, users, external systems), Container (apps, APIs, databases, queues), Component (modules inside one container), Code (classes, rarely drawn).'],
+        ['Which C4 level goes in which document?', 'ACD: level 1. SO/HLD: levels 1-2. LLD: levels 3-4.']
+      ],
+      q: [{ q: 'A diagram shows the web app, the API, the database and a message queue. Which C4 level is it?', o: ['Context', 'Component', 'Code', 'Container'], a: 3, e: 'Separately deployable apps and data stores are containers in C4.' }]
+    },
+    threat: {
+      say: 'Threat modelling means systematically asking "what could go wrong?" on your data-flow diagram before attackers do. STRIDE gives the categories: Spoofing, Tampering, Repudiation, Information disclosure, Denial of service and Elevation of privilege, each with a typical control.',
+      k: ['STRIDE', 'data-flow diagram', 'spoofing', 'tampering', 'repudiation', 'information disclosure', 'denial of service', 'elevation of privilege'],
+      p: ['Spoofing: MFA, mTLS. Tampering: signatures, TLS.', 'Repudiation: audit logs, signing.', 'Elevation of privilege: least privilege, authZ checks.'],
+      f: [
+        ['What does STRIDE stand for?', 'Spoofing, Tampering, Repudiation, Information disclosure, Denial of service, Elevation of privilege.'],
+        ['Which STRIDE threat do audit logs address?', 'Repudiation: a user denying they performed an action. Logs and signing provide proof.']
+      ],
+      q: [{ q: 'A user claims they never approved a payment, and there is no record either way. Which STRIDE threat is this?', o: ['Spoofing', 'Tampering', 'Repudiation', 'Elevation of privilege'], a: 2, e: 'Repudiation is denying an action; audit logs and signatures are the control.' }]
+    },
+    runbook: {
+      say: 'An SOP covers routine, planned tasks. A runbook gives specific operational or incident steps for one system or alert, such as what to do when DLQ depth exceeds 100, and is often automated. A playbook is a broader cross-team response strategy for a scenario like a cyber incident or regional outage.',
+      k: ['SOP', 'runbook', 'playbook', 'alert-driven', 'automation', 'cross-team response'],
+      p: ['SOP = how we always do X.', 'Runbook = one system or alert, often automated.', 'Playbook = scenario-level strategy across teams.'],
+      f: [
+        ['Runbook vs playbook?', 'A runbook is the specific steps for one system or alert. A playbook is the broader strategy across teams for a scenario such as a cyber incident or regional outage.'],
+        ['"If DLQ depth is over 100, do..." Which document is that?', 'A runbook: specific incident steps tied to one alert, often automated.']
+      ],
+      q: [{ q: 'Which document coordinates several teams during a regional cloud outage?', o: ['SOP', 'Playbook', 'Runbook', 'ADR'], a: 1, e: 'Playbooks cover scenario-wide response strategy across teams; runbooks are per system or alert.' }]
+    },
+    frameworks: {
+      say: 'TOGAF is a framework for running enterprise architecture; its ADM cycles from Vision through Business, Information Systems and Technology architectures to migration planning, governance and change, with requirements management at the centre. Well-Architected, from Azure and AWS, is a pillar-based checklist for reviewing cloud workloads.',
+      k: ['TOGAF ADM', 'architecture vision', 'requirements management', 'migration planning', 'Well-Architected pillars', 'reliability / security / cost'],
+      p: ['ADM phases: Preliminary, A Vision, B Business, C Information Systems, D Technology, E Opportunities, F Migration, G Governance, H Change.', 'Azure pillars: Reliability, Security, Cost Optimisation, Operational Excellence, Performance Efficiency.', 'AWS adds a sixth pillar: Sustainability.'],
+      f: [
+        ['Name the five Azure Well-Architected pillars.', 'Reliability, Security, Cost Optimisation, Operational Excellence and Performance Efficiency. AWS adds Sustainability.'],
+        ['What sits at the centre of the TOGAF ADM?', 'Requirements Management, which feeds every phase of the cycle.']
+      ],
+      q: [{ q: 'Which pillar does AWS Well-Architected have that the Azure list on this page does not?', o: ['Reliability', 'Security', 'Sustainability', 'Cost Optimisation'], a: 2, e: 'AWS adds Sustainability to the five shared pillars.' }]
+    },
+    softskills: {
+      say: 'Architecture is decisions plus persuasion. Never stop at "it depends": name the drivers and which way each pushes. Lead with the recommendation, then the reason and the trade-off you accept, and say what would change your mind. Tailor the depth to the audience, and finish every review with a recorded decision.',
+      k: ['"it depends on what"', 'options table', 'recommendation first', 'trade-off accepted', 'influence without authority', 'pre-wire', 'decision memo'],
+      p: ['2-3 genuine options including "do nothing", same criteria for each.', 'Executives: one page, decision and risk. Engineers: reasoning and constraints.', 'Say no with data, and offer a "yes, if...".', 'End reviews with decisions, actions, owners, recorded as ADRs.'],
+      f: [
+        ['How do you present a trade-off to executives vs engineers?', 'Executives: one page, recommendation first, cost, risk and time, and the decision you need. Engineers: the drivers, rejected options and why, diagrams, NFRs and constraints.'],
+        ['What are the six parts of a one-page decision memo?', 'Decision and deadline, context, options against the same criteria, recommendation and why, trade-offs accepted, and the ask.'],
+        ['How do you influence without authority?', 'Build relationships early, frame proposals around stakeholders\' goals, co-design with the teams who will build it, and pre-wire decisions in 1:1s before the big meeting.']
+      ],
+      q: [{ q: 'A delivery lead asks "Kafka or Service Bus?". What is the strongest response?', o: ['Name the drivers, score both options, and lead with a recommendation and the accepted trade-off', '"It depends."', 'Pick whichever you used last', 'Ask the vendor to decide'], a: 0, e: 'Turn "it depends" into "it depends on X, Y, Z", then make a recommendation and own the trade-off.' }]
+    },
+    buildbuy: {
+      say: 'Build only what differentiates you; buy or subscribe for commodity capabilities. Compare three-to-five-year TCO, time to market, lock-in, skills and regulatory fit, and write the exit plan before you sign. Manage technical debt deliberately with a register, a budget and fitness functions, and govern with guardrails and paved roads rather than gates.',
+      k: ['differentiation', 'TCO 3-5 years', 'exit plan', 'Fowler\'s debt quadrant', 'debt register', 'fitness functions', 'paved road', 'guardrails over gates'],
+      p: ['Debt budget: often 15-20% of each sprint or quarter.', 'Only prudent, deliberate debt is a real choice: log it, plan repayment.', 'Teams on the paved road need little review; leaving it needs an ADR.', 'CPS 230: regulated entities must be able to exit a material provider in an orderly way.'],
+      f: [
+        ['How do you decide build vs buy?', 'Build what differentiates the business, buy or SaaS for commodity. Compare 3-5 year TCO including the team to run it, time to market, lock-in, skills and regulatory fit, and write the exit plan first.'],
+        ['What is Fowler\'s technical debt quadrant?', 'Reckless vs prudent crossed with deliberate vs inadvertent. Prudent, deliberate debt ("ship now, fix later") is legitimate if logged and repaid; reckless debt needs better skills and guardrails.'],
+        ['What is a fitness function?', 'An automated check in CI that guards an architecture characteristic, such as dependency rules, p95 latency or no vulnerable packages.'],
+        ['Guardrails vs gates?', 'Gates are review boards approving every design: slow bottlenecks. Guardrails are automated policies plus paved roads that make the right way the easy way; keep gates for high-risk, hard-to-reverse decisions.']
+      ],
+      q: [{ q: '"We know the right design, but we\'ll ship this shortcut now and fix it next sprint." Which quadrant is this debt?', o: ['Reckless, deliberate', 'Reckless, inadvertent', 'Prudent, inadvertent', 'Prudent, deliberate'], a: 3, e: 'A conscious, reasoned shortcut with a repayment plan is prudent, deliberate debt.' }]
     }
   }
 };

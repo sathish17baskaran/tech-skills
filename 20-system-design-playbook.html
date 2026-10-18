@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>20 · End-to-End System Design Playbook | Tech Concepts Prep</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<nav class="top"><a href="19-banking-payments.html">← Banking &amp; Payments</a><span class="here">20 · System Design Playbook</span><a href="21-design-case-studies.html">Next: Case Studies →</a></nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">Section 20 · Capstone</div>
+  <h1>End-to-end system design playbook</h1>
+  <p>Brings every section together: the journey of one request through a modern system, a repeatable interview framework, a trade-off cheat sheet and a worked example.</p>
+  <div class="toc">
+    <a href="#e2e" class="added">End-to-end request journey</a>
+    <a href="#framework" class="added">Interview framework</a>
+    <a href="#xvy" class="added">How to answer "X vs Y"</a>
+    <a href="#tradeoffs" class="added">Trade-off cheat sheet</a>
+    <a href="#example" class="added">Worked example</a>
+    <a href="#checklist" class="added">Design review checklist</a>
+  </div>
+</header>
+
+<!-- E2E -->
+<section class="concept" id="e2e">
+  <h2><span class="num">20.1</span> End-to-end: the journey of one request <span class="tag-added">Added</span></h2>
+  <p class="oneliner">A customer taps "Pay" in the mobile app. Here's every hop, and the concept that applies at each one.</p>
+<figure class="viz" data-viz="journey"><script type="application/json">
+{"title":"Tap \"Pay\": every hop and the concept behind it","stepMs":1100,
+ "steps":[
+  {"icon":"📱","t":"Mobile app","d":"OAuth2 + PKCE login via IdP (Entra/Okta) → access token","tag":"S14 IAM · S08 OAuth","href":"14-security-iam.html#iam","c":"blue"},
+  {"icon":"🔒","t":"HTTPS","d":"TLS 1.3, HTTP/2","tag":"S02 Protocols","href":"02-networking-protocols.html#http","c":"slate"},
+  {"icon":"🌐","t":"DNS → Global LB / CDN / WAF (Front Door)","d":"geo-routing, DDoS protection, cache static content","tag":"S02 DNS · S05 CDN","href":"05-caching.html#cdn","c":"teal"},
+  {"icon":"🚪","t":"API Gateway / APIM","d":"validate JWT, rate limit, quota, transform, log","tag":"S09 APIM · S08 Rate limit","href":"09-apim.html#policies","c":"purple"},
+  {"icon":"⚖️","t":"Regional L7 load balancer","d":"→ healthy instances (zone-redundant)","tag":"S03 LB · Fault tolerance","href":"03-scalability-reliability.html#lb","c":"slate"},
+  {"icon":"🧩","t":"Payments service","d":"stateless, autoscaled container, circuit breakers, timeouts","tag":"S03 · S11 Microservices","href":"11-architecture-patterns.html#mono-micro","c":"blue"},
+  {"icon":"⚡","t":"Redis cache","d":"cache-aside: payee details, FX rates; TTL + jitter","tag":"S05 Caching","href":"05-caching.html#strategies","indent":1,"c":"red"},
+  {"icon":"🛡️","t":"Fraud service","d":"gRPC, 200 ms timeout, fallback = queue for review","tag":"S02 gRPC · S03 Resilience","href":"03-scalability-reliability.html#resilience","indent":1,"c":"amber"},
+  {"icon":"🗄️","t":"SQL primary","d":"ACID transaction + outbox row; Idempotency-Key check","tag":"S06 DB · S08 Idempotency","href":"08-api-design.html#idempotency","indent":1,"c":"green"},
+  {"icon":"🪞","t":"Replicas","d":"sync replica (zone) + async replica (DR region)","tag":"S03 DR · S04 Replication","href":"03-scalability-reliability.html#dr","indent":1,"c":"green"},
+  {"icon":"📬","t":"Outbox relay → Service Bus topic \"PaymentCompleted\"","d":"publishes the committed outbox rows as events","tag":"S10 Outbox · Pub/Sub","href":"10-integration-messaging.html#queue-event","c":"amber"},
+  {"icon":"🔔","t":"Notification service","d":"push / SMS (near real-time)","tag":"S10 Near-RT","href":"10-integration-messaging.html#types","indent":1,"c":"pink"},
+  {"icon":"📒","t":"Ledger / GL service","d":"idempotent consumer, DLQ on failure","tag":"S10 Delivery guarantees","href":"10-integration-messaging.html#guarantees","indent":1,"c":"teal"},
+  {"icon":"🏞️","t":"CDC / stream → Lakehouse","d":"ELT, medallion → nightly batch reconciliation","tag":"S06 ETL/ELT · S10 Batch","href":"06-databases-data.html#etl","indent":1,"c":"slate"},
+  {"icon":"🤖","t":"AI assistant: \"where's my payment?\"","d":"agent uses RAG over FAQs + calls the <b>get_payment_status</b> tool with the user's token","tag":"S17 RAG · S15 Agents","href":"17-rag-genai.html#rag","c":"purple"},
+  {"icon":"🧰","t":"Around everything","d":"Key Vault + managed identity · OpenTelemetry traces/metrics/logs · SLOs & alerts · CI/CD with canary deploys · IaC · ADRs + SO/LLD + SOPs","tag":"S12 · S15 · S17","href":"15-devops-deployment-observability.html#observability","c":"slate"}
+ ]}
+</script></figure>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> Reference .NET 10 stack, hop by hop</div>
+  <table>
+    <tr><th>Hop</th><th>Library / API</th><th>What it does here</th></tr>
+    <tr><td><b>1. Client sign-in</b></td><td><code>Microsoft.Identity.Client</code> (MSAL.NET) in the .NET MAUI app</td><td>OAuth 2.0 / OIDC with PKCE; gets an access token for the payments API</td></tr>
+    <tr><td><b>2. Edge</b></td><td>Azure Front Door + WAF (config); <span class="pill builtin">built-in</span> <code>MapStaticAssets</code></td><td>TLS, WAF rules, CDN caching of static files</td></tr>
+    <tr><td><b>3. Gateway</b></td><td>Azure API Management, or <code>Yarp.ReverseProxy</code> in .NET; <span class="pill builtin">built-in</span> <code>Microsoft.AspNetCore.RateLimiting</code></td><td>Routing, JWT check, quotas and rate limits</td></tr>
+    <tr><td><b>4. Service</b></td><td><span class="pill builtin">built-in</span> ASP.NET Core minimal APIs, <code>Microsoft.Identity.Web</code>, <code>AddValidation()</code>, <code>AddProblemDetails()</code></td><td>Stateless API: validate token and input, return RFC 9457 errors</td></tr>
+    <tr><td><b>5. Outbound calls</b></td><td><code>Microsoft.Extensions.Http.Resilience</code></td><td>Timeouts, retries, circuit breakers to fraud and core systems</td></tr>
+    <tr><td><b>6. Cache</b></td><td><code>Microsoft.Extensions.Caching.Hybrid</code> + <code>Microsoft.Extensions.Caching.StackExchangeRedis</code></td><td>L1 + Redis L2 for reference data and balances</td></tr>
+    <tr><td><b>7. Database</b></td><td><code>Microsoft.EntityFrameworkCore.SqlServer</code> (EF Core 10)</td><td>ACID transaction; unique index on the idempotency key; outbox row in the same transaction</td></tr>
+    <tr><td><b>8. Messaging</b></td><td><code>Azure.Messaging.ServiceBus</code>; outbox via <code>WolverineFx</code> (free) or MassTransit v9 <span class="pill lic">commercial licence</span></td><td>Publish <code>PaymentCompleted</code> to notifications, ledger, analytics</td></tr>
+    <tr><td><b>9. AI</b></td><td><code>Microsoft.Extensions.AI</code>, <code>Microsoft.Extensions.VectorData.Abstractions</code>, <code>Microsoft.Agents.AI</code></td><td>Fraud explanation, RAG help, agent actions with approvals</td></tr>
+    <tr><td><b>10. Observability</b></td><td><code>OpenTelemetry.Extensions.Hosting</code>, <code>Azure.Monitor.OpenTelemetry.AspNetCore</code>; Aspire ServiceDefaults + dashboard</td><td>One trace ID from tap to ledger; metrics for SLOs</td></tr>
+  </table>
+<pre class="code"><code>app.MapPost("/payments", async (PaymentRequest req, [FromHeader(Name = "Idempotency-Key")] Guid key,
+                                PaymentsDb db, CancellationToken ct) =&gt;
+{
+    if (await db.Payments.AnyAsync(p =&gt; p.IdempotencyKey == key, ct))
+        return Results.Ok();                                    // retry: same result, no double charge
+
+    var payment = Payment.Create(req, key);
+    db.Payments.Add(payment);
+    db.Outbox.Add(OutboxMessage.From(new PaymentCompleted(payment.Id)));  // same transaction
+    await db.SaveChangesAsync(ct);                              // unique index backs up the check
+    return Results.Created($"/payments/{payment.Id}", payment.Id);
+})
+.RequireAuthorization("payments.write")
+.RequireRateLimiting("per-user");</code></pre>
+</div>
+  <div class="post">
+    <p>What happens when you tap "Pay" in a banking app? 💳 (a system design tour)</p>
+    <p>DNS → WAF/CDN → API gateway (JWT, rate limit) → load balancer → stateless service → cache + DB (ACID + idempotency key) → outbox → event bus → notifications, ledger, analytics.</p>
+    <p>Every arrow is a design decision: sync or async, consistency or availability, retry or fail fast.</p>
+    <p>Save this for your next system design interview. #SystemDesign #Architecture #Banking</p>
+  </div>
+</section>
+
+<!-- FRAMEWORK -->
+<section class="concept" id="framework">
+  <h2><span class="num">20.2</span> System design interview framework <span class="tag-added">Added</span></h2>
+  <p class="oneliner">A repeatable 7-step structure for a 45–60 minute design discussion. Structure beats brilliance.</p>
+  <div class="flow">
+    <div class="n">1. Clarify<small>~5 min</small></div><div class="ar">→</div>
+    <div class="n">2. Estimate<small>~3 min</small></div><div class="ar">→</div>
+    <div class="n p">3. API<small>~5 min</small></div><div class="ar">→</div>
+    <div class="n p">4. Data model<small>~5 min</small></div><div class="ar">→</div>
+    <div class="n a">5. High-level design<small>~10 min</small></div><div class="ar">→</div>
+    <div class="n a">6. Deep dives<small>~15 min</small></div><div class="ar">→</div>
+    <div class="n g">7. Wrap-up<small>~5 min</small></div>
+  </div>
+  <div class="grid wide">
+    <div class="box"><h4>1. Clarify requirements</h4><ul><li>Functional: core use cases (pick 2–3)</li><li>Non-functional: scale, latency, availability, consistency, security, compliance</li><li>Constraints: cloud, existing systems, budget, timeline</li><li>Out of scope</li></ul></div>
+    <div class="box"><h4>2. Back-of-the-envelope</h4><ul><li>Users → requests/s (average and peak)</li><li>Read:write ratio</li><li>Storage per year, bandwidth</li><li>This drives the design choices</li></ul></div>
+    <div class="box"><h4>3. API design</h4><ul><li>Main endpoints or events</li><li>Request and response shapes</li><li>Auth, idempotency, pagination</li></ul></div>
+    <div class="box"><h4>4. Data model</h4><ul><li>Entities and relationships</li><li>SQL or NoSQL, and why</li><li>Partition or shard key, indexes</li></ul></div>
+    <div class="box"><h4>5. High-level design</h4><ul><li>Draw the boxes: client → edge → gateway → services → data → async</li><li>Walk through 1–2 key flows end to end</li></ul></div>
+    <div class="box"><h4>6. Deep dives</h4><ul><li>Bottlenecks and scaling (cache, replicas, sharding, queues)</li><li>Failure modes (what if X dies?)</li><li>Consistency, security, observability</li></ul></div>
+    <div class="box"><h4>7. Wrap-up</h4><ul><li>Summarise key trade-offs</li><li>Risks and what you'd do next</li><li>How you'd evolve it (v2)</li></ul></div>
+  </div>
+  <div class="remember"><ul>
+    <li><b>Think aloud.</b> Interviewers score your reasoning, not just the final picture.</li>
+    <li>Say the trade-off every time: "I chose X because…, at the cost of…".</li>
+    <li>Start simple, then scale. Don't open with Kafka + Kubernetes + 12 microservices.</li>
+  </ul></div>
+</section>
+
+<!-- X VS Y -->
+<section class="concept" id="xvy">
+  <h2><span class="num">20.3</span> How to answer any "X vs Y" question <span class="tag-added">Added</span></h2>
+  <p class="oneliner">One formula covers Sync vs Async, SQL vs NoSQL, Queue vs Event, ETL vs ELT…</p>
+  <div class="flow">
+    <div class="n">1. Define both<small>one line each</small></div><div class="ar">→</div>
+    <div class="n p">2. How each works<small>a tiny diagram</small></div><div class="ar">→</div>
+    <div class="n a">3. Key differences<small>3–4 dimensions</small></div><div class="ar">→</div>
+    <div class="n g">4. When to pick which<small>decision rule</small></div><div class="ar">→</div>
+    <div class="n t">5. Real example<small>from your experience</small></div>
+  </div>
+  <div class="tip">Example: "Queue vs Event? A queue hands a command to <i>one</i> consumer. An event broadcasts a fact to <i>many</i>. Queues give load levelling and reliable hand-off. Events give decoupling and fan-out. I'd use a queue for 'process this payment' and an event for 'payment completed'. At my last project we used Service Bus queues for… and topics for…"</div>
+</section>
+
+<!-- TRADEOFFS -->
+<section class="concept" id="tradeoffs">
+  <h2><span class="num">20.4</span> Trade-off cheat sheet <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Common either/or decisions, with a rule of thumb for when to choose each side.</p>
+  <div class="tablewrap"><table>
+    <tr><th>Decision</th><th>Choose left when…</th><th>Choose right when…</th></tr>
+    <tr><td>Sync ↔ Async</td><td>User needs the answer now</td><td>Work can finish later, fan-out, spikes</td></tr>
+    <tr><td>SQL ↔ NoSQL</td><td>Transactions, joins, integrity</td><td>Massive scale, flexible schema, known access patterns</td></tr>
+    <tr><td>Consistency ↔ Availability</td><td>Money, inventory, identity</td><td>Feeds, catalogues, analytics</td></tr>
+    <tr><td>Monolith ↔ Microservices</td><td>Small team, unclear domain</td><td>Many teams, clear boundaries, independent scaling</td></tr>
+    <tr><td>Vertical ↔ Horizontal</td><td>Quick fix, stateful DB</td><td>HA, unlimited growth, stateless tier</td></tr>
+    <tr><td>Cache ↔ Always fresh</td><td>Read-heavy, staleness OK</td><td>Correctness critical</td></tr>
+    <tr><td>Normalise ↔ Denormalise</td><td>Write integrity</td><td>Read speed</td></tr>
+    <tr><td>Batch ↔ Stream</td><td>Large periodic volume, cost-sensitive</td><td>Low latency reactions</td></tr>
+    <tr><td>Queue ↔ Event stream</td><td>Work distribution, commands</td><td>Replay, many consumers, high throughput</td></tr>
+    <tr><td>Orchestration ↔ Choreography</td><td>Complex flow, visibility, compensation</td><td>Simple flow, autonomy</td></tr>
+    <tr><td>Serverless ↔ Containers</td><td>Spiky, event-driven, short tasks</td><td>Steady load, long-running, full control</td></tr>
+    <tr><td>REST ↔ gRPC</td><td>Public, partner, browser</td><td>Internal, low latency, streaming</td></tr>
+    <tr><td>Build ↔ Buy</td><td>Core differentiator</td><td>Commodity capability</td></tr>
+    <tr><td>RAG ↔ Fine-tune</td><td>Changing knowledge, citations</td><td>Behaviour, style, narrow task</td></tr>
+    <tr><td>Workflow ↔ Agent</td><td>Predictable steps</td><td>Open-ended, needs judgement</td></tr>
+  </table></div>
+</section>
+
+<!-- EXAMPLE -->
+<section class="concept" id="example">
+  <h2><span class="num">20.5</span> Worked example: real-time payment notification platform <span class="tag-added">Added</span></h2>
+  <p class="oneliner">"Design a service that notifies customers (push, SMS, email) within 5 seconds of any card or account transaction."</p>
+  <div class="cols2">
+    <div>
+      <h3>1. Requirements</h3>
+      <ul><li>F: subscribe to preferences, receive notifications, view history</li><li>NFR: 5M customers, p95 delivery &lt; 5 s, 99.95% availability, at-least-once delivery with no duplicate pushes, PII protected</li></ul>
+      <h3>2. Estimates</h3>
+      <ul><li>20M transactions/day ≈ 230/s average, ~1,000/s peak</li><li>History: 20M × 1 KB ≈ 20 GB/day → keep 90 days hot (~1.8 TB)</li></ul>
+      <h3>3. API / events</h3>
+      <ul><li>Consumes <code>TransactionPosted</code> events (from core banking via CDC)</li><li><code>PUT /customers/{id}/notification-preferences</code></li><li><code>GET /customers/{id}/notifications?cursor=</code></li></ul>
+    </div>
+    <div>
+      <h3>4. Data</h3>
+      <ul><li>Preferences: SQL (small, relational) + Redis cache</li><li>Notification history: NoSQL (Cosmos/Cassandra), partition key = customerId</li></ul>
+      <h3>5. Design</h3>
+<figure class="viz" data-viz="journey"><script type="application/json">
+{"title":"One transaction becomes a notification","stepMs":1200,
+ "steps":[
+  {"icon":"🏦","t":"Core banking","d":"<b>TransactionPosted</b> captured by CDC","tag":"S06 CDC","href":"06-databases-data.html#cdc","c":"slate"},
+  {"icon":"📡","t":"Event Hubs / Kafka","d":"key = accountId","tag":"S10","href":"10-integration-messaging.html#queue-event","c":"blue"},
+  {"icon":"🧠","t":"Rules service","d":"prefs from Redis, thresholds","tag":"S05 Redis","href":"05-caching.html#redis","c":"purple"},
+  {"icon":"📥","t":"Service Bus queues","d":"one per channel: push / sms / email","tag":"S10 Queues","href":"10-integration-messaging.html#queue-event","c":"amber"},
+  {"icon":"⚙️","t":"Channel workers","d":"APNs/FCM · SMS gateway · Email","c":"teal"},
+  {"icon":"🗂️","t":"History store","d":"every notification sent is recorded","c":"green"},
+  {"icon":"🚪","t":"GET API via APIM","d":"customer views history","tag":"S09 APIM","href":"09-apim.html#what","c":"blue"}
+ ]}
+</script></figure>
+    </div>
+  </div>
+  <h3>6. Deep dives</h3>
+  <ul>
+    <li><b>Duplicates</b>: dedupe key = transactionId + channel in Redis (TTL 24 h). Consumers are idempotent.</li>
+    <li><b>Ordering</b>: partition by accountId so a customer's events are processed in order.</li>
+    <li><b>Spikes</b>: queues level the load. Workers auto-scale on queue depth.</li>
+    <li><b>Provider outage</b>: circuit breaker per provider, failover SMS provider, DLQ + replay.</li>
+    <li><b>Security</b>: mask PII in payloads (last 4 digits only), managed identities, encryption at rest and in transit.</li>
+    <li><b>Observability</b>: trace from transactionId → delivered. SLO = % delivered within 5 s.</li>
+  </ul>
+  <h3>7. Trade-offs</h3>
+  <p>Near-real-time events instead of synchronous calls from core banking (decoupled, but eventually consistent). At-least-once delivery + dedupe instead of costly exactly-once. NoSQL for history (scale) instead of SQL (ad-hoc queries go to the lakehouse instead).</p>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> The .NET stack for this design</div>
+  <table>
+    <tr><th>Component</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Consume TransactionPosted</b></td><td><code>Azure.Messaging.ServiceBus</code> (<code>ServiceBusSessionProcessor</code>, session = accountId) or <code>Azure.Messaging.EventHubs.Processor</code> (partition key = accountId)</td><td>Per-account ordering; workers as a <code>BackgroundService</code> on Container Apps, scaled by KEDA on queue depth</td></tr>
+    <tr><td><b>Dedupe</b></td><td><code>StackExchange.Redis</code> (<code>StringSetAsync</code> with <code>When.NotExists</code> + 24 h expiry)</td><td>Key = transactionId + channel</td></tr>
+    <tr><td><b>Preferences</b></td><td>EF Core 10 (<code>Microsoft.EntityFrameworkCore.SqlServer</code>) + <code>HybridCache</code></td><td>Small relational data, read-heavy, cached</td></tr>
+    <tr><td><b>History</b></td><td><code>Microsoft.Azure.Cosmos</code>, partition key <code>/customerId</code>, TTL 90 days</td><td>Cursor paging with continuation tokens for <code>GET ...?cursor=</code></td></tr>
+    <tr><td><b>Push / SMS / email</b></td><td><code>Microsoft.Azure.NotificationHubs</code>, <code>Azure.Communication.Sms</code>, <code>Azure.Communication.Email</code></td><td>One sender class per channel behind an interface, so a second SMS provider can be swapped in</td></tr>
+    <tr><td><b>Provider outage</b></td><td><code>Microsoft.Extensions.Http.Resilience</code> / <code>Polly.Core</code></td><td>Circuit breaker per provider, then failover; dead-letter + replay</td></tr>
+    <tr><td><b>Security</b></td><td><code>Azure.Identity</code> (managed identity), <code>Microsoft.Extensions.Compliance.Redaction</code></td><td>No secrets in config; mask card numbers in logs</td></tr>
+    <tr><td><b>Observability</b></td><td>OpenTelemetry; a custom <code>Histogram&lt;double&gt;</code> for "posted &rarr; delivered" seconds</td><td>SLO = % delivered within 5 s</td></tr>
+  </table>
+<pre class="code"><code>processor.ProcessMessageAsync += async args =&gt;
+{
+    var evt = args.Message.Body.ToObjectFromJson&lt;TransactionPosted&gt;()!;
+    foreach (var channel in await prefs.GetChannelsAsync(evt.CustomerId, args.CancellationToken))
+    {
+        // Claim (transaction, channel) once for 24 h; a redelivery finds the key and skips
+        bool first = await redis.StringSetAsync($"notif:{evt.TransactionId}:{channel}", 1,
+                                                TimeSpan.FromHours(24), When.NotExists);
+        if (first) await senders[channel].SendAsync(evt, args.CancellationToken);
+    }
+    await args.CompleteMessageAsync(args.Message);
+};</code></pre>
+  <p class="warn">If a send fails after the key is set, that channel is skipped on retry. Delete the key in a <code>catch</code> before rethrowing, or set it only after a successful send.</p>
+</div>
+  </section>
+
+<!-- CHECKLIST -->
+<section class="concept" id="checklist">
+  <h2><span class="num">20.6</span> Design review checklist <span class="tag-added">Added</span></h2>
+  <p class="oneliner">Questions to run through before you present or approve a design.</p>
+  <div class="grid">
+    <div class="box blue"><h4>Scale &amp; performance</h4><ul><li>Peak load known?</li><li>Stateless tier?</li><li>Caching plan?</li><li>DB scaling path?</li></ul></div>
+    <div class="box green"><h4>Reliability</h4><ul><li>SPOFs removed?</li><li>Timeouts, retries, circuit breakers?</li><li>RPO/RTO met and tested?</li></ul></div>
+    <div class="box red"><h4>Security</h4><ul><li>AuthN/AuthZ on every call?</li><li>Secrets in a vault?</li><li>Data classified and encrypted?</li><li>Threat model done?</li></ul></div>
+    <div class="box purple"><h4>Integration</h4><ul><li>Right style (RT / NRT / batch)?</li><li>Idempotency and DLQs?</li><li>Contracts versioned?</li></ul></div>
+    <div class="box amber"><h4>Operations</h4><ul><li>SLOs and alerts?</li><li>Tracing end to end?</li><li>Runbooks and SOPs?</li><li>Safe deployment strategy?</li></ul></div>
+    <div class="box teal"><h4>Governance</h4><ul><li>ADRs for key decisions?</li><li>NFRs measurable?</li><li>Cost estimated?</li><li>Compliance (APRA, Privacy, PCI)?</li></ul></div>
+  </div>
+<div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> Libraries that tick each box</div>
+  <table>
+    <tr><th>Area</th><th>Library / API</th></tr>
+    <tr><td><b>Scale &amp; performance</b></td><td><code>HybridCache</code>, output caching, <code>BenchmarkDotNet</code>, EF Core read replicas / compiled queries</td></tr>
+    <tr><td><b>Reliability</b></td><td><code>Microsoft.Extensions.Http.Resilience</code>, health checks (<code>MapHealthChecks</code>), Service Bus dead-letter queues</td></tr>
+    <tr><td><b>Security</b></td><td><code>Microsoft.Identity.Web</code>, authorization policies, <code>Azure.Identity</code> + <code>Azure.Security.KeyVault.Secrets</code>, Data Protection, <code>Microsoft.Extensions.Compliance.Redaction</code></td></tr>
+    <tr><td><b>Integration</b></td><td><code>Microsoft.AspNetCore.OpenApi</code>, <code>Asp.Versioning.Http</code>, <code>Azure.Messaging.ServiceBus</code>, outbox with <code>WolverineFx</code></td></tr>
+    <tr><td><b>Operations</b></td><td>OpenTelemetry + <code>Azure.Monitor.OpenTelemetry.AspNetCore</code>, Aspire dashboard, <code>Microsoft.FeatureManagement.AspNetCore</code> for safe rollouts</td></tr>
+    <tr><td><b>Governance</b></td><td><code>TngTech.ArchUnitNET</code> tests for agreed rules; ADRs as Markdown in the repo</td></tr>
+  </table>
+</div>
+  </section>
+
+<div class="pager"><a href="19-banking-payments.html">← 19 · Banking &amp; Payments</a><a class="next" href="21-design-case-studies.html">21 · Design Case Studies →</a></div>
+</main>
+<footer>Tech Concepts Prep · Section 20</footer>
+<script src="assets/menu-data.js"></script>
+<script src="assets/menu.js"></script>
+<script src="assets/revise/20.js"></script>
+<script src="assets/revise.js"></script>
+<script src="assets/app.js"></script>
+<script src="assets/viz.js"></script>
+</body>
+</html>

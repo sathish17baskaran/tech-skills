@@ -1,122 +1,175 @@
-/* Quick-revision data for 16-banking-payments.html. Schema: see AGENTS.md "Quick revise data". */
+/* Quick-revision data for 16-cloud-cheat-sheet.html. Schema: see AGENTS.md "Quick revise data". */
 (window.REVISE = window.REVISE || {})['16'] = {
   approach: [
-    ['Name the rail', 'NPP, PayTo, BECS, cards, HVCS or SWIFT: each has its own speed, settlement model, format and cut-offs.'],
-    ['Separate clearing from settlement', 'Who exchanges the messages, and when central-bank money actually moves (real-time gross or batched net).'],
-    ['Design for money safety', 'Idempotency key and end-to-end ID from the start, state machine per payment, outbox for events, no blind retries.'],
-    ['Cover the failure model', 'Timeouts are "unknown", returns and dishonours arrive days later on batch rails, real-time rails decline instantly.'],
-    ['Map regulation to design', 'CPS 230 tolerance levels become RTO/RPO, CPS 234 becomes security controls, AML becomes monitoring, PCI DSS becomes scope reduction.'],
-    ['Close with the ledger', 'Double-entry, immutable, exactly-once postings, ledger vs available balance, daily reconciliation.']
+    ['Name the capability first', 'Say what the building block does (object storage, L7 load balancer, workload identity) before any product name.'],
+    ['Map it across the three clouds', 'Azure, AWS, GCP names, and say where there is no exact twin (e.g. Service Bus).'],
+    ['Call out the real differences', 'Regional vs global VPC, zone pairing, archive read times, pricing units. Names match, behaviour differs.'],
+    ['Cover security', 'Identity for code (managed identity, IAM role, service account), private endpoints, no public access, least privilege.'],
+    ['Cover cost', 'On-demand vs commit vs spot, egress, minimum storage days, log ingestion, idle clusters.'],
+    ['State the pattern and lock-in', 'Most managed option that fits; portable tech (containers, PostgreSQL, Kafka, OpenTelemetry, Terraform) keeps an exit.'],
+    ['Show the .NET side', 'SDK package per cloud, credentials from the default chain, Aspire integrations, OpenTelemetry once.']
   ],
   traps: [
-    'Mixing up clearing and settlement.',
-    'Retrying a timed-out payment send without first querying its status.',
-    'Storing money as a floating-point double.',
-    'Saying BECS shuts down on a fixed date: there is currently no agreed end date.',
-    'Treating a card authorisation as if money has moved.'
+    'Using retired names (Azure AD, Cognitive Services, Cloud Functions, Container Registry) without knowing the new ones.',
+    'Assuming "S3 = Blob = Cloud Storage" means identical limits, consistency and pricing.',
+    'Storing access keys or connection strings instead of using workload identity.',
+    'Ignoring egress and cross-region traffic in multi-cloud designs.',
+    'Going multi-cloud with no clear reason or splitting one app across clouds.'
   ],
   sections: {
-    landscape: {
-      say: 'Several rails move money between Australian banks. Each one clears, meaning banks exchange instructions and work out who owes whom, then settles, moving central-bank money between Exchange Settlement Accounts at the RBA in RITS. NPP and high-value payments settle gross, one by one; BECS and cards settle net in batches.',
-      k: ['clearing', 'settlement', 'ESA', 'RITS / RTGS', 'gross vs net', 'AP+', 'AusPayNet'],
-      p: ['Clearing = exchanging messages. Settlement = moving central-bank money.', 'Real-time gross settlement removes credit risk between banks.', 'AP+ brings BPAY, eftpos and NPP Australia under one company.', 'Bank payment platforms are mostly adapters between channels, ledger and rails.'],
+    howto: {
+      say: 'Four ideas make any cloud easier to read: shared responsibility, where the provider secures the hardware and you always own data, identities and config; regions and zones; pricing models of on-demand, commitments and spot; and the identity model, where each cloud has a directory, a resource hierarchy, role-based access and guardrails.',
+      k: ['shared responsibility', 'region', 'availability zone', 'paired region', 'on-demand', 'committed use', 'spot', 'resource hierarchy'],
+      p: ['Production uses at least 2 zones.', 'Zone names map per subscription/account; AWS AZ IDs are fixed.', 'Billing boundary: subscription / account / project.', 'Data in is mostly free; data out is billed per GB.'],
       f: [
-        ['Clearing vs settlement?', 'Clearing is exchanging payment instructions and working out obligations. Settlement is the final movement of central-bank money between banks\' Exchange Settlement Accounts in RITS.'],
-        ['Gross vs net settlement?', 'Gross settles each payment on its own (NPP, HVCS). Net adds many payments up and settles only the difference (BECS, cards). Gross removes interbank credit risk; net saves liquidity.'],
-        ['Who runs what in Australian payments?', 'AP+ runs NPP, BPAY and eftpos; AusPayNet administers frameworks like BECS and HVCS; the RBA runs RITS and regulates the payments system.']
+        ['What do you always own under shared responsibility?', 'Your data, your identities and access rules, and your configuration. The more managed the service, the more the provider patches for you.'],
+        ['How do the three clouds organise resources?', 'Azure: management groups, subscriptions, resource groups. AWS: Organizations, OUs, accounts. GCP: organization, folders, projects.'],
+        ['When do you use on-demand, commitments and spot?', 'On-demand for new or spiky load, 1- or 3-year commitments for the proven steady baseline, spot for work that can restart.']
       ],
-      q: [{ q: 'Which statement about settlement is correct?', o: ['It is the final movement of funds between banks\' accounts at the RBA', 'It is the exchange of payment messages between banks', 'It happens before clearing', 'It only applies to card payments'], a: 0, e: 'Clearing exchanges instructions; settlement moves central-bank money between Exchange Settlement Accounts, and it is final.' }]
+      q: [{ q: 'Which statement about private network scope is correct?', o: ['Azure VNets are global', 'GCP VPCs are global with regional subnets', 'AWS VPCs are global', 'All three are zonal'], a: 1, e: 'A GCP VPC spans regions; Azure VNets and AWS VPCs are regional.' }]
     },
-    npp: {
-      say: 'The New Payments Platform is Australia\'s fast-payment rail: account-to-account payments that clear and settle in seconds, 24/7, through the RBA\'s Fast Settlement Service. PayID lets you pay a phone, email or ABN, and messages are rich ISO 20022. The trade-off: no batch window, so fraud checks must happen before the money goes.',
-      k: ['NPP', 'Fast Settlement Service (FSS)', 'PayID', 'Osko', 'overlay service', 'ISO 20022 pacs.008', 'Confirmation of Payee'],
-      p: ['Funds can be released immediately because each payment settles with finality.', 'Fraud scoring needs a sub-second budget: no "catch it tomorrow".', 'A send timeout is "unknown", not "failed": query by end-to-end ID first.', '24/7 rails need a 24/7 core ledger, fraud and liquidity monitoring.'],
+    compute: {
+      say: 'Compute ranges from VMs, where you own the OS, through scale sets, PaaS web apps and batch, down to functions that run per event. I pick the most managed option that fits: functions for events, containers for services, and VMs only when I must, such as lift-and-shift or a custom OS. Spot VMs give up to about 90% off but can be reclaimed.',
+      k: ['Virtual Machines / EC2 / Compute Engine', 'scale sets / auto scaling groups', 'App Service', 'Azure Functions / Lambda', 'Cloud Run functions', 'Spot VMs', 'cold start', 'Flex Consumption'],
+      p: ['Spot notice: Azure ~30 s, AWS 2 min, GCP ~30 s; checkpoint work.', 'Functions can cost more than containers at high steady volume.', 'Google Cloud Functions is now Cloud Run functions.', 'Function triggers and bindings lock you in; VMs and containers move easily.'],
       f: [
-        ['Why can an NPP payment be released to the payee immediately?', 'Because the RBA\'s Fast Settlement Service settles each payment individually and with finality, 24/7, so there is no interbank credit risk to cover.'],
-        ['A payment send to the scheme times out. Do you retry?', 'Not blindly. A timeout means unknown. Query the status by end-to-end ID, and only resend with the same idempotency key if the scheme confirms it never received it.'],
-        ['What does a payments hub do?', 'Orchestrates each payment as a state machine, maps to ISO 20022, routes to the right rail and publishes events through an outbox.'],
-        ['What breaks when you move a flow to 24/7 real-time payments?', 'The batch window disappears, so the core ledger, fraud, monitoring and liquidity management all need weekend-grade availability.']
+        ['When would you choose functions over containers?', 'For event handlers, glue code and spiky loads. At high, steady volume containers are often cheaper, and functions have cold starts and run-time limits.'],
+        ['How do you run .NET 10 if a managed function runtime lags behind?', 'Ship a container image; Lambda, Container Apps and Cloud Run all accept one.'],
+        ['How do you secure VM admin access?', 'No public IP unless needed, a managed identity or role for the VM, and a bastion or session manager instead of open RDP/SSH.']
       ],
-      q: [{ q: 'An outbound NPP payment call times out. What should the system do first?', o: ['Resend immediately with a new ID', 'Mark it failed and refund the customer', 'Wait for the next business day batch', 'Query the payment status by its end-to-end ID'], a: 3, e: 'A timeout is an unknown outcome. Check status before any retry, and reuse the same idempotency key, or you risk paying twice.' }]
+      q: [{ q: 'An overnight risk simulation can restart if interrupted. Which compute option is cheapest?', o: ['Spot VMs with checkpointing', 'On-demand VMs', 'A reserved premium App Service plan', 'Dedicated hosts'], a: 0, e: 'Spot capacity is deeply discounted and suits restartable batch work, as long as it checkpoints.' }]
     },
-    payto: {
-      say: 'PayTo is a digital payment agreement, or mandate, that the customer authorises in their own banking app, so a business can pull payments over the NPP in real time. Agreements live in the Mandate Management Service and the customer can pause, amend or cancel them. It is the modern replacement for BECS direct debits.',
-      k: ['payment agreement / mandate', 'Mandate Management Service (MMS)', 'authorise in banking app', 'pause / amend / cancel', 'Migrated DDR Mandates', 'real-time decline'],
-      p: ['The bank, not the merchant, holds the source of truth for consent.', 'Model an agreement as a state machine: created, active, paused, cancelled.', 'Payment requests can be declined instantly: design the merchant flow for a "no".'],
+    containers: {
+      say: 'Containers package the app with its runtime. I start with serverless containers such as Container Apps, Fargate or Cloud Run, which run an image, scale and serve HTTPS. I move to managed Kubernetes (AKS, EKS, GKE) when I need custom networking, operators, or dozens of services under one platform team. The image is portable; platform config is not.',
+      k: ['AKS / EKS / GKE', 'Container Apps', 'Fargate', 'Cloud Run', 'scale to zero', 'container registry', 'workload identity', 'service mesh'],
+      p: ['Container Apps and Cloud Run can scale to zero; Fargate bills per running task.', 'Pull only from a private registry, run as non-root.', 'Registry in the same region as the runtime to avoid egress.', 'dotnet publish /t:PublishContainer builds an image with no Dockerfile.'],
       f: [
-        ['How is PayTo different from a BECS direct debit?', 'The agreement is stored centrally in the MMS and authorised by the customer in their banking app; payments settle in real time; the customer can pause or cancel it. With BECS the bank never sees the mandate and failures show up days later.'],
-        ['How would you migrate a biller from BECS direct debits to PayTo?', 'Notify customers, create Migrated DDR Mandates in the MMS, run both rails in parallel, cancel the old BECS authorities, and handle real-time declines, pauses and cancellations.'],
-        ['How should a merchant system handle MMS change notifications?', 'Receive them, queue them and process them idempotently, updating the agreement state machine and rejecting illegal status changes.']
+        ['When do you choose Kubernetes over serverless containers?', 'When you need custom networking, operators or many services run by a platform team. Otherwise serverless containers need far less ops.'],
+        ['What does managed Kubernetes still leave to you?', 'Upgrades, policies, add-ons and workloads. The cloud runs the control plane; hands-off modes like GKE Autopilot also manage nodes.'],
+        ['What is the GCP replacement for Container Registry?', 'Artifact Registry. Container Registry shut down in March 2025.']
       ],
-      q: [{ q: 'Where is the source of truth for a PayTo agreement\'s status?', o: ['The merchant\'s billing database', 'A signed paper Direct Debit Request', 'The NPP Mandate Management Service, via the customer\'s bank', 'The card scheme'], a: 2, e: 'Agreements are stored centrally in the MMS and authorised through the customer\'s bank, so the customer\'s control is real.' }]
+      q: [{ q: 'An internal API gets bursty traffic with long idle periods. Which platform fits best?', o: ['A dedicated AKS cluster', 'A fixed pool of VMs', 'Bare-metal servers', 'A serverless container platform that scales to zero'], a: 3, e: 'Container Apps or Cloud Run scale to zero, so you pay little when idle.' }]
     },
-    becs: {
-      say: 'BECS, or Direct Entry, carries batch payments like payroll, welfare and direct debits as fixed-width ABA files, exchanged and net-settled on business days. Files have header, detail and total records with control totals. It fails late: returns and dishonours arrive days later. BECS is being wound down, but there is currently no fixed end date.',
-      k: ['ABA file', 'fixed-width 120 chars', 'type 0 / 1 / 7 records', 'control totals', 'cut-offs', 'returns & dishonours', 'reconciliation'],
-      p: ['Every record is exactly 120 characters, CRLF separated.', 'Make file processing idempotent: hash the file, track batch IDs.', 'Amounts are whole cents: parse as integer or decimal, never double.', 'No fixed BECS end date: the June 2030 target was removed in December 2025.'],
+    storage: {
+      say: 'Object storage (Blob, S3, Cloud Storage) holds files and data lakes over HTTPS; block storage is a VM disk; file shares serve apps that need a mounted drive; archive is very cheap for records you rarely read. Block public access, share with short-lived signed URLs, and use lifecycle rules, remembering that colder tiers have minimum stays and read fees.',
+      k: ['Blob / S3 / Cloud Storage', 'block storage', 'file share (SMB/NFS)', 'archive tier', 'lifecycle rules', 'signed URL / SAS', 'egress', 'customer-managed keys'],
+      p: ['Archive minimum stay: 180 / 180 / 365 days (Azure / AWS / GCP).', 'Azure and AWS archive reads take hours; GCP is instant but costs more per GB.', 'Block storage is zonal: copy snapshots to another zone or region.', 'Immutable backup vaults in a separate account protect against ransomware.'],
       f: [
-        ['What are the three ABA record types?', 'Type 0 descriptive header (one per batch), type 1 detail (one per payment, with BSB, account, amount in cents, lodgement reference and trace details), type 7 file total with control totals.'],
-        ['How do you stop a re-uploaded payroll file paying staff twice?', 'Store a hash of the file and the batch ID with a unique index, and reject any file already processed.'],
-        ['What changes when a flow moves from BECS to NPP?', 'The error model changes from "fails tomorrow" (returns, dishonours) to "fails now" (instant decline), which is usually better for customers and operations.'],
-        ['What is the status of the BECS wind-down?', 'Industry intends to move off BECS, but AusPayNet removed the June 2030 target and no new date will be set until there is an agreed roadmap. Batch skills will be needed for years.']
+        ['How do you share a private file safely?', 'A short-lived signed URL: user delegation SAS on Azure, S3 presigned URL, or V4 signed URL on GCP. Keep public access off.'],
+        ['Why can a cheap archive tier get expensive?', 'Retrieval and egress are billed per GB, early deletion before the minimum stay is charged, and reads can take hours.'],
+        ['When do you need customer-managed keys?', 'When policy says you must control the key. All three encrypt at rest by default.']
       ],
-      q: [{ q: 'A bank rejects an uploaded ABA file whose type 7 totals do not match the detail records. What is the type 7 record?', o: ['The descriptive header', 'The file total with control totals and record count', 'A single payment detail line', 'The return record'], a: 1, e: 'Type 7 holds net, credit and debit totals and the record count. Mismatched control totals get the file rejected.' }]
+      q: [{ q: 'Which archive class has a 365-day minimum storage duration?', o: ['Azure Blob Archive', 'S3 Glacier Deep Archive', 'GCP Cloud Storage Archive', 'Azure Files premium'], a: 2, e: 'GCP Archive has a 365-day minimum; Azure Archive and S3 Glacier Deep Archive have 180 days.' }]
     },
-    cards: {
-      say: 'A card payment follows the four-party model: cardholder and issuer, merchant and acquirer, linked by a scheme. It runs in three steps: authorisation in seconds, which is only a promise and a hold, then clearing and net settlement later. For PCI DSS, the cheapest control is never touching the card number: use tokenisation and hosted fields.',
-      k: ['four-party model', 'issuer / acquirer / scheme', 'authorisation hold', 'ISO 8583', 'network tokens', '3-D Secure', 'chargeback', 'PCI DSS scope'],
-      p: ['Authorisation is not settlement: no money moves at auth time.', 'Holds can expire or be partly captured: the ledger must model both.', 'Prefer network tokens: higher approval rates and automatic card updates.', 'PCI DSS v4.0.1 is the active version; shrink scope, never log the PAN.'],
+    network: {
+      say: 'Networking covers private networks, private access to PaaS, DNS, layer 4 and layer 7 load balancers, a global edge with CDN and WAF, firewalls and hybrid links. The pattern is one public door at the edge with WAF, everything else private behind private endpoints, in a hub-and-spoke layout. The big difference: GCP VPCs are global, Azure and AWS are regional.',
+      k: ['VNet / VPC', 'hub-and-spoke', 'Private Link / PrivateLink / Private Service Connect', 'L4 vs L7 load balancer', 'Front Door / CloudFront', 'WAF', 'ExpressRoute / Direct Connect', 'forwarded headers'],
+      p: ['Peering is not transitive.', 'Private endpoints need private DNS zones.', 'NAT, private endpoints, firewalls and cross-region traffic bill per hour and GB.', 'Trust X-Forwarded-For only from your proxy addresses.'],
       f: [
-        ['What happens at card authorisation?', 'The issuer checks funds and fraud and places a hold. It is a promise; money moves later through clearing and net settlement.'],
-        ['Network token vs PSP vault token?', 'A network token is issued by the scheme, tied to a device or merchant, and updates when a card is reissued. A PSP token is a reference only that provider can use.'],
-        ['Name four ways to reduce PCI DSS scope.', 'Hosted payment fields or redirect pages, tokenisation, point-to-point encryption terminals, network segmentation, and never logging the PAN.'],
-        ['What does 3-D Secure give the merchant?', 'Issuer authentication for online payments, mostly frictionless and risk-based. A successful check usually shifts fraud liability to the issuer.']
+        ['L4 or L7 load balancer?', 'L4 spreads TCP/UDP connections, for non-HTTP or very high throughput. L7 routes HTTP by host and path, ends TLS, and can host a WAF.'],
+        ['How do you reach a managed database without public access?', 'A private endpoint: Private Link on Azure, an interface VPC endpoint on AWS, Private Service Connect on GCP, plus private DNS.'],
+        ['What does the app need behind a load balancer?', 'UseForwardedHeaders to read the real client IP and scheme (trusting only known proxies) and a health endpoint for probes.']
       ],
-      q: [{ q: 'A customer taps their phone and the purchase is approved. What has happened to the money?', o: ['It has settled to the merchant', 'It moved in real time through the FSS', 'The issuer has placed a hold; clearing and settlement come later', 'It has been debited from the acquirer'], a: 2, e: 'Authorisation is a promise and a hold. Clearing and net settlement happen later in batches.' }]
+      q: [{ q: 'You peer VNet A to B and B to C. Can A reach C through B by default?', o: ['Yes, peering is transitive', 'No, peering is not transitive; use a hub with routing', 'Only over the internet', 'Only if all are in one zone'], a: 1, e: 'Peering is not transitive, so hub-and-spoke designs use a hub firewall, Virtual WAN or Transit Gateway.' }]
     },
-    swift: {
-      say: 'Cross-border payments hop between correspondent banks that hold nostro and vostro accounts with each other, using Swift messages. Payment instructions are now ISO 20022 under CBPR+, so pacs.008 replaces MT103. Every payment carries a UETR for gpi tracking. The big win is structured data for sanctions screening and AML.',
-      k: ['correspondent banking', 'nostro / vostro', 'CBPR+', 'pacs.008 / pacs.009', 'UETR', 'gpi tracker', 'structured data'],
-      p: ['MT103 to pacs.008; MT202 to pacs.009; MT940/950 to camt.053.', 'Coexistence for cross-border payment instructions ended 22 November 2025.', 'Never truncate rich ISO data into an MT-shaped internal model.', 'Store the UETR so ops can answer "where is my money?".'],
+    databases: {
+      say: 'Managed databases handle patching, backups and failover. I choose by data shape and access pattern: managed SQL Server for existing .NET apps, PostgreSQL as the most portable engine, Cosmos DB, DynamoDB or Firestore for document and key-value at scale, Spanner for global consistent SQL, and Redis as a cache, never the source of truth.',
+      k: ['Azure SQL / RDS / Cloud SQL', 'PostgreSQL', 'Cosmos DB / DynamoDB / Firestore', 'Spanner', 'partition key', 'Bigtable', 'Azure Managed Redis', 'IAM database auth'],
+      p: ['Design the NoSQL partition key for your queries first.', 'Zone-redundant HA roughly doubles compute cost.', 'Cloud-native NoSQL ties your data model to one cloud.', 'Use identity-based auth, not SQL passwords.'],
       f: [
-        ['What is the ISO 20022 equivalent of MT103?', 'pacs.008, the customer credit transfer. MT202 maps to pacs.009, and statements like MT940 map to camt.053.'],
-        ['What is a UETR for?', 'A unique end-to-end reference carried by every gpi payment, so banks and customers can track it through the chain, including fees deducted.'],
-        ['Why is converting ISO 20022 back to an MT-shaped model risky?', 'It truncates structured names, addresses and purpose data, which loses information and can break sanctions screening and compliance.']
+        ['What is the GCP match for DynamoDB or Cosmos DB for a server app?', 'Firestore for documents, or Bigtable for wide-column. Firebase Realtime Database is mainly a mobile/web sync store.'],
+        ['Which engine is most portable across clouds and why?', 'PostgreSQL: every cloud offers a managed version and EF Core works the same through Npgsql.'],
+        ['How do you connect to RDS without a password?', 'Generate a short-lived IAM auth token (RDSAuthTokenGenerator) and use it as the password.']
       ],
-      q: [{ q: 'What is the main business benefit of ISO 20022 for cross-border payments?', o: ['Structured data that improves sanctions screening and AML', 'Smaller message sizes', 'Removal of correspondent banks', 'Instant settlement worldwide'], a: 0, e: 'Rich, structured fields (names, addresses, purpose) make screening and monitoring far more accurate. Correspondent hops and settlement times still exist.' }]
+      q: [{ q: 'You need relational, strongly consistent data with writes across regions on GCP. Which service?', o: ['Spanner', 'Bigtable', 'Firestore', 'Memorystore'], a: 0, e: 'Spanner is globally distributed SQL; the AWS counterparts are Aurora DSQL and Aurora Global Database.' }]
     },
-    cdr: {
-      say: 'The Consumer Data Right lets consumers tell their bank to share their data with an accredited data recipient through standard, highly secured APIs, with consent they can withdraw any time. Security builds on FAPI: mTLS, PAR with PKCE, JARM and certificate-bound tokens. Consent is a first-class entity with a lifecycle.',
-      k: ['Consumer Data Right', 'data holder', 'accredited data recipient', 'FAPI', 'mTLS', 'PAR + PKCE', 'certificate-bound tokens', 'consent dashboard'],
-      p: ['Think "mTLS everywhere + sender-constrained tokens + signed requests".', 'Revocation must work from either side.', 'Payment initiation in Australia happens through PayTo, not the CDR.', 'CDR APIs expose core data directly: poor data quality becomes a compliance issue.'],
+    analytics: {
+      say: 'Analytics moves operational data into a lake and a warehouse, processes it in batch or as a stream, and serves dashboards. Stream ingestion (Event Hubs, Kinesis, Pub/Sub) and stream processing (Stream Analytics, Flink, Dataflow) are separate jobs. Scan-based pricing punishes SELECT *, so partition, use Parquet, and keep medallion layers in open formats.',
+      k: ['data warehouse', 'data lake', 'BigQuery / Redshift / Fabric', 'Athena', 'Spark / Databricks', 'Event Hubs / Kinesis / Pub/Sub', 'Flink / Dataflow', 'medallion (bronze, silver, gold)'],
+      p: ['Partition by key to keep order; retention = how far back you can replay.', 'Plan for late and duplicate events.', 'Mask or tokenise card numbers before they reach the lake.', 'Idle Spark clusters burn money: serverless or auto-terminate.'],
       f: [
-        ['Name the core security pieces of a CDR data holder.', 'An API gateway with mTLS that trusts only the CDR certificate authority, a FAPI-conformant authorisation server (PAR, JARM, private_key_jwt), short-lived certificate-bound tokens, and a consent store.'],
-        ['Why is consent modelled as an entity, not a checkbox?', 'It has a lifecycle: what was shared, with whom, for how long, and it can be revoked from either side. It is the source of truth for every data request.'],
-        ['Can a fintech initiate payments through the CDR today?', 'Not yet. The action-initiation framework is legislated, but no action types have been declared; account-to-account payment initiation happens through PayTo.']
+        ['Why separate stream ingestion from stream processing?', 'Ingestion is a durable ordered log; processing computes windows and aggregates. Different services do each.'],
+        ['How do you cut cost on per-scan engines like Athena or BigQuery?', 'Store Parquet, partition and cluster tables, avoid SELECT *, and set budgets or quotas per team.'],
+        ['How does .NET usually fit with Spark?', '.NET for Apache Spark is no longer maintained, so .NET apps produce the events and query the results while jobs run in Python, Scala or SQL.']
       ],
-      q: [{ q: 'What does a certificate-bound access token prevent in the CDR?', o: ['Consent expiry', 'Rate limiting', 'Data quality issues', 'A stolen token being used by a different client'], a: 3, e: 'The token is bound to the client\'s mTLS certificate (cnf), so it is useless to anyone without that certificate.' }]
+      q: [{ q: 'Which service is a stream processing engine rather than an ingestion log?', o: ['Kinesis Data Streams', 'Event Hubs', 'Pub/Sub', 'Managed Service for Apache Flink'], a: 3, e: 'Flink computes over data in motion; the other three are durable event logs for ingestion.' }]
     },
-    regulation: {
-      say: 'Banking rules become design requirements. CPS 230 tolerance levels for critical operations become RTO, RPO and degraded-mode SLOs, plus exit plans for material service providers. CPS 234 drives security controls and 72-hour incident notification. AML/CTF drives monitoring and record keeping, and PCI DSS drives card-data scope reduction.',
-      k: ['CPS 230', 'tolerance levels', 'material service provider', 'CPS 234', 'AML/CTF', 'AUSTRAC', 'PCI DSS', 'exit plan'],
-      p: ['Tolerance level in numbers: max outage, max data loss, min service level.', 'CPS 234: notify APRA within 72 hours of a material security incident.', 'CPS 230: notify APRA within 24 hours of a disruption outside tolerance.', 'Logs are evidence: complete, tamper-evident, retained, free of secrets and PANs.'],
+    messaging: {
+      say: 'Messaging lets services work without waiting on each other: queues for commands, topics for fan-out, event routers for "something happened", and workflow engines for multi-step processes. Delivery is at-least-once, so workers must be idempotent, and every queue needs a dead-letter queue with an alert. Service Bus has no exact twin on AWS or GCP.',
+      k: ['queue', 'topic / pub-sub', 'Service Bus', 'SQS / SNS', 'Pub/Sub', 'Event Grid / EventBridge / Eventarc', 'dead-letter queue', 'CloudEvents'],
+      p: ['Queue for commands, topic for events, workflow engine for long processes.', 'Use identities and data roles, not connection strings.', 'Batching, long polling and subscription filters cut the bill.', 'Kafka and CloudEvents travel between clouds best.'],
       f: [
-        ['How does CPS 230 change your DR design?', 'You design to board-approved tolerance levels per critical operation, map every dependency including material service providers, prove it with severe-but-plausible scenario tests, and keep a tested exit plan for key vendors.'],
-        ['What does CPS 230 mean for a cloud provider?', 'Core cloud and SaaS vendors can be material service providers: register them, set contract terms, and design for exit with portable data, IaC and a tested plan B.'],
-        ['Is PCI DSS a law?', 'No. It is an industry standard enforced through card schemes and acquirers.']
+        ['What is the AWS or GCP equivalent of Azure Service Bus?', 'No exact twin. AWS: SQS (FIFO for order) plus SNS, or Amazon MQ for AMQP/JMS. GCP: Pub/Sub with ordering keys and dead-letter topics, or Cloud Tasks.'],
+        ['What is the GCP match for a plain work queue?', 'Cloud Tasks or a Pub/Sub pull subscription. Firebase Cloud Messaging is mobile push.'],
+        ['Why make queue consumers idempotent?', 'Delivery is at-least-once, so the same message can arrive twice.']
       ],
-      q: [{ q: 'Under CPS 230, what should a "tolerance level" for payments translate into in your design?', o: ['A marketing SLA', 'Concrete RTO, RPO and minimum service-level targets', 'A list of approved vendors', 'An encryption standard'], a: 1, e: 'Tolerance levels set max outage, max data loss and minimum service in disruption, which map directly to RTO, RPO and degraded-mode SLOs.' }]
+      q: [{ q: 'A blob upload should trigger three different handlers. Which building block fits?', o: ['A simple queue with one consumer', 'A workflow engine only', 'An event router or topic with several subscriptions', 'A cron job polling storage'], a: 2, e: 'Event Grid, EventBridge or Eventarc route one event to many subscribers.' }]
     },
-    ledger: {
-      say: 'A ledger records every money movement as balanced, immutable double entries; balances are derived from them, and every posting must happen exactly once. Fix mistakes with reversing entries, never updates. Distinguish the ledger balance from the available balance, which subtracts holds. Use decimal or integer cents, never double, and reconcile daily.',
-      k: ['double entry', 'immutable journal', 'reversing entry', 'idempotent posting', 'ledger vs available balance', 'holds', 'optimistic concurrency', 'reconciliation'],
-      p: ['Every journal\'s debits equal its credits.', 'Available = ledger minus holds (plus any overdraft limit).', 'Unique index on the posting key makes replays harmless.', 'Reconcile: entries = balances = what the rails and RITS say.'],
+    ai: {
+      say: 'Cloud AI has three layers: an ML platform to train and serve your own models, a foundation models API for hosted LLMs and embeddings, and prebuilt AI for documents, speech and vision, plus agent runtimes, retrieval search and safety guardrails. The pattern is identity, retrieve, guardrail, model, guardrail, with a thin IChatClient layer so you can switch models.',
+      k: ['Azure Machine Learning / SageMaker AI', 'foundation models', 'Azure OpenAI / Bedrock', 'Azure AI Search', 'RAG', 'content safety guardrails', 'IChatClient', 'data residency'],
+      p: ['Tokens are the new egress: cache, trim context, route to smaller models.', 'Index only what users may see; trim per user.', 'Not every model is in every region; check residency.', 'Check guardrails on both input and output.'],
       f: [
-        ['Ledger balance vs available balance?', 'Ledger is what has posted. Available is ledger minus holds, plus any overdraft limit. Customers care about available.'],
-        ['How do you make postings exactly-once?', 'Give each posting a unique key, such as the scheme\'s transaction ID, and insert it with the journal in one transaction behind a unique index, so a replay fails harmlessly.'],
-        ['How do you correct a wrong posting?', 'Never update or delete it. Post a reversing entry so the history itself is the audit trail.']
+        ['Why put IChatClient between your code and the model?', 'It is one interface (Microsoft.Extensions.AI) over any provider, so you can switch models or clouds; evaluate before you switch.'],
+        ['How do you control GenAI cost?', 'Cache answers, trim context, route easy questions to smaller models and set budgets per app.'],
+        ['What are the AWS services for foundation models and guardrails?', 'Amazon Bedrock for models, Bedrock Guardrails for safety, and Bedrock AgentCore for agents.']
       ],
-      q: [{ q: 'A $80 card authorisation is approved on an account with $500 posted. What are the balances?', o: ['Ledger $500, available $420', 'Ledger $420, available $420', 'Ledger $420, available $500', 'Ledger $500, available $500'], a: 0, e: 'An authorisation places a hold: available drops, but the ledger only changes when the transaction posts.' }]
+      q: [{ q: 'Which is the recommended order of a safe GenAI request?', o: ['Model, then retrieve, then identity', 'Identity, retrieve, guardrail, model, guardrail', 'Guardrail only on the output', 'Retrieve everything, then filter in the prompt'], a: 1, e: 'Authenticate, retrieve only permitted content, check input, call the model, then check output.' }]
+    },
+    identity: {
+      say: 'Identity covers who can do what. Staff sign in through one directory such as Entra ID, each cloud keeps its own permission model (Azure RBAC, AWS IAM, Cloud IAM), and code uses workload identity, not secrets. CI uses OIDC federation, the few real secrets live in a vault with rotation, and audit logs go to a separate locked-down account.',
+      k: ['Entra ID', 'Azure RBAC / AWS IAM / Cloud IAM', 'managed identity', 'IAM role', 'service account', 'OIDC federation', 'KMS / Key Vault', 'least privilege'],
+      p: ['Leaked keys are the most common breach: no long-lived access keys.', 'Pin federation to repo, branch and environment claims.', 'Separate key admins from data admins.', 'In production prefer a specific credential (ManagedIdentityCredential) over DefaultAzureCredential.'],
+      f: [
+        ['How does an app call cloud APIs without storing a secret?', 'Workload identity: managed identity on Azure, IAM role on AWS, attached service account on GCP. The SDK gets a short-lived token from the platform.'],
+        ['How should a GitHub Actions pipeline log in to a cloud?', 'OIDC federation: swap the pipeline\'s token for short-lived cloud credentials, pinned to repo and branch claims. No stored keys.'],
+        ['Is Entra ID the equivalent of AWS IAM?', 'No. Entra ID is a directory for people; the permission systems are Azure RBAC, AWS IAM and Cloud IAM.']
+      ],
+      q: [{ q: 'Why is DefaultAzureCredential discouraged in production?', o: ['It can silently pick up the wrong identity from its chain', 'It is slower than storing keys', 'It does not support managed identity', 'It only works on Windows'], a: 0, e: 'It tries several sources in turn; a specific credential like ManagedIdentityCredential is predictable.' }]
+    },
+    monitoring: {
+      say: 'Monitoring means metrics and alerts, logs, and distributed tracing, plus infrastructure as code, policy guardrails and cost management. I instrument once with OpenTelemetry and export to any backend, alert on symptoms like errors and latency, deploy everything from IaC with policy checks, and tag every resource for cost. Log ingestion is often the biggest bill.',
+      k: ['Azure Monitor / CloudWatch / Cloud Monitoring', 'Log Analytics (KQL)', 'Application Insights / X-Ray', 'OpenTelemetry', 'Bicep / CloudFormation / Terraform', 'Azure Policy', 'budgets', 'tagging'],
+      p: ['Alert on symptoms, not every CPU blip.', 'Never log PII or card data; sample and set retention.', 'Policies start in audit mode, then deny.', 'Deployment Manager is retired: use Infrastructure Manager or Terraform.'],
+      f: [
+        ['Why instrument with OpenTelemetry?', 'Instrument once and export over OTLP to Application Insights, CloudWatch, Cloud Trace or any collector, so switching backends needs no code change.'],
+        ['How do you keep log costs down?', 'Sample and filter, use cheaper log tiers for noisy logs, set retention, and keep debug logging off in production.'],
+        ['How should a new policy guardrail be rolled out?', 'Start in audit mode to see what breaks, then switch to deny.']
+      ],
+      q: [{ q: 'Which is usually the best alerting target?', o: ['Every CPU spike above 50%', 'Every log line at warning level', 'Disk usage of dev VMs', 'User-facing symptoms such as error rate and latency'], a: 3, e: 'Symptom-based alerts page people for real impact and reduce noise.' }]
+    },
+    devops: {
+      say: 'DevOps tools cover repositories, CI builds, CD releases with approvals, and package registries. Many teams use one tool such as GitHub Actions or Azure Pipelines across every cloud rather than three native ones. Pipelines log in with OIDC federation, run on least-privilege identities, sign what they publish, and promote the same artifact through every stage.',
+      k: ['GitHub Actions / Azure Pipelines', 'CodeBuild / Cloud Build', 'CodePipeline / Cloud Deploy', 'Azure Artifacts / CodeArtifact / Artifact Registry', 'OIDC federation', 'same artifact every stage', 'canary / blue-green', 'secret scanning'],
+      p: ['Proxy public package feeds to block typo-squatting.', 'Cache NuGet packages; build minutes add up.', 'Keep native registries close to each runtime.', 'Automated rollback for staged releases.'],
+      f: [
+        ['Why one CI/CD tool for all clouds?', 'One set of skills, templates and security controls beats three native tools; keep registries near each runtime.'],
+        ['Why promote the same artifact through every stage?', 'What you tested is exactly what reaches production; rebuilding per stage can introduce differences.'],
+        ['How do you reduce build cost?', 'Cache dependencies, run only affected tests on PRs, and use spot-backed self-hosted runners for heavy builds.']
+      ],
+      q: [{ q: 'How should a pipeline authenticate to deploy to the cloud?', o: ['A long-lived access key in a variable', 'A shared admin password', 'OIDC federation to short-lived credentials', 'An SSH key committed to the repo'], a: 2, e: 'OIDC federation removes stored keys and scopes access to repo, branch and environment.' }]
+    },
+    choose: {
+      say: 'Most organisations pick one primary cloud, add a second for a specific strength or regulation, and keep some systems on-prem. I choose on skills, regions and residency, key services, compliance and commercials, and plan for exit. Then I build a landing zone before the first workload, and split multi-cloud by workload, not by tier.',
+      k: ['landing zone', 'multi-cloud', 'hybrid', 'data gravity', 'egress', 'exit plan', 'Azure Arc', 'concentration risk'],
+      p: ['Good reasons: a unique service, a regulatory concern, a real exit plan.', 'Hidden costs: double skills and guardrails, split discounts, egress.', 'Landing zone first: Azure landing zones, AWS Control Tower, GCP enterprise foundations.', 'Portable tech makes an exit plan believable.'],
+      f: [
+        ['Why is egress so important in multi-cloud?', 'Data leaving a cloud is billed per GB. An app in one cloud reading a database in another pays on every call and adds latency.'],
+        ['What goes into a landing zone?', 'Resource hierarchy (subscriptions, accounts or projects), guardrail policies, a network hub, central logging and identity, and a vending process for new environments.'],
+        ['Multi-cloud vs hybrid?', 'Multi-cloud uses several public clouds for the best service or leverage; hybrid keeps some systems on-prem, managed from one control plane like Azure Arc.']
+      ],
+      q: [{ q: 'Which multi-cloud split is usually best?', o: ['Front end in one cloud, database in another', 'Each workload with its data in one cloud', 'Alternate clouds per environment', 'Random by team preference'], a: 1, e: 'Splitting by workload avoids per-call egress and cross-cloud latency.' }]
+    },
+    finops: {
+      say: 'FinOps makes engineering, finance and product share ownership of cloud spend, in a loop: Inform, Optimise, Operate. I start with tagging and showback, track unit cost such as cost per payment, then delete idle resources, rightsize, autoscale, commit to the steady baseline and use spot for restartable work. Budgets and anomaly alerts keep it running.',
+      k: ['Inform / Optimise / Operate', 'tagging', 'showback / chargeback', 'unit economics', 'rightsizing', 'commitment discounts', 'spot', 'egress'],
+      p: ['No tags, no allocation, no accountability.', 'Rightsize first, then commit only to the proven baseline.', 'Egress and log ingestion are the hidden costs.', 'Budgets alert; they do not stop spend unless you automate it.'],
+      f: [['What are the three FinOps phases?', 'Inform (visibility, allocation, unit cost), Optimise (cut waste, buy smarter) and Operate (guardrails, budgets, alerts, regular reviews). It is a loop.'],
+          ['Showback vs chargeback?', 'Showback reports cost to teams for awareness; chargeback bills it to their budget. Start with showback until tagging and shared-cost rules are trusted.'],
+          ['What is unit economics in FinOps?', 'Cost divided by a business volume, such as cost per 1,000 payments or per active customer. The trend shows whether efficiency improves as you grow.'],
+          ['Name the native cost tools on each cloud.', 'Azure: Microsoft Cost Management (cost analysis, budgets, anomaly alerts). AWS: Cost Explorer, AWS Budgets, Cost Anomaly Detection. GCP: Cloud Billing reports, budgets and alerts.']],
+      q: [{ q: 'In what order should you usually optimise cloud cost?', o: ['Buy 3-year commitments first, then rightsize', 'Move everything to spot first', 'Delete idle and rightsize, then commit to the baseline', 'Archive all storage first'], a: 2, e: 'Committing before rightsizing locks in waste.' },
+          { q: 'Which workload suits spot / preemptible VMs?', o: ['A single primary database', 'Checkpointed batch jobs and CI runners', 'A stateful payment switch', 'The only instance of a login service'], a: 1, e: 'Spot capacity can be reclaimed at short notice, so it fits restartable work.' }]
     }
   }
 };

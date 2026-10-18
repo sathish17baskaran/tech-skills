@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>21 · Design Case Studies | Tech Concepts Prep</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<nav class="top"><a href="20-system-design-playbook.html">← Playbook</a><span class="here">21 · Design Case Studies</span><a href="22-dotnet-system-design-use-cases.html">Next: .NET Use Cases →</a></nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">Section 21</div>
+  <h1>Design case studies</h1>
+  <p>Seven classic system design questions, each worked through the same way: requirements, estimates, API, data model, an animated high-level design, deep dives, bottlenecks, and the .NET 10 stack you'd build it with.</p>
+  <p><b>How to use them:</b> read the question line only, set a 45-minute timer, and answer it yourself with the <a href="20-system-design-playbook.html#framework">7-step framework from 20</a>. Say the numbers and trade-offs out loud. Then compare with the write-up and note what you missed. Each one also ends with a LinkedIn post you can reuse.</p>
+  <div class="toc">
+    <a href="#url" class="added">URL shortener</a>
+    <a href="#ratelimiter" class="added">Distributed rate limiter</a>
+    <a href="#chat" class="added">Chat / messaging app</a>
+    <a href="#notification" class="added">Notification service</a>
+    <a href="#feed" class="added">News feed / timeline</a>
+    <a href="#video" class="added">Video streaming platform</a>
+    <a href="#ledger" class="added">Payment ledger</a>
+  </div>
+</header>
+
+<!-- URL SHORTENER -->
+<section class="concept" id="url">
+  <h2><span class="num">21.1</span> URL shortener <span class="tag-added">Added</span></h2>
+  <p class="oneliner">"Design a service like bit.ly that turns a long URL into a short code and redirects anyone who opens it." A read-heavy key-value lookup with one hard part: making unique short keys.</p>
+  <div class="cols2">
+    <div>
+      <h3>1. Requirements</h3>
+      <ul>
+        <li><b>F:</b> create a short link (optional custom alias and expiry), redirect, see click counts</li>
+        <li><b>NFR:</b> 100M new links/month, 100:1 read:write, redirect p99 &lt; 50 ms, 99.99% available, links never collide, codes not easy to guess</li>
+        <li><b>Out of scope:</b> user accounts UI, link previews</li>
+      </ul>
+      <h3>2. Estimates</h3>
+      <ul>
+        <li><b>Writes:</b> 100M ÷ (30 × 86,400 s ≈ 2.6M s) ≈ <b>40/s</b></li>
+        <li><b>Reads:</b> 40 × 100 = <b>4,000/s</b> average, ~10,000/s at peak</li>
+        <li><b>Storage:</b> 100M × 12 × 5 years = 6B links × 500 B ≈ <b>3 TB</b></li>
+        <li><b>Key length:</b> 62<sup>6</sup> ≈ 57B, 62<sup>7</sup> ≈ 3.5 trillion, so <b>7 base62 characters</b> is plenty</li>
+        <li><b>Bandwidth:</b> 4,000 × 500 B ≈ 2 MB/s (tiny). Cache the hot 20% of links: a few GB to tens of GB</li>
+      </ul>
+    </div>
+    <div>
+      <h3>3. API</h3>
+      <div class="tablewrap"><table>
+        <tr><th>Endpoint</th><th>Does</th></tr>
+        <tr><td><code>POST /api/links</code> {longUrl, alias?, expiresAt?}</td><td>201 + <code>{code, shortUrl}</code></td></tr>
+        <tr><td><code>GET /{code}</code></td><td>302 to the long URL (404 or 410 if gone)</td></tr>
+        <tr><td><code>GET /api/links/{code}/stats</code></td><td>Click counts by day, country, referrer</td></tr>
+        <tr><td><code>DELETE /api/links/{code}</code></td><td>Owner disables the link</td></tr>
+      </table></div>
+      <h3>4. Data model</h3>
+      <div class="tablewrap"><table>
+        <tr><th>Table</th><th>Key</th><th>Columns</th></tr>
+        <tr><td><b>links</b></td><td>code (PK)</td><td>long_url, owner_id, created_at, expires_at</td></tr>
+        <tr><td><b>clicks_daily</b></td><td>(code, day)</td><td>count, top countries / referrers</td></tr>
+      </table></div>
+      <p>One lookup by key, no joins. A key-value or NoSQL store (Cosmos DB, DynamoDB, Cassandra) fits; SQL is also fine at 3 TB if you shard by code.</p>
+    </div>
+  </div>
+  <h3>5. High-level design</h3>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Create once, redirect many times","actors":[{"t":"Browser","c":"blue"},{"t":"Link API","c":"purple"},{"t":"Redis","c":"red"},{"t":"Links DB","c":"green"},{"t":"Analytics","c":"amber"}],"colW":165,"rowH":42,"stepMs":950,
+ "steps":[
+  {"note":"Create (about 40 per second)","over":[0,4],"c":"purple"},
+  {"from":0,"to":1,"t":"POST /api/links","c":"blue"},
+  {"from":1,"to":3,"t":"INSERT code from key range","sub":"code is unique by design","c":"purple"},
+  {"from":1,"to":0,"t":"201 sho.rt/aB3x9Qz","dash":true,"c":"green"},
+  {"note":"Redirect (about 4,000 per second)","over":[0,4],"c":"teal"},
+  {"from":0,"to":1,"t":"GET /aB3x9Qz","c":"blue"},
+  {"from":1,"to":2,"t":"GET link:aB3x9Qz","c":"purple"},
+  {"from":2,"to":1,"t":"hit (most requests)","dash":true,"c":"red"},
+  {"from":1,"to":3,"t":"miss: read DB, fill cache","dash":true,"c":"slate"},
+  {"from":1,"to":0,"t":"302 Location: long URL","c":"green"},
+  {"from":1,"to":4,"t":"click event (async, never blocks)","dash":true,"c":"amber"}
+ ]}
+</script></figure>
+  <h3>6. Deep dives</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Key generation</th><th>How</th><th>Good</th><th>Watch out</th></tr>
+    <tr><td><b>Hash the URL</b></td><td>MD5/SHA-256 of the long URL, take the first 7 base62 chars</td><td>Same URL gives the same code; no coordination</td><td>Collisions: check and retry with a salt. Extra DB read on every write</td></tr>
+    <tr><td><b>Counter + base62</b></td><td>Unique number (DB sequence or Snowflake-style ID), encode in base62</td><td>No collisions, short codes</td><td>Sequential codes are guessable; one counter is a hotspot. Shuffle or encrypt the number first</td></tr>
+    <tr><td><b>Pre-generated keys (KGS)</b></td><td>A key service creates random codes offline. Each API node grabs a block of 1,000 into memory</td><td>No collisions, fast, codes look random</td><td>Keys in a crashed node's block are lost (fine: 3.5 trillion exist). The KGS needs a replica</td></tr>
+  </table></div>
+  <div class="cols2">
+    <div class="box blue"><h4>301 or 302?</h4><ul><li><b>301 (permanent):</b> browsers cache it and skip you next time. Less load, but you lose click analytics and can't change or expire the link.</li><li><b>302 (or 307, temporary):</b> every click reaches you. Use it when analytics, expiry or abuse blocking matter. Use a CDN cache with a short TTL to take the load.</li></ul></div>
+    <div class="box green"><h4>Read-heavy caching and async analytics</h4><ul><li>Cache-aside in Redis with LRU eviction. A small in-process L1 cache for the hottest links (<a href="05-caching.html#strategies">05 strategies</a>).</li><li>Cache "not found" for a short time too, so bots scanning random codes don't hit the DB.</li><li>Emit a click event to a queue or stream. A consumer aggregates counts per day. The redirect never waits on analytics.</li></ul></div>
+  </div>
+  <h3>7. Bottlenecks &amp; scaling</h3>
+  <ul>
+    <li><b>DB reads:</b> cache hit rate is the main lever. Add read replicas; shard by <code>hash(code)</code> with <a href="03-scalability-reliability.html#consistent-hashing">consistent hashing</a>.</li>
+    <li><b>Viral link (hot key):</b> L1 in-process cache plus CDN in front of <code>GET /{code}</code>.</li>
+    <li><b>Abuse:</b> rate limit link creation per user/IP, and scan long URLs against malware and phishing lists before saving.</li>
+    <li><b>Expiry:</b> a TTL in the store (or a nightly clean-up job) removes expired links; return 410 Gone.</li>
+  </ul>
+  <div class="remember"><ul>
+    <li>Do the key-space maths first: 7 base62 characters ≈ 3.5 trillion codes.</li>
+    <li>Name the three key options (hash, counter + base62, KGS) and pick one with a reason.</li>
+    <li>302 when you need analytics or expiry; 301 when you only want to save load.</li>
+    <li>Analytics are async. The redirect path does one cache lookup and nothing else.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> The .NET stack for this design</div>
+  <table>
+    <tr><th>Component</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>API + redirect</b></td><td><span class="pill builtin">built-in</span> ASP.NET Core minimal APIs, <code>Results.Redirect(url, permanent: false)</code></td><td><code>permanent: false</code> returns 302, <code>true</code> returns 301</td></tr>
+    <tr><td><b>Cache</b></td><td><code>Microsoft.Extensions.Caching.Hybrid</code> + <code>Microsoft.Extensions.Caching.StackExchangeRedis</code></td><td>L1 in-process + Redis L2, with stampede protection built in</td></tr>
+    <tr><td><b>Store</b></td><td><code>Microsoft.Azure.Cosmos</code> (partition key <code>/code</code>, TTL for expiry) or EF Core 10 on SQL</td><td>Point reads by key</td></tr>
+    <tr><td><b>Short codes</b></td><td>Your own base62 encoder; <code>IdGen</code> for Snowflake-style IDs; <code>Sqids</code> to make numbers look random</td><td>Sqids hides order but is not encryption</td></tr>
+    <tr><td><b>Click events</b></td><td><code>Azure.Messaging.EventHubs</code> or <code>Confluent.Kafka</code></td><td>Fire-and-forget after the redirect; aggregate in a consumer</td></tr>
+    <tr><td><b>Creation limits</b></td><td><span class="pill builtin">built-in</span> <code>Microsoft.AspNetCore.RateLimiting</code></td><td>Per user / IP on <code>POST /api/links</code></td></tr>
+  </table>
+<pre class="code"><code>const string Alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+
+static string ToBase62(long n)                   // 125 =&gt; "21" (2×62 + 1)
+{
+    if (n == 0) return "0";
+    Span&lt;char&gt; buf = stackalloc char[11];        // long.MaxValue fits in 11 chars
+    int i = buf.Length;
+    while (n &gt; 0) { buf[--i] = Alphabet[(int)(n % 62)]; n /= 62; }
+    return new string(buf[i..]);
+}
+
+app.MapGet("/{code}", async (string code, HybridCache cache, LinksDb db, CancellationToken ct) =&gt;
+{
+    var url = await cache.GetOrCreateAsync($"link:{code}",
+        async token =&gt; await db.Links.Where(l =&gt; l.Code == code)
+                                     .Select(l =&gt; l.LongUrl).FirstOrDefaultAsync(token),
+        cancellationToken: ct);
+    return url is null ? Results.NotFound() : Results.Redirect(url, permanent: false);  // 302
+});</code></pre>
+  <p class="warn">Only redirect to URLs you validated at creation time (http/https only), or the shortener becomes an open-redirect tool for phishing.</p>
+</div>
+  <div class="post">
+    <p>"Design a URL shortener" looks easy. The interview is really about one question: how do you make the key? 🔗</p>
+    <p>🧮 Do the maths: 7 base62 characters ≈ 3.5 trillion codes</p>
+    <p>#️⃣ Hash the URL: simple, but you must handle collisions</p>
+    <p>🔢 Counter + base62: no collisions, but guessable unless you shuffle it</p>
+    <p>🗝️ Pre-generated key blocks: fast, random-looking, a little waste</p>
+    <p>↪️ 302 if you want analytics, 301 if you only want less load</p>
+    <p>The redirect path should be one cache lookup. Everything else is async.</p>
+    <p>Which key strategy would you pick? #SystemDesign #Architecture #InterviewPrep #DotNet</p>
+  </div>
+</section>
+
+<!-- RATE LIMITER -->
+<section class="concept" id="ratelimiter">
+  <h2><span class="num">21.2</span> Distributed rate limiter <span class="tag-added">Added</span></h2>
+  <p class="oneliner">"Design a rate limiter that every API gateway node shares, so a client gets the same limit no matter which node it hits." The algorithms are in <a href="08-api-design.html#ratelimit">08.6 Rate limit algorithms</a>; this is the system around them.</p>
+  <div class="cols2">
+    <div>
+      <h3>1. Requirements</h3>
+      <ul>
+        <li><b>F:</b> limit per API key, user, IP or tenant; different limits per plan and endpoint; tell clients their remaining quota</li>
+        <li><b>NFR:</b> 1M requests/s at peak across all gateways, adds &lt; 2 ms p99, accurate within a few %, keeps working if the limiter store fails</li>
+        <li><b>Out of scope:</b> monthly billing quotas (a separate, slower counter)</li>
+      </ul>
+      <h3>2. Estimates</h3>
+      <ul>
+        <li><b>Checks:</b> 1 check per request = <b>1M Redis calls/s</b></li>
+        <li><b>Redis:</b> one shard handles roughly 100k simple ops/s, so ~10 shards, <b>~20 with headroom</b></li>
+        <li><b>Memory:</b> 10M active keys × ~100 B per bucket ≈ <b>1 GB</b> (fits easily)</li>
+        <li><b>Bandwidth:</b> 1M × ~200 B ≈ 200 MB/s between gateways and Redis: keep them in the same zone</li>
+      </ul>
+    </div>
+    <div>
+      <h3>3. API</h3>
+      <ul>
+        <li>Mostly an internal call: <code>Check(key, policy, cost=1)</code> → <code>{allowed, remaining, retryAfter}</code></li>
+        <li>Admin: <code>PUT /policies/{plan}</code> {limit, window, burst}</li>
+        <li>Response headers to clients (IETF draft, not yet an RFC):</li>
+      </ul>
+<pre class="code"><code style="background:none;padding:0">HTTP/1.1 429 Too Many Requests
+Retry-After: 1
+RateLimit-Policy: "default";q=100;w=10
+RateLimit: "default";r=0;t=1</code></pre>
+      <h3>4. Data model</h3>
+      <div class="tablewrap"><table>
+        <tr><th>Where</th><th>Key</th><th>Value</th></tr>
+        <tr><td><b>Redis hash</b></td><td><code>rl:{policy}:{clientId}</code></td><td>tokens, last_refill_ts; TTL ≈ 2 × refill time</td></tr>
+        <tr><td><b>Policy table</b></td><td>plan + route</td><td>capacity, refill rate, cost; cached in every gateway</td></tr>
+      </table></div>
+    </div>
+  </div>
+  <h3>5. High-level design</h3>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Every gateway node asks the same Redis bucket","actors":[{"t":"Client","c":"blue"},{"t":"Gateway node","c":"purple"},{"t":"Redis (Lua)","c":"red"},{"t":"Backend API","c":"green"}],"colW":200,"rowH":46,"stepMs":950,
+ "steps":[
+  {"from":0,"to":1,"t":"GET /accounts + API key","c":"blue"},
+  {"from":1,"to":2,"t":"EVALSHA token_bucket","sub":"refill + take 1, atomically","c":"purple"},
+  {"from":2,"to":1,"t":"allowed, 42 left","dash":true,"c":"green"},
+  {"from":1,"to":3,"t":"forward","c":"purple"},
+  {"from":3,"to":0,"t":"200 OK + RateLimit headers","dash":true,"c":"green"},
+  {"note":"A burst empties the bucket","over":[0,3],"c":"amber"},
+  {"from":0,"to":1,"t":"GET /accounts","c":"blue"},
+  {"from":1,"to":2,"t":"EVALSHA token_bucket","c":"purple"},
+  {"from":2,"to":1,"t":"denied, 0 left","dash":true,"c":"red"},
+  {"from":1,"to":0,"t":"429 + Retry-After: 1","c":"red"},
+  {"note":"Redis slow or down? Fall back to a local per-node limiter","over":[1,2],"c":"slate"}
+ ]}
+</script></figure>
+  <h3>6. Deep dives</h3>
+  <div class="grid wide">
+    <div class="box blue"><h4>Algorithm choice</h4><ul><li><b>Token bucket</b> for APIs: allows short bursts, two numbers to tune.</li><li><b>Sliding window counter</b> when you need even limits per minute with little memory.</li><li>Avoid fixed windows for strict limits (2× burst at the edges).</li></ul></div>
+    <div class="box red"><h4>Atomic check with Lua</h4><ul><li>"Read tokens, then write tokens" from two gateways is a race: both see 1 token, both allow.</li><li>A Lua script runs inside Redis as one atomic step: refill, take, save, return.</li><li>Use Redis server time (<code>TIME</code>) so gateway clock skew doesn't matter.</li></ul></div>
+    <div class="box purple"><h4>Per-key partitioning</h4><ul><li>Redis Cluster shards by key hash, so load spreads across shards automatically.</li><li>One bucket = one key, so the script never needs keys from two shards.</li><li>Hot key (one huge tenant)? Split its quota into N sub-buckets, or give it a local limiter.</li></ul></div>
+    <div class="box amber"><h4>Multi-region</h4><ul><li><b>Per-region limits</b> (limit ÷ regions): simple, no cross-region calls. Most common.</li><li><b>Global</b>: active-active Redis with CRDT counters replicates async, so it can overshoot briefly.</li><li>Never do a synchronous cross-region call per request (adds 50&ndash;200 ms).</li></ul></div>
+    <div class="box teal"><h4>Fail-open or fail-closed?</h4><ul><li><b>Fail-open</b> (allow if Redis is down): protects availability. Right for most APIs, with a local in-memory limiter as a safety net.</li><li><b>Fail-closed</b> (deny): for login, OTP and payment-initiation endpoints where abuse costs more than downtime.</li><li>Short timeout (~5 ms) on the Redis call either way.</li></ul></div>
+    <div class="box green"><h4>Where it lives</h4><ul><li>Edge (WAF/CDN) for IP floods, gateway (APIM, YARP) for keys and plans, service for business limits.</li><li>Limit only after authentication, so attackers can't invent keys to get new buckets.</li></ul></div>
+  </div>
+  <h3>7. Bottlenecks &amp; scaling</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Bottleneck</th><th>Fix</th></tr>
+    <tr><td>Redis round trip on every request</td><td>Same-zone Redis, pipelining, <code>EVALSHA</code> (script cached by hash); or a local token cache that syncs with Redis every 100 ms (less exact)</td></tr>
+    <tr><td>One shard overloaded</td><td>More shards; split hot tenants into sub-buckets</td></tr>
+    <tr><td>Redis outage</td><td>Fail-open + local limiter; replica with automatic failover</td></tr>
+    <tr><td>Policy changes</td><td>Push policies to gateways (config refresh), never read them per request</td></tr>
+  </table></div>
+  <div class="remember"><ul>
+    <li>Built-in .NET limiters count per instance. A shared limit needs a shared store.</li>
+    <li>Check and update in one atomic step (Lua script), with Redis server time.</li>
+    <li>Decide fail-open vs fail-closed per endpoint, and say why.</li>
+    <li>Return 429 + <code>Retry-After</code>; clients back off with jitter.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> The .NET stack for this design</div>
+  <table>
+    <tr><th>Component</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Gateway</b></td><td><code>Yarp.ReverseProxy</code> (or Azure API Management)</td><td>Run the limiter as middleware in front of the proxy</td></tr>
+    <tr><td><b>Local limiter / fallback</b></td><td><span class="pill builtin">built-in</span> <code>System.Threading.RateLimiting</code> (<code>PartitionedRateLimiter</code>, <code>TokenBucketRateLimiter</code>)</td><td>Per-node safety net when Redis is unreachable</td></tr>
+    <tr><td><b>Shared bucket</b></td><td><code>StackExchange.Redis</code> <code>ScriptEvaluateAsync</code> with your Lua script</td><td>Or <code>RedisRateLimiting.AspNetCore</code> (community) for ready-made Redis limiters</td></tr>
+    <tr><td><b>Policies</b></td><td><code>Microsoft.Extensions.Options</code> + Azure App Configuration (<code>Microsoft.Extensions.Configuration.AzureAppConfiguration</code>)</td><td>Refresh limits without a redeploy</td></tr>
+    <tr><td><b>Observability</b></td><td>OpenTelemetry metrics (<code>OpenTelemetry.Extensions.Hosting</code>)</td><td>Count allowed / denied / fail-open per policy</td></tr>
+  </table>
+<pre class="code"><code>const string TokenBucketLua = """
+    local cap, rate = tonumber(ARGV[1]), tonumber(ARGV[2])          -- capacity, tokens/sec
+    local t = redis.call('TIME'); local now = t[1] + t[2] / 1000000  -- Redis clock, not ours
+    local b = redis.call('HMGET', KEYS[1], 'tokens', 'ts')
+    local tokens = math.min(cap, (tonumber(b[1]) or cap) + (now - (tonumber(b[2]) or now)) * rate)
+    local ok = 0
+    if tokens &gt;= 1 then tokens = tokens - 1; ok = 1 end
+    redis.call('HSET', KEYS[1], 'tokens', tokens, 'ts', now)
+    redis.call('EXPIRE', KEYS[1], math.ceil(cap / rate) * 2)
+    return { ok, math.floor(tokens) }
+    """;
+
+app.Use(async (ctx, next) =&gt;
+{
+    var client = ctx.User.FindFirst("client_id")?.Value ?? $"ip:{ctx.Connection.RemoteIpAddress}";
+    RedisResult[] r;
+    try { r = (RedisResult[])(await redis.ScriptEvaluateAsync(TokenBucketLua, [new RedisKey($"rl:default:{client}")], [100, 10]))!; }
+    catch (Exception e) when (e is RedisException or TimeoutException) { await next(ctx); return; } // fail open
+
+    ctx.Response.Headers["RateLimit-Policy"] = "\"default\";q=100;w=10";
+    ctx.Response.Headers["RateLimit"] = $"\"default\";r={(int)r[1]}";
+    if ((int)r[0] == 0) { ctx.Response.StatusCode = 429; ctx.Response.Headers.RetryAfter = "1"; return; }
+    await next(ctx);
+});</code></pre>
+  <p class="warn">The <code>RateLimit</code> / <code>RateLimit-Policy</code> headers are an IETF draft (draft-ietf-httpapi-ratelimit-headers), not an RFC yet. Many APIs still send the older <code>RateLimit-Limit/Remaining/Reset</code> or <code>X-RateLimit-*</code> names. <code>Retry-After</code> is the standard one.</p>
+</div>
+  <div class="post">
+    <p>Your rate limiter works on one server. Then you scale to 10 nodes and every client gets 10× the limit. 😬</p>
+    <p>🪣 Token bucket per client, stored in Redis, shared by all nodes</p>
+    <p>⚛️ Check + update in ONE Lua script, or two nodes both spend the last token</p>
+    <p>🕐 Use Redis server time, not each node's clock</p>
+    <p>🌏 Multi-region: split the limit per region, don't call across regions</p>
+    <p>🔓 Redis down? Fail open for normal APIs, fail closed for login and OTP</p>
+    <p>And always return 429 + Retry-After so clients can back off politely.</p>
+    <p>#SystemDesign #APIs #RateLimiting #Redis #DotNet</p>
+  </div>
+</section>
+
+<!-- CHAT -->
+<section class="concept" id="chat">
+  <h2><span class="num">21.3</span> Chat / messaging app <span class="tag-added">Added</span></h2>
+  <p class="oneliner">"Design WhatsApp or Teams chat: 1:1 and group messages, online status, delivered and read ticks, and nothing lost when you're offline."</p>
+  <div class="cols2">
+    <div>
+      <h3>1. Requirements</h3>
+      <ul>
+        <li><b>F:</b> 1:1 and group chat (up to 500 members), presence, delivered/read receipts, history on any device, push when offline</li>
+        <li><b>NFR:</b> 50M daily users, 10M connected at once, delivery p99 &lt; 500 ms when online, messages never lost, ordered within a conversation</li>
+        <li><b>Out of scope:</b> voice/video calls, end-to-end encryption details (mention it)</li>
+      </ul>
+      <h3>2. Estimates</h3>
+      <ul>
+        <li><b>Messages:</b> 50M × 40/day = 2B/day ÷ 86,400 ≈ <b>23k/s</b>, ~70k/s at peak</li>
+        <li><b>Storage:</b> 2B × 200 B ≈ <b>400 GB/day</b> ≈ 146 TB/year before replication</li>
+        <li><b>Connections:</b> 10M ÷ ~50k per gateway server ≈ <b>200 servers</b> (plus headroom)</li>
+        <li><b>Bandwidth:</b> 23k × 200 B ≈ 5 MB/s in; out is higher because groups fan out</li>
+      </ul>
+    </div>
+    <div>
+      <h3>3. API</h3>
+      <div class="tablewrap"><table>
+        <tr><th>Call</th><th>Does</th></tr>
+        <tr><td>WebSocket <code>send {convId, clientMsgId, body}</code></td><td>Server replies <code>ack {clientMsgId, seq}</code></td></tr>
+        <tr><td>WebSocket push <code>message</code>, <code>receipt</code>, <code>presence</code></td><td>Server → client events</td></tr>
+        <tr><td><code>GET /conversations/{id}/messages?before={seq}&amp;limit=50</code></td><td>Scroll back through history</td></tr>
+        <tr><td><code>GET /sync?since={lastSeq}</code></td><td>Catch up after reconnecting</td></tr>
+      </table></div>
+      <h3>4. Data model</h3>
+      <div class="tablewrap"><table>
+        <tr><th>Table</th><th>Partition key</th><th>Clustering / columns</th></tr>
+        <tr><td><b>messages</b> (wide-column)</td><td>(conv_id, month bucket)</td><td>seq DESC; sender, body, sent_at</td></tr>
+        <tr><td><b>conversation_members</b></td><td>conv_id</td><td>user_id, role, last_read_seq</td></tr>
+        <tr><td><b>user_inbox</b></td><td>user_id</td><td>conv_id, last_seq, unread count</td></tr>
+        <tr><td><b>sessions</b> (Redis)</td><td>user_id</td><td>gateway node, devices, last_seen (TTL)</td></tr>
+      </table></div>
+    </div>
+  </div>
+  <h3>5. High-level design</h3>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Alice sends Bob a message","actors":[{"t":"Alice","c":"blue"},{"t":"Gateway A","c":"purple"},{"t":"Chat service","c":"teal"},{"t":"Gateway B","c":"purple"},{"t":"Bob","c":"green"}],"colW":170,"rowH":42,"stepMs":950,
+ "steps":[
+  {"from":0,"to":1,"t":"send (WebSocket)","sub":"clientMsgId for dedupe","c":"blue"},
+  {"from":1,"to":2,"t":"route","c":"purple"},
+  {"from":2,"to":2,"t":"seq = INCR conv, then store","c":"teal"},
+  {"from":2,"to":0,"t":"ack seq 1042 (one tick)","dash":true,"c":"green"},
+  {"from":2,"to":3,"t":"Bob is on B","sub":"session map in Redis","c":"teal"},
+  {"from":3,"to":4,"t":"message 1042","c":"purple"},
+  {"from":4,"to":2,"t":"delivered (two ticks)","dash":true,"c":"green"},
+  {"note":"Bob offline? Message is already stored: send a push, Bob syncs on reconnect","over":[2,4],"c":"amber"},
+  {"from":4,"to":2,"t":"read up to 1042","dash":true,"c":"blue"},
+  {"from":2,"to":0,"t":"receipt: read","dash":true,"c":"blue"}
+ ]}
+</script></figure>
+  <h3>6. Deep dives</h3>
+  <div class="grid wide">
+    <div class="box blue"><h4>Connections</h4><ul><li>WebSockets: one long-lived, two-way connection per device (<a href="02-networking-protocols.html#realtime">02 real-time</a>).</li><li>Gateways hold connections only; chat logic sits behind them, so gateways can restart safely.</li><li>Clients reconnect with backoff and call <code>/sync</code> for anything missed.</li></ul></div>
+    <div class="box teal"><h4>Ordering per conversation</h4><ul><li>A per-conversation sequence number (Redis <code>INCR</code>, or one partition per conversation in Kafka).</li><li>Global order is not needed and doesn't scale. Order within a chat is enough.</li><li>Clients sort by seq and spot gaps, then fetch the missing range.</li></ul></div>
+    <div class="box purple"><h4>Group delivery</h4><ul><li>Small groups: fan out on write, one send per online member's gateway.</li><li>Big channels (thousands): store once, notify "new message in X", clients pull.</li><li>Gateways subscribe to a pub/sub backplane (Redis, Azure SignalR) to reach each other.</li></ul></div>
+    <div class="box green"><h4>Storage: wide-column</h4><ul><li>Write-heavy, read by "conversation, newest first": a perfect fit for Cassandra/ScyllaDB or Cosmos DB.</li><li>Bucket by month so one busy chat doesn't create a huge partition.</li><li>Discord publicly described storing trillions of messages this way (Cassandra, later ScyllaDB).</li></ul></div>
+    <div class="box amber"><h4>Presence, offline, receipts</h4><ul><li>Presence: heartbeat every ~30 s sets a Redis key with a TTL. No heartbeat, key expires, user is offline.</li><li>Only push presence to people who have the chat open, or it floods the system.</li><li>Receipts store "read up to seq N" per member, not a flag on every message.</li></ul></div>
+    <div class="box red"><h4>Never lose, never duplicate</h4><ul><li>Persist before you ack. The sender's single tick means "stored".</li><li>The client resends until acked, so dedupe on <code>clientMsgId</code>.</li><li>Push (APNs/FCM) is a wake-up hint only; the app then syncs from the server.</li></ul></div>
+  </div>
+  <h3>7. Bottlenecks &amp; scaling</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Bottleneck</th><th>Fix</th></tr>
+    <tr><td>Millions of open sockets</td><td>Many small gateway nodes behind an L4 load balancer; or a managed service (Azure SignalR / Web PubSub)</td></tr>
+    <tr><td>Finding which node a user is on</td><td>Session map in Redis; or pub/sub channel per user</td></tr>
+    <tr><td>Reconnect storm after a deploy</td><td>Drain nodes slowly, random jitter on client reconnect</td></tr>
+    <tr><td>Hot conversation partition</td><td>Time buckets in the partition key; cache recent messages in Redis</td></tr>
+  </table></div>
+  <div class="remember"><ul>
+    <li>Store first, then ack, then deliver. Push notifications only wake the app.</li>
+    <li>Order per conversation with a sequence number; never promise global order.</li>
+    <li>Presence = heartbeat + TTL. Receipts = "read up to N".</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> The .NET stack for this design</div>
+  <table>
+    <tr><th>Component</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Real-time connections</b></td><td><span class="pill builtin">built-in</span> ASP.NET Core SignalR (<code>Hub</code>, groups, <code>Clients.User</code>)</td><td>WebSockets with fallbacks; <code>Context.UserIdentifier</code> from the JWT</td></tr>
+    <tr><td><b>Scale-out</b></td><td><code>Microsoft.Azure.SignalR</code> (Azure SignalR Service) or <code>Microsoft.AspNetCore.SignalR.StackExchangeRedis</code> backplane</td><td>Managed service holds the sockets so your servers don't have to</td></tr>
+    <tr><td><b>Sequence, presence, sessions</b></td><td><code>StackExchange.Redis</code></td><td><code>StringIncrementAsync</code> for seq; keys with TTL for presence</td></tr>
+    <tr><td><b>Message store</b></td><td><code>CassandraCSharpDriver</code> (Cassandra / ScyllaDB) or <code>Microsoft.Azure.Cosmos</code></td><td>Partition by conversation + month</td></tr>
+    <tr><td><b>Offline push</b></td><td><code>Microsoft.Azure.NotificationHubs</code> or <code>FirebaseAdmin</code></td><td>APNs / FCM wake-up</td></tr>
+    <tr><td><b>Tracing</b></td><td>OpenTelemetry</td><td>Measure "sent → delivered" per message</td></tr>
+  </table>
+<pre class="code"><code>[Authorize]
+public sealed class ChatHub(IConnectionMultiplexer redis, IMessageStore store) : Hub
+{
+    public async Task&lt;long&gt; Send(string convId, Guid clientMsgId, string body)
+    {
+        // TODO: check the caller is a member of convId
+        var db = redis.GetDatabase();
+        long seq = await db.StringIncrementAsync($"seq:{convId}");          // order within the chat
+        await store.AppendAsync(new ChatMessage(convId, seq, Context.UserIdentifier!, clientMsgId, body));
+        await Clients.OthersInGroup(convId).SendAsync("message", convId, seq, body);
+        return seq;                                                         // the ack: one tick
+    }
+
+    public Task Join(string convId) =&gt; Groups.AddToGroupAsync(Context.ConnectionId, convId);
+}
+
+builder.Services.AddSignalR().AddAzureSignalR();   // or .AddStackExchangeRedis(connString)</code></pre>
+  <p class="warn"><code>AppendAsync</code> should be idempotent on <code>clientMsgId</code> (a resend after a lost ack must not create a second message). If <code>INCR</code> succeeds but the store fails, you get a gap in seq; clients must tolerate gaps.</p>
+</div>
+  <div class="post">
+    <p>How does a chat app show ✓ then ✓✓ then blue ticks? 💬</p>
+    <p>🔌 Each phone keeps one WebSocket open to a gateway</p>
+    <p>💾 The server stores the message BEFORE it says "got it" (✓)</p>
+    <p>🔢 Each conversation has its own sequence number, so order is per chat</p>
+    <p>📬 Bob's phone confirms delivery (✓✓) and later "read up to #1042"</p>
+    <p>😴 Offline? A push wakes the app, and it syncs from the server</p>
+    <p>Store first, ack second, deliver third. That one rule removes most chat bugs.</p>
+    <p>#SystemDesign #RealTime #WebSockets #SignalR #DotNet</p>
+  </div>
+</section>
+
+<!-- NOTIFICATION -->
+<section class="concept" id="notification">
+  <h2><span class="num">21.4</span> Notification service (multi-channel platform) <span class="tag-added">Added</span></h2>
+  <p class="oneliner">"Design a shared platform that any team can call to send email, SMS, push and in-app messages, respecting user preferences." Unlike the <a href="20-system-design-playbook.html#example">20 payment-alert example</a> (one event source, one use case), this is the generic engine behind many products.</p>
+  <div class="cols2">
+    <div>
+      <h3>1. Requirements</h3>
+      <ul>
+        <li><b>F:</b> one API for all channels; templates with variables and languages; user preferences and quiet hours; scheduling; delivery status</li>
+        <li><b>NFR:</b> 10M users, 100M notifications/day; OTPs and security alerts in &lt; 5 s, marketing within hours; no duplicates; survive provider outages</li>
+        <li><b>Out of scope:</b> the campaign-design UI</li>
+      </ul>
+      <h3>2. Estimates</h3>
+      <ul>
+        <li><b>Average:</b> 100M ÷ 86,400 ≈ <b>1,200/s</b></li>
+        <li><b>Peak:</b> a campaign to all 10M users in 15 min ≈ <b>11k/s</b> on top</li>
+        <li><b>Storage:</b> 100M × 1 KB ≈ <b>100 GB/day</b>; keep 30 days hot ≈ 3 TB</li>
+        <li><b>Provider limits:</b> if an SMS account allows e.g. 100 msg/s, 1M SMS takes ~2.8 hours. Queues absorb it</li>
+      </ul>
+    </div>
+    <div>
+      <h3>3. API</h3>
+<pre class="code"><code style="background:none;padding:0">POST /v1/notifications
+Idempotency-Key: 7c1e...           (caller's unique ID)
+{ "userId": "u42", "template": "card-locked",
+  "priority": "high", "data": { "last4": "1234" },
+  "channels": ["push", "sms"] }      (optional: else use prefs)
+=&gt; 202 { "notificationId": "n-981" }
+
+GET  /v1/notifications/{id}         status per channel
+PUT  /v1/users/{id}/preferences      opt-ins, quiet hours
+POST /v1/providers/{name}/callbacks  delivery receipts (webhooks)</code></pre>
+      <h3>4. Data model</h3>
+      <div class="tablewrap"><table>
+        <tr><th>Table</th><th>Key</th><th>Columns</th></tr>
+        <tr><td><b>templates</b></td><td>(name, channel, locale, version)</td><td>subject, body with placeholders</td></tr>
+        <tr><td><b>preferences</b></td><td>user_id</td><td>per category × channel opt-in, quiet hours, time zone</td></tr>
+        <tr><td><b>notifications</b></td><td>notification_id; unique idempotency_key</td><td>user, template, priority, created_at</td></tr>
+        <tr><td><b>deliveries</b></td><td>(notification_id, channel)</td><td>status, provider, provider_msg_id, attempts</td></tr>
+      </table></div>
+    </div>
+  </div>
+  <h3>5. High-level design</h3>
+<figure class="viz" data-viz="journey"><script type="application/json">
+{"title":"One request, many channels","stepMs":1100,
+ "steps":[
+  {"icon":"📨","t":"Notification API","d":"auth the calling team, validate, check <b>Idempotency-Key</b>, return 202","tag":"08 Idempotency","href":"08-api-design.html#idempotency","c":"blue"},
+  {"icon":"⚙️","t":"Router","d":"load user prefs (cached), drop opted-out channels, defer to after quiet hours, render template per channel","tag":"05 Caching","href":"05-caching.html#strategies","c":"purple"},
+  {"icon":"🚦","t":"Priority queues per channel","d":"<b>high</b> (OTP, fraud) and <b>low</b> (marketing) are separate queues, so a campaign can't delay an OTP","tag":"10 Queues","href":"10-integration-messaging.html#queue-event","c":"amber"},
+  {"icon":"📧","t":"Email worker","d":"provider rate limit, retries with backoff","indent":1,"c":"teal"},
+  {"icon":"💬","t":"SMS worker","d":"token bucket per provider account, failover provider","indent":1,"c":"teal"},
+  {"icon":"📱","t":"Push worker","d":"APNs / FCM via a push hub; remove dead device tokens","indent":1,"c":"teal"},
+  {"icon":"🔔","t":"In-app worker","d":"write to the user's inbox, live update over SignalR if online","indent":1,"c":"teal"},
+  {"icon":"☠️","t":"Dead-letter queue","d":"after N failed attempts; alert, fix, replay","tag":"10 Guarantees","href":"10-integration-messaging.html#guarantees","c":"red"},
+  {"icon":"📊","t":"Delivery tracking","d":"provider webhooks update status: sent → delivered / bounced / failed","c":"green"}
+ ]}
+</script></figure>
+  <h3>6. Deep dives</h3>
+  <div class="cols2">
+    <div class="box amber"><h4>Priority</h4><ul><li>Separate queues and worker pools per priority. Don't rely on "priority" fields inside one queue.</li><li>Reserve provider capacity for high priority (e.g. 30% of the SMS rate).</li><li>Time-sensitive items get a TTL: an OTP that is 10 minutes late is useless, so drop it.</li></ul></div>
+    <div class="box red"><h4>Retries, DLQ, idempotency</h4><ul><li>Retry transient errors (timeouts, 429, 5xx) with exponential backoff + jitter. Don't retry hard bounces.</li><li>DLQ after max attempts; replay after the fix.</li><li>Dedupe at two levels: the API's Idempotency-Key, and (notificationId, channel) before calling the provider.</li></ul></div>
+    <div class="box teal"><h4>Provider rate limits and failover</h4><ul><li>A token bucket per provider account in each worker (or a shared Redis bucket).</li><li>Circuit breaker per provider; on open, switch SMS to the backup provider.</li><li>Respect the provider's 429 and <code>Retry-After</code>.</li></ul></div>
+    <div class="box purple"><h4>Templates and preferences</h4><ul><li>Versioned templates per channel and locale; render in the router, not in the caller.</li><li>Categories: <b>transactional/security</b> (can't fully opt out) vs <b>marketing</b> (opt-in, must honour unsubscribe under spam laws such as Australia's Spam Act 2003).</li><li>Quiet hours use the user's time zone.</li></ul></div>
+  </div>
+  <h3>7. Bottlenecks &amp; scaling</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Bottleneck</th><th>Fix</th></tr>
+    <tr><td>Campaign spike</td><td>Queues level the load; workers autoscale on queue depth (KEDA); low-priority queue drains at the provider's pace</td></tr>
+    <tr><td>Provider throughput</td><td>Multiple accounts / providers; batch email APIs</td></tr>
+    <tr><td>Preference lookups</td><td>HybridCache in the router; invalidate on change</td></tr>
+    <tr><td>Status writes from webhooks</td><td>Webhook endpoint just enqueues; a consumer updates <code>deliveries</code> in batches</td></tr>
+  </table></div>
+  <div class="remember"><ul>
+    <li>Separate queues per channel and per priority, so marketing never blocks an OTP.</li>
+    <li>At-least-once + dedupe by (notificationId, channel). Retries only for transient errors.</li>
+    <li>Rate-limit yourself to each provider's limit, with a backup provider behind a circuit breaker.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> The .NET stack for this design</div>
+  <table>
+    <tr><th>Component</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>API</b></td><td><span class="pill builtin">built-in</span> minimal APIs, <code>AddValidation()</code>, EF Core 10 (unique index on idempotency key)</td><td>Return 202 and enqueue</td></tr>
+    <tr><td><b>Queues</b></td><td><code>Azure.Messaging.ServiceBus</code> (one queue per channel × priority; scheduled messages for quiet hours; built-in DLQ)</td><td>Workers as <code>BackgroundService</code>, scaled by KEDA on Container Apps / AKS</td></tr>
+    <tr><td><b>Provider limits</b></td><td><span class="pill builtin">built-in</span> <code>System.Threading.RateLimiting</code> <code>TokenBucketRateLimiter</code></td><td>One limiter per provider account</td></tr>
+    <tr><td><b>Retries / failover</b></td><td><code>Microsoft.Extensions.Http.Resilience</code> / <code>Polly.Core</code></td><td>Backoff + jitter, circuit breaker per provider</td></tr>
+    <tr><td><b>Channels</b></td><td><code>Azure.Communication.Email</code>, <code>Azure.Communication.Sms</code>, <code>Microsoft.Azure.NotificationHubs</code>, SignalR for in-app</td><td>One sender per channel behind an interface</td></tr>
+    <tr><td><b>Templates / prefs</b></td><td><code>Scriban</code> or <code>Fluid.Core</code> (Liquid templates); <code>HybridCache</code> for prefs</td><td>Templates stored and versioned in the DB</td></tr>
+  </table>
+<pre class="code"><code>// One limiter per SMS provider account: 100 msg/s, short queue for bursts
+var smsQuota = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
+{
+    TokenLimit = 100, TokensPerPeriod = 100, ReplenishmentPeriod = TimeSpan.FromSeconds(1),
+    QueueLimit = 1_000, QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+});
+
+// Separate processors for "sms-high" and "sms-low"; high gets more MaxConcurrentCalls
+processor.ProcessMessageAsync += async args =&gt;
+{
+    var job = args.Message.Body.ToObjectFromJson&lt;SmsJob&gt;()!;
+    using RateLimitLease lease = await smsQuota.AcquireAsync(1, args.CancellationToken);
+    if (!lease.IsAcquired) { await args.AbandonMessageAsync(args.Message); return; }   // try again later
+
+    var sent = await sms.SendAsync(job.From, job.To, job.Text, cancellationToken: args.CancellationToken);
+    await tracking.MarkSentAsync(job.NotificationId, "sms", sent.Value.MessageId);
+    await args.CompleteMessageAsync(args.Message);
+};
+// An exception means the message is redelivered; after MaxDeliveryCount it moves to the DLQ</code></pre>
+  <p class="warn">Set <code>AutoCompleteMessages = false</code> on the processor when you complete messages yourself. A limiter inside one worker only limits that worker: with 5 replicas, give each 1/5 of the provider rate or use a shared Redis bucket (21.2).</p>
+</div>
+  <div class="post">
+    <p>Why did my OTP arrive 40 minutes late? Because it was stuck behind a marketing campaign. 📵</p>
+    <p>A good notification platform avoids that:</p>
+    <p>🚦 Separate queues per channel AND per priority</p>
+    <p>🪣 Rate-limit yourself to each provider's limit (they will throttle you anyway)</p>
+    <p>🔁 Retry only transient errors, with backoff, then dead-letter</p>
+    <p>🧾 Dedupe on (notification, channel) so nobody gets the SMS twice</p>
+    <p>⌛ Give OTPs a short TTL: late is the same as never</p>
+    <p>One platform, many teams, zero "sorry for the spam" emails.</p>
+    <p>#SystemDesign #Messaging #Notifications #Architecture #DotNet</p>
+  </div>
+</section>
+
+<!-- FEED -->
+<section class="concept" id="feed">
+  <h2><span class="num">21.5</span> News feed / timeline <span class="tag-added">Added</span></h2>
+  <p class="oneliner">"Design the home feed for a social app: when I open it, show recent posts from people I follow, ranked, fast." The core decision is when to do the work: when a post is written, or when the feed is read.</p>
+  <div class="cols2">
+    <div>
+      <h3>1. Requirements</h3>
+      <ul>
+        <li><b>F:</b> post, follow, home feed (followed accounts, ranked), infinite scroll</li>
+        <li><b>NFR:</b> 200M daily users, feed load p99 &lt; 300 ms, a new post shows up for followers within ~10 s, eventual consistency is fine</li>
+        <li><b>Out of scope:</b> ads, search, media processing</li>
+      </ul>
+      <h3>2. Estimates</h3>
+      <ul>
+        <li><b>Posts:</b> 200M × 0.5/day = 100M/day ≈ <b>1,200/s</b></li>
+        <li><b>Feed reads:</b> 200M × 10/day = 2B/day ≈ <b>23k/s</b>, ~50k/s at peak</li>
+        <li><b>Fan-out on write:</b> 100M posts × 200 followers avg = 20B feed inserts/day ≈ <b>230k/s</b></li>
+        <li><b>Feed cache:</b> 200M users × 500 entries × 16 B (id + score) ≈ 1.6 TB raw, so cache only active users and cap each feed</li>
+      </ul>
+    </div>
+    <div>
+      <h3>3. API</h3>
+      <div class="tablewrap"><table>
+        <tr><th>Endpoint</th><th>Does</th></tr>
+        <tr><td><code>POST /posts</code></td><td>Create a post; emits <code>PostCreated</code></td></tr>
+        <tr><td><code>GET /feed?limit=20&amp;cursor=…</code></td><td>Returns posts + <code>nextCursor</code></td></tr>
+        <tr><td><code>PUT /users/{id}/follow</code></td><td>Follow / unfollow</td></tr>
+      </table></div>
+      <h3>4. Data model</h3>
+      <div class="tablewrap"><table>
+        <tr><th>Store</th><th>Key</th><th>Value</th></tr>
+        <tr><td><b>posts</b> (NoSQL / sharded SQL)</td><td>post_id (time-ordered)</td><td>author, text, media refs, created_at</td></tr>
+        <tr><td><b>follows</b></td><td>follower_id → followee_id (and the reverse index)</td><td>created_at</td></tr>
+        <tr><td><b>feed:{userId}</b> (Redis sorted set)</td><td>user</td><td>member = post_id, score = time; capped at ~800</td></tr>
+      </table></div>
+    </div>
+  </div>
+  <h3>5. High-level design</h3>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Hybrid fan-out: push for most, pull for celebrities","actors":[{"t":"Author","c":"blue"},{"t":"Post service","c":"purple"},{"t":"Fan-out workers","c":"amber"},{"t":"Feed cache","c":"red"},{"t":"Reader","c":"green"}],"colW":170,"rowH":42,"stepMs":950,
+ "steps":[
+  {"from":0,"to":1,"t":"POST /posts","c":"blue"},
+  {"from":1,"to":2,"t":"PostCreated event","dash":true,"c":"amber"},
+  {"from":2,"to":3,"t":"ZADD feed:{follower}","sub":"once per follower (push)","c":"amber"},
+  {"note":"Author has 10M followers? Skip fan-out: readers pull instead","over":[1,3],"c":"red"},
+  {"from":4,"to":3,"t":"GET /feed?cursor=","c":"green"},
+  {"from":3,"to":4,"t":"precomputed post IDs","dash":true,"c":"red"},
+  {"from":4,"to":1,"t":"+ recent posts of followed celebrities (pull)","c":"purple"},
+  {"note":"merge, rank, hydrate posts from cache, return page + nextCursor","over":[1,4],"c":"green"}
+ ]}
+</script></figure>
+  <h3>6. Deep dives</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Approach</th><th>How</th><th>Good</th><th>Bad</th></tr>
+    <tr><td><b>Fan-out on write (push)</b></td><td>On post, insert its ID into every follower's feed</td><td>Reads are one cache lookup: very fast</td><td>A user with 10M followers = 10M writes per post; wasted work for inactive followers</td></tr>
+    <tr><td><b>Fan-out on read (pull)</b></td><td>On read, fetch recent posts of everyone I follow and merge</td><td>Writes are cheap; always fresh</td><td>Slow reads for users following thousands; heavy DB load</td></tr>
+    <tr><td><b>Hybrid</b></td><td>Push for normal authors; pull for celebrities (above a follower threshold); merge at read time</td><td>Fast reads, bounded write cost</td><td>Two code paths; threshold to tune</td></tr>
+  </table></div>
+  <div class="grid">
+    <div class="box blue"><h4>Ranking</h4><ul><li>v1: reverse time order.</li><li>v2: score = f(recency, affinity with author, engagement, content type).</li><li>Rank a candidate set (a few hundred) at read time, then cache the ranked page briefly.</li></ul></div>
+    <div class="box red"><h4>Caching in Redis</h4><ul><li>Feed = sorted set of post IDs only; post bodies are cached separately and shared by everyone.</li><li>Trim to the newest ~800 entries; older pages fall back to pull.</li><li>Inactive users get no fan-out; rebuild their feed on first visit.</li></ul></div>
+    <div class="box green"><h4>Cursor pagination</h4><ul><li>Cursor = last seen (score, post_id), encoded opaque.</li><li>Offsets break when new posts arrive (you see duplicates or skip items).</li><li>Same idea as continuation tokens in Cosmos DB.</li></ul></div>
+  </div>
+  <h3>7. Bottlenecks &amp; scaling</h3>
+  <ul>
+    <li><b>Fan-out volume:</b> async workers on a partitioned stream (Kafka / Event Hubs keyed by author); batch Redis writes with pipelining.</li>
+    <li><b>Celebrity problem:</b> the hybrid threshold; also skip followers inactive for 30+ days.</li>
+    <li><b>Hot posts:</b> post bodies and counts in a replicated cache; like counters aggregated async.</li>
+    <li><b>Unfollow / delete:</b> filter at read time (cheap) and clean up feeds lazily.</li>
+  </ul>
+  <div class="remember"><ul>
+    <li>Say push vs pull vs hybrid, then the celebrity threshold. That's the core of the answer.</li>
+    <li>Feeds store IDs; posts are hydrated from a shared cache.</li>
+    <li>Cursor pagination, never offsets, for a feed that changes while you scroll.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> The .NET stack for this design</div>
+  <table>
+    <tr><th>Component</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Post + feed APIs</b></td><td><span class="pill builtin">built-in</span> minimal APIs; output caching for short-lived ranked pages</td><td>Opaque cursor as a Base64Url string</td></tr>
+    <tr><td><b>PostCreated stream</b></td><td><code>Confluent.Kafka</code> or <code>Azure.Messaging.EventHubs.Processor</code></td><td>Partition by author; fan-out workers as <code>BackgroundService</code></td></tr>
+    <tr><td><b>Feed cache</b></td><td><code>StackExchange.Redis</code> sorted sets (<code>SortedSetAddAsync</code>, <code>SortedSetRemoveRangeByRankAsync</code>)</td><td>Batch / pipeline writes per follower block</td></tr>
+    <tr><td><b>Posts and follows</b></td><td><code>Microsoft.Azure.Cosmos</code> or <code>CassandraCSharpDriver</code>; <code>IdGen</code> for time-ordered IDs</td><td>Follower list read in pages</td></tr>
+    <tr><td><b>Post bodies cache</b></td><td><code>HybridCache</code></td><td>Shared by all readers</td></tr>
+  </table>
+<pre class="code"><code>public async Task FanOutAsync(Post post, CancellationToken ct)
+{
+    if (await users.GetFollowerCountAsync(post.AuthorId, ct) &gt; CelebrityThreshold)
+        return;                                         // celebrities: readers pull instead
+
+    double score = post.CreatedAt.ToUnixTimeMilliseconds();
+    await foreach (long[] followers in follows.GetActiveFollowerPagesAsync(post.AuthorId, pageSize: 1_000, ct))
+    {
+        var batch = redis.CreateBatch();                // one round trip per 1,000 followers
+        var writes = new List&lt;Task&gt;(followers.Length * 2);
+        foreach (var f in followers)
+        {
+            writes.Add(batch.SortedSetAddAsync($"feed:{f}", post.Id, score));
+            writes.Add(batch.SortedSetRemoveRangeByRankAsync($"feed:{f}", 0, -801));  // keep newest 800
+        }
+        batch.Execute();
+        await Task.WhenAll(writes);
+    }
+}</code></pre>
+</div>
+  <div class="post">
+    <p>Why can't you just "push every post to every follower"? Because of one person with 50 million followers. ⭐</p>
+    <p>📤 Fan-out on write: fast reads, but one celebrity post = 50M writes</p>
+    <p>📥 Fan-out on read: cheap writes, but slow feeds</p>
+    <p>🔀 Hybrid: push for normal users, pull for celebrities, merge at read time</p>
+    <p>🧠 Store only post IDs in Redis, hydrate the posts from a shared cache</p>
+    <p>👉 Use cursors, not page numbers, or users see duplicates as new posts arrive</p>
+    <p>Where would you set the "celebrity" threshold? #SystemDesign #Scalability #Redis #Architecture</p>
+  </div>
+</section>
+
+<!-- VIDEO STREAMING -->
+<section class="concept" id="video">
+  <h2><span class="num">21.6</span> Video streaming platform (YouTube / Netflix-style) <span class="tag-added">Added</span></h2>
+  <p class="oneliner">"Design YouTube or Netflix: creators upload videos, and millions watch them on any device without buffering." The work is a one-off processing pipeline per upload, then a huge read path that the CDN must carry.</p>
+  <div class="cols2">
+    <div>
+      <h3>1. Requirements</h3>
+      <ul>
+        <li><b>F:</b> upload large files (resumable), process into streamable formats, watch on phone/TV/web at the right quality, search, view counts, live streams</li>
+        <li><b>NFR:</b> 100M daily viewers, 500k uploads/day (avg 6 min); playback starts &lt; 2 s; rebuffering &lt; 1% of watch time; new uploads playable within minutes; 99.95% playback availability, worldwide</li>
+        <li><b>Out of scope:</b> ads, comments, creator payouts; recommendations in one line</li>
+      </ul>
+      <h3>2. Estimates</h3>
+      <ul>
+        <li><b>Uploads:</b> 500k ÷ 86,400 ≈ <b>6/s</b>; 500k × 6 min = <b>3M minutes/day</b> (≈ 35 hours of video every minute)</li>
+        <li><b>Ladder size:</b> 5 rungs (0.4 + 0.8 + 1.4 + 2.8 + 5 Mbps) ≈ 10.5 Mbps × 60 s ÷ 8 ≈ <b>80 MB per video minute</b></li>
+        <li><b>Storage:</b> 3M × 80 MB = <b>240 TB/day</b> ≈ 88 PB/year, plus the originals. Storage tiers are not optional</li>
+        <li><b>Encoding:</b> 3M min × 5 rungs = 15M rung-minutes/day. If one vCPU does ~1 min per min (very rough), ÷ 1,440 ≈ <b>10,000 vCPUs</b> busy all day</li>
+        <li><b>Egress at peak:</b> 5M watching at once × 3 Mbps = <b>15 Tbps</b>. At a 95% CDN hit ratio the origin still serves 750 Gbps; each 1% of misses = 150 Gbps</li>
+        <li><b>Read:write:</b> 100M × 40 min watched vs 3M min uploaded ≈ <b>1,300 : 1</b></li>
+      </ul>
+    </div>
+    <div>
+      <h3>3. API</h3>
+      <div class="tablewrap"><table>
+        <tr><th>Call</th><th>Does</th></tr>
+        <tr><td><code>POST /videos</code> {title, sizeBytes}</td><td>201 + <code>{videoId, uploadUrl}</code>: a write-only SAS / pre-signed URL for one blob, valid ~1 h</td></tr>
+        <tr><td><code>PUT {uploadUrl}</code> blocks, then commit the block list</td><td>Client uploads 8 MiB chunks straight to storage, in parallel; resume = resend only the missing blocks</td></tr>
+        <tr><td><code>BlobCreated</code> event (no client call)</td><td>Starts the processing pipeline</td></tr>
+        <tr><td><code>GET /videos/{id}</code></td><td>Metadata, status, thumbnails</td></tr>
+        <tr><td><code>GET /videos/{id}/play</code></td><td>Short-lived manifest URL (+ DRM licence URL)</td></tr>
+        <tr><td><code>POST /views</code> (batched heartbeats)</td><td>202; counted async</td></tr>
+      </table></div>
+      <h3>4. Data model</h3>
+      <div class="tablewrap"><table>
+        <tr><th>Store</th><th>Key</th><th>Columns / content</th></tr>
+        <tr><td><b>videos</b> (SQL / Cosmos DB)</td><td>video_id</td><td>owner, title, status (uploading → processing → ready), duration</td></tr>
+        <tr><td><b>renditions</b></td><td>(video_id, rung)</td><td>codec, resolution, bitrate, path</td></tr>
+        <tr><td><b>Blob storage</b></td><td>path</td><td><code>raw/{id}</code>, <code>vod/{id}/720p/seg_00042.m4s</code>, <code>master.m3u8</code>, <code>manifest.mpd</code></td></tr>
+        <tr><td><b>view_counts</b></td><td>video_id</td><td>total; flushed from Redis every ~30&ndash;60 s</td></tr>
+        <tr><td><b>search index</b></td><td>video_id</td><td>title, tags, caption text</td></tr>
+      </table></div>
+    </div>
+  </div>
+  <h3>5. High-level design</h3>
+<figure class="viz" data-viz="journey"><script type="application/json">
+{"title":"From upload to the viewer's screen","stepMs":1100,
+ "steps":[
+  {"icon":"📤","t":"Upload API","d":"auth, create the <b>videos</b> row, return a write-only SAS URL (one blob, 1 h). The API never touches the bytes","tag":"06 Storage","href":"06-databases-data.html#storage","c":"blue"},
+  {"icon":"🧱","t":"Chunked upload to Blob Storage","d":"8 MiB blocks in parallel; retry failed blocks; commit the block list. A dropped connection resumes, it doesn't restart","c":"blue"},
+  {"icon":"📣","t":"BlobCreated event → queue","d":"Event Grid → Service Bus; the orchestrator starts one pipeline per video","tag":"10 Queues","href":"10-integration-messaging.html#queue-event","c":"amber"},
+  {"icon":"✂️","t":"Probe + split","d":"check the file (ffprobe, malware and content scan), cut into ~4 s keyframe-aligned segments","indent":1,"c":"purple"},
+  {"icon":"⚙️","t":"Parallel encode","d":"every segment × every rung of the bitrate ladder on Spot workers (fan-out / fan-in)","tag":"10 Orchestration","href":"10-integration-messaging.html#orch","indent":1,"c":"purple"},
+  {"icon":"🖼️","t":"Thumbnails + captions","d":"frames for thumbnails, speech-to-text for captions (also feeds search)","indent":1,"c":"purple"},
+  {"icon":"📦","t":"Package","d":"CMAF segments + HLS (<code>.m3u8</code>) and DASH (<code>.mpd</code>) manifests; encrypt once for DRM","c":"teal"},
+  {"icon":"🌍","t":"CDN","d":"edges cache the segments; Blob Storage is the origin behind an origin shield","tag":"05 CDN","href":"05-caching.html#cdn","c":"green"},
+  {"icon":"✅","t":"Ready","d":"status = ready, update the search index, notify the creator. Low rungs can go live first","c":"green"}
+ ]}
+</script></figure>
+  <h3>6. Deep dives</h3>
+  <div class="grid wide">
+    <div class="box blue"><h4>Resumable direct upload</h4><ul><li>Never stream gigabytes through your API servers. Hand out a short-lived, write-only URL for one blob.</li><li>Block blobs: upload blocks in parallel, then commit the list. After a drop, ask which blocks arrived and send the rest.</li><li>Treat the upload as untrusted until probed and scanned.</li></ul></div>
+    <div class="box purple"><h4>Transcoding pipeline</h4><ul><li>Split at keyframes, encode each segment × rung in parallel, then stitch. A 10-min video = 150 segments × 5 rungs = 750 small jobs: minutes, not an hour.</li><li>Same GOP length on every rung, so the player can switch at any segment boundary.</li><li>Jobs are idempotent per (video, segment, rung), so retries and Spot evictions are safe.</li></ul></div>
+    <div class="box teal"><h4>Adaptive bitrate (ABR)</h4><ul><li><b>HLS</b> (<code>.m3u8</code>, Apple) and <b>MPEG-DASH</b> (<code>.mpd</code>): a manifest plus small segments over plain HTTP.</li><li><b>CMAF</b> (fragmented MP4): one set of segments serves both, so you store and cache them once.</li><li>The player, not the server, picks the rung for each next segment from measured throughput and buffer level.</li></ul></div>
+    <div class="box amber"><h4>CDN and cache hit ratio</h4><ul><li>Segments never change: cache them with a long max-age. Live manifests get a TTL of a second or two.</li><li>Hit ratio is the key metric: at 15 Tbps, each 1% of misses is 150 Gbps on the origin.</li><li>Origin shield (tiered cache) collapses misses; pre-warm before a big premiere.</li></ul></div>
+    <div class="box red"><h4>Protecting content</h4><ul><li>Tokenised URLs: the play API signs a manifest URL that expires in minutes. Stops hotlinking.</li><li>Premium content adds DRM: encrypt once (CENC), then a licence per device: <b>Widevine</b> (Chrome, Android), <b>FairPlay</b> (Apple), <b>PlayReady</b> (Windows, many TVs).</li><li>The licence server checks the entitlement, not the CDN.</li></ul></div>
+    <div class="box green"><h4>Metadata, search, views</h4><ul><li>Metadata in SQL / Cosmos DB; a search index fed from change events. Captions make speech searchable.</li><li>Views: <code>INCR</code> in Redis, flush to the DB every minute; unique viewers with HyperLogLog (<a href="05-caching.html#probabilistic">05 probabilistic</a>). Counts lag a little by design.</li><li>Recommendations: offline candidate generation + online ranking on watch history.</li></ul></div>
+  </div>
+<figure class="viz" data-viz="bars"><script type="application/json">
+{"title":"An example bitrate ladder (H.264, ≈ 10.5 Mbps for all five rungs)","max":5000,
+ "rows":[
+  {"label":"1080p","v":5000,"show":"<b>5 Mbps</b>","note":"TV, fast Wi-Fi","c":"purple"},
+  {"label":"720p","v":2800,"show":"<b>2.8 Mbps</b>","note":"laptop, good 4G","c":"blue"},
+  {"label":"480p","v":1400,"show":"<b>1.4 Mbps</b>","note":"phone on the move","c":"teal"},
+  {"label":"360p","v":800,"show":"<b>0.8 Mbps</b>","note":"weak mobile","c":"amber"},
+  {"label":"240p","v":400,"show":"<b>0.4 Mbps</b>","note":"start-up, very poor network","c":"red"}
+ ]}
+</script></figure>
+<figure class="viz" data-viz="seq"><script type="application/json">
+{"title":"Playback: the player switches rungs as bandwidth changes","actors":[{"t":"Player","c":"blue"},{"t":"Play API","c":"purple"},{"t":"CDN edge","c":"amber"},{"t":"Origin (Blob)","c":"green"},{"t":"DRM licence","c":"red"}],"colW":165,"rowH":42,"stepMs":950,
+ "steps":[
+  {"from":0,"to":1,"t":"GET /videos/42/play","c":"blue"},
+  {"from":1,"to":0,"t":"signed manifest URL (5 min)","dash":true,"c":"purple"},
+  {"from":0,"to":2,"t":"GET master.m3u8","c":"blue"},
+  {"from":2,"to":3,"t":"miss: fetch once","sub":"then cached at the edge","c":"amber"},
+  {"from":2,"to":0,"t":"ladder: 240p … 1080p","dash":true,"c":"amber"},
+  {"from":0,"to":4,"t":"DRM licence request (Widevine / FairPlay / PlayReady)","c":"blue"},
+  {"from":4,"to":0,"t":"content key","dash":true,"c":"red"},
+  {"from":0,"to":2,"t":"720p segments 1–3 (hits)","c":"blue"},
+  {"note":"Bandwidth drops, buffer falls below 10 s","over":[0,2],"c":"amber"},
+  {"from":0,"to":2,"t":"360p segment 4 (step down)","c":"red"},
+  {"note":"Bandwidth recovers: step up one rung at a time","over":[0,2],"c":"green"},
+  {"from":0,"to":2,"t":"1080p segment 9","c":"green"},
+  {"from":0,"to":1,"t":"view heartbeat (batched)","dash":true,"c":"slate"}
+ ]}
+</script></figure>
+  <div class="cols2">
+    <div class="box purple"><h4>Live streaming (short version)</h4><ul><li><b>Ingest:</b> the broadcaster pushes RTMP or SRT to the nearest ingest point.</li><li><b>Transcode in real time:</b> you can't split the future, so each live channel needs reserved encoder capacity.</li><li><b>Low-latency HLS:</b> small partial segments (a few hundred ms), blocking playlist reload, preload hints.</li><li><b>Latency:</b> classic HLS with 6 s segments is often 10&ndash;30 s behind; LL-HLS gets to a few seconds. Sub-second (auctions, calls) needs WebRTC, which costs more to fan out.</li><li>Record the stream and publish it as VOD afterwards.</li></ul></div>
+    <div class="box green"><h4>Cost: where the money goes</h4><ul><li><b>Egress is the big bill.</b> Hit ratio, better codecs for devices that support them, and CDN contracts matter more than compute.</li><li><b>Storage tiers:</b> hot for new and popular videos, cool / cold for the long tail, archive for originals (180-day minimum, hours to rehydrate).</li><li><b>Per-title encoding:</b> build the ladder per video. Netflix (2015) streamed a simple cartoon at 1080p for 1,540 kbps, where its fixed ladder gave 480p at 1,750 kbps.</li><li>Encode the top rungs lazily, once a video actually gets views.</li></ul></div>
+  </div>
+  <h3>7. Bottlenecks &amp; scaling</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Bottleneck</th><th>Fix</th></tr>
+    <tr><td>Transcode backlog after a spike</td><td>Queue + autoscale Spot workers on queue depth; publish low rungs first</td></tr>
+    <tr><td>Viral video or premiere hits the origin</td><td>Origin shield, pre-warm the CDN, long TTL on segments</td></tr>
+    <tr><td>Egress cost</td><td>Higher hit ratio, multi-CDN deals, per-title encoding, newer codecs where supported</td></tr>
+    <tr><td>Hot view counter</td><td>Split into N Redis keys and sum; flush async in batches</td></tr>
+    <tr><td>Storage growth</td><td>Lifecycle rules hot → cool → cold; originals to archive; drop unwatched top rungs</td></tr>
+  </table></div>
+  <div class="remember"><ul>
+    <li>Upload straight to object storage with a short-lived write-only URL. The API never touches the bytes.</li>
+    <li>Split, encode in parallel to a bitrate ladder, package once as CMAF for HLS and DASH.</li>
+    <li>The player picks the bitrate; the CDN carries the load. Hit ratio and egress decide the bill.</li>
+    <li>View counts are approximate and async: Redis counters + periodic flush, HyperLogLog for uniques.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> The .NET stack for this design</div>
+  <table>
+    <tr><th>Component</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>Upload API</b></td><td><span class="pill builtin">built-in</span> minimal APIs + <code>Azure.Storage.Blobs</code> (<code>GetUserDelegationKeyAsync</code>, <code>BlobSasBuilder</code>), <code>Azure.Identity</code></td><td>User delegation SAS (Entra-signed, no account key); Create/Write only, short expiry</td></tr>
+    <tr><td><b>Pipeline</b></td><td><code>Azure.Messaging.EventGrid</code>, <code>Azure.Messaging.ServiceBus</code>; <code>Microsoft.Azure.Functions.Worker.Extensions.DurableTask</code></td><td>BlobCreated starts a Durable orchestration that fans out per segment and rung</td></tr>
+    <tr><td><b>Encoding workers</b></td><td><code>FFMpegCore</code> (MIT); <code>Xabe.FFmpeg</code> <span class="pill lic">commercial licence</span></td><td>Run in Container Apps jobs, AKS Spot node pools or Azure Batch Spot VMs</td></tr>
+    <tr><td><b>Delivery + playback</b></td><td>Azure Front Door (Blob origin); minimal API that signs manifest URLs</td><td>Front Door has no built-in signed-URL check: enforce access in the play API and DRM licence server</td></tr>
+    <tr><td><b>View counts</b></td><td><code>StackExchange.Redis</code> (<code>StringIncrementAsync</code>, <code>HyperLogLogAddAsync</code>)</td><td>A <code>BackgroundService</code> flushes totals to the DB every minute</td></tr>
+    <tr><td><b>Buy, not build</b></td><td><code>Mux.Csharp.Sdk</code>, <code>AWSSDK.MediaConvert</code>, <code>Google.Cloud.Video.Transcoder.V1</code></td><td>Cloudflare Stream has no official .NET SDK: call its REST API with <code>HttpClient</code></td></tr>
+  </table>
+<pre class="code"><code>// Durable Functions (isolated worker): fan out every segment x rung, then fan in
+[Function(nameof(TranscodeVideo))]
+public static async Task&lt;string&gt; TranscodeVideo(
+    [OrchestrationTrigger] TaskOrchestrationContext ctx)
+{
+    var videoId = ctx.GetInput&lt;string&gt;()!;
+    var segments = await ctx.CallActivityAsync&lt;string[]&gt;(nameof(Split), videoId);
+
+    string[] ladder = ["1080p", "720p", "480p", "360p", "240p"];
+    var encodes = from s in segments
+                  from r in ladder
+                  select ctx.CallActivityAsync&lt;string&gt;(nameof(Encode), new Job(s, r));
+    string[] outputs = await Task.WhenAll(encodes);  // fan in: 10 min = 750 tasks
+
+    return await ctx.CallActivityAsync&lt;string&gt;(nameof(Package), outputs);
+}
+
+[Function(nameof(Encode))]
+public static async Task&lt;string&gt; Encode([ActivityTrigger] Job job)
+{
+    var output = Path.ChangeExtension(job.Segment, $".{job.Rung}.mp4");
+    await FFMpegArguments.FromFileInput(job.Segment)
+        .OutputToFile(output, true, o =&gt; o
+            .WithVideoCodec(VideoCodec.LibX264)
+            .WithVideoBitrate(Ladder.Kbps[job.Rung])
+            .WithCustomArgument($"-vf scale=-2:{Ladder.Height[job.Rung]}"))
+        .ProcessAsynchronously();
+    return output;               // real code: download from / upload to Blob Storage
+}</code></pre>
+  <p class="warn">Azure Media Services was retired on 30 June 2024, so Azure has no first-party encode/package/DRM service any more: build with FFmpeg or buy (Mux, Cloudflare Stream, AWS Elemental MediaConvert, Google Transcoder API). FFMpegCore is MIT, but the ffmpeg binary you ship is LGPL, or GPL if built with parts like libx264: check your build. For very large fan-outs, use one sub-orchestration per rung to keep orchestration history small.</p>
+</div>
+  <div class="post">
+    <p>Why does a show start a bit blurry and turn sharp after a few seconds? That's the design working. 🎬</p>
+    <p>📤 Uploads go straight to object storage with a short-lived URL, never through your API</p>
+    <p>✂️ The video is cut into ~4-second segments and encoded in parallel at 5+ quality levels</p>
+    <p>📦 One set of CMAF segments serves both HLS and DASH</p>
+    <p>📶 The player measures your bandwidth and picks the quality of every next segment</p>
+    <p>🌍 The CDN serves 95%+ of the bytes; every 1% of misses lands on your origin</p>
+    <p>💸 Egress, not storage, is the big bill</p>
+    <p>Start low, step up, never stall. #SystemDesign #VideoStreaming #CDN #Architecture #DotNet</p>
+  </div>
+</section>
+
+<!-- LEDGER -->
+<section class="concept" id="ledger">
+  <h2><span class="num">21.7</span> Payment ledger service <span class="tag-added">Added</span></h2>
+  <p class="oneliner">"Design the ledger that records every money movement for a digital wallet or bank account product." Here correctness beats speed: every cent must balance, and nothing is ever edited or lost.</p>
+  <div class="cols2">
+    <div>
+      <h3>1. Requirements</h3>
+      <ul>
+        <li><b>F:</b> post transfers between accounts, show balances and statements, reverse a posting, reconcile with external settlement files</li>
+        <li><b>NFR:</b> 10M accounts, 50M transactions/day; strong consistency; no overdraw; exactly-once effect for retries; full audit trail; multi-year retention</li>
+        <li><b>Out of scope:</b> card authorisation, FX, the payment scheme connections themselves</li>
+      </ul>
+      <h3>2. Estimates</h3>
+      <ul>
+        <li><b>Transactions:</b> 50M ÷ 86,400 ≈ <b>580/s</b>, ~5k/s at peak (payday, sale events)</li>
+        <li><b>Entries:</b> at least 2 per transaction = 100M/day × 200 B ≈ <b>20 GB/day</b> ≈ 7 TB/year</li>
+        <li><b>Reads:</b> balance checks ~10× writes. Read "available" from the primary (never a stale cache); serve statements from replicas</li>
+      </ul>
+    </div>
+    <div>
+      <h3>3. API</h3>
+      <div class="tablewrap"><table>
+        <tr><th>Endpoint</th><th>Does</th></tr>
+        <tr><td><code>POST /transfers</code> + <code>Idempotency-Key</code></td><td>Posts a balanced transaction; same key returns the same result</td></tr>
+        <tr><td><code>GET /accounts/{id}/balance</code></td><td>Ledger and available balance</td></tr>
+        <tr><td><code>GET /accounts/{id}/entries?cursor=</code></td><td>Statement lines</td></tr>
+        <tr><td><code>POST /transfers/{id}/reversal</code></td><td>New opposite entries (never delete)</td></tr>
+      </table></div>
+      <h3>4. Data model (SQL)</h3>
+      <div class="tablewrap"><table>
+        <tr><th>Table</th><th>Key</th><th>Columns</th></tr>
+        <tr><td><b>accounts</b></td><td>account_id</td><td>currency, available_balance, version</td></tr>
+        <tr><td><b>transactions</b></td><td>tx_id; unique idempotency_key</td><td>type, reference, status, created_at</td></tr>
+        <tr><td><b>entries</b> (append-only)</td><td>entry_id</td><td>tx_id, account_id, amount (+/−, minor units), posted_at</td></tr>
+        <tr><td><b>outbox</b></td><td>id</td><td>event type, payload, published_at</td></tr>
+      </table></div>
+    </div>
+  </div>
+  <h3>5. High-level design</h3>
+<figure class="viz" data-viz="steps"><script type="application/json">
+{"title":"Posting a $250 transfer from A to B","stepMs":1050,
+ "items":[
+  {"k":"Request","t":"<code>POST /transfers</code> {from: A, to: B, amount: 25000 cents}, <b>Idempotency-Key: k1</b>","c":"blue"},
+  {"k":"Dedupe","t":"Key k1 seen before? <b>No</b>, continue. (Yes: return the stored result, post nothing.)","c":"purple"},
+  {"k":"Begin","t":"One database transaction","c":"slate"},
+  {"k":"Entry","t":"A: <b>−25000</b> (money out)","c":"red","indent":1},
+  {"k":"Entry","t":"B: <b>+25000</b> (money in)","c":"green","indent":1},
+  {"k":"Check","t":"Entries sum to <b>0</b> ✓ and A's available balance ≥ 25000 ✓ (atomic conditional update)","c":"amber","indent":1},
+  {"k":"Outbox","t":"Row <b>TransferPosted</b> written in the same transaction","c":"teal","indent":1},
+  {"k":"Commit","t":"All or nothing. Balances and entries can never disagree","c":"green"},
+  {"k":"Publish","t":"Relay sends TransferPosted to notifications, GL and analytics","c":"teal"},
+  {"k":"Reconcile","t":"Daily: ledger totals vs settlement / bank statements; breaks go to an exceptions queue","c":"purple"}
+ ]}
+</script></figure>
+  <h3>6. Deep dives</h3>
+  <div class="cols2">
+    <div class="box green"><h4>Double-entry, append-only</h4><ul><li>Every transaction has entries that sum to zero, so money is never created or lost.</li><li>Never UPDATE or DELETE an entry. Fix mistakes with a reversal (new opposite entries).</li><li>Store amounts as integers in minor units (cents), never floating point.</li></ul></div>
+    <div class="box blue"><h4>Balances: stored or derived?</h4><ul><li><b>Derived</b> (sum of entries): always correct, slow for busy accounts.</li><li><b>Stored</b> balance updated in the same transaction: fast reads and a cheap overdraw check.</li><li>Common answer: store it, and a nightly job proves it equals the sum of entries.</li></ul></div>
+    <div class="box red"><h4>Concurrency and idempotency</h4><ul><li>Conditional update <code>WHERE available &gt;= amount</code> (or optimistic version check) stops two withdrawals racing.</li><li>Lock / update accounts in a fixed order (by ID) to avoid deadlocks.</li><li>Unique index on the idempotency key makes client retries safe (<a href="08-api-design.html#idempotency">08 idempotency</a>).</li></ul></div>
+    <div class="box purple"><h4>Across services</h4><ul><li>Outbox in the same transaction, then events: no "DB saved but event lost".</li><li>Multi-step flows (debit here, credit at another bank) use a <a href="11-architecture-patterns.html#saga">saga</a> with a holding/suspense account and compensations.</li><li>Tamper evidence: SQL ledger tables or hash-chained entries for auditors.</li></ul></div>
+  </div>
+  <h3>7. Bottlenecks &amp; scaling</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Bottleneck</th><th>Fix</th></tr>
+    <tr><td>Hot account (a merchant or the bank's own settlement account)</td><td>Split into N sub-accounts and sum them; or batch postings for that account every few seconds</td></tr>
+    <tr><td>Write throughput of one primary</td><td>Shard by account ID; a transfer across shards becomes a saga through a suspense account</td></tr>
+    <tr><td>Statement reads</td><td>Read replicas or a CQRS read model built from events</td></tr>
+    <tr><td>Growing entries table</td><td>Partition by month; archive old partitions to cheaper storage, keep them queryable</td></tr>
+  </table></div>
+  <div class="remember"><ul>
+    <li>Double-entry, append-only, integers in minor units. Say all three.</li>
+    <li>Entries, balance update and outbox row commit in one ACID transaction.</li>
+    <li>Idempotency key + conditional balance update = no double charge and no overdraw.</li>
+    <li>Reconciliation is part of the design, not an afterthought.</li>
+  </ul></div>
+  <div class="dotnet">
+  <div class="dotnet-head"><span class="dotnet-logo">.NET 10</span> The .NET stack for this design</div>
+  <table>
+    <tr><th>Component</th><th>Library / API</th><th>Notes</th></tr>
+    <tr><td><b>API</b></td><td><span class="pill builtin">built-in</span> minimal APIs, <code>AddProblemDetails()</code></td><td>Return RFC 9457 errors like "insufficient funds"</td></tr>
+    <tr><td><b>Ledger store</b></td><td>EF Core 10 (<code>Microsoft.EntityFrameworkCore.SqlServer</code>): <code>ExecuteUpdateAsync</code>, explicit transactions, row versions</td><td>Azure SQL / SQL Server 2022+ ledger tables for tamper evidence</td></tr>
+    <tr><td><b>Outbox + events</b></td><td><code>WolverineFx</code> (EF Core outbox) + <code>Azure.Messaging.ServiceBus</code></td><td>Or a small relay <code>BackgroundService</code> of your own</td></tr>
+    <tr><td><b>Reconciliation</b></td><td><code>Quartz</code> (4.x; DI and hosting built in), <code>CsvHelper</code></td><td>Nightly job: parse settlement files, match, raise breaks</td></tr>
+    <tr><td><b>Audit and tracing</b></td><td>OpenTelemetry; <code>Microsoft.Extensions.Compliance.Redaction</code></td><td>Trace ID on every transaction; no account numbers in logs</td></tr>
+  </table>
+<pre class="code"><code>await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+db.Transactions.Add(new LedgerTx(txId, idempotencyKey, req.Reference));  // unique index on the key
+db.Entries.AddRange(
+    new Entry(txId, req.From, -req.AmountCents),      // money out
+    new Entry(txId, req.To,   +req.AmountCents));     // money in: the entries sum to zero
+db.Outbox.Add(OutboxMessage.From(new TransferPosted(txId)));
+await db.SaveChangesAsync(ct);
+
+int debited = await db.Accounts                         // atomic "no overdraw" check
+    .Where(a =&gt; a.Id == req.From &amp;&amp; a.AvailableCents &gt;= req.AmountCents)
+    .ExecuteUpdateAsync(s =&gt; s.SetProperty(a =&gt; a.AvailableCents, a =&gt; a.AvailableCents - req.AmountCents), ct);
+if (debited == 0)
+{
+    await tx.RollbackAsync(ct);
+    return Results.Problem("Insufficient funds", statusCode: 422);
+}
+await db.Accounts.Where(a =&gt; a.Id == req.To)
+    .ExecuteUpdateAsync(s =&gt; s.SetProperty(a =&gt; a.AvailableCents, a =&gt; a.AvailableCents + req.AmountCents), ct);
+
+await tx.CommitAsync(ct);
+return Results.Created($"/transfers/{txId}", txId);</code></pre>
+  <p class="warn">A duplicate idempotency key fails <code>SaveChangesAsync</code> with a unique-index violation: catch it and return the original result. Update the two accounts in ID order, not from/to order, to avoid deadlocks between opposite transfers.</p>
+</div>
+  <div class="post">
+    <p>A ledger is the one system where "eventually correct" is not good enough. 🏦</p>
+    <p>📒 Double-entry: every transaction's entries add up to zero</p>
+    <p>🚫 Append-only: never edit an entry, post a reversal instead</p>
+    <p>🔢 Integers in cents, never floats</p>
+    <p>🔑 Idempotency key + "WHERE balance &gt;= amount" = no double charge, no overdraw</p>
+    <p>📤 Outbox row in the same transaction, so events are never lost</p>
+    <p>🧮 Reconcile daily against the outside world</p>
+    <p>Boring by design. That's the point.</p>
+    <p>#Banking #Payments #SystemDesign #FinTech #DotNet</p>
+  </div>
+</section>
+
+<div class="qa-wrap">
+  <h2>⚡ Quick-fire Q&amp;A</h2>
+  <details class="qa"><summary>How do you start any design case study in an interview?</summary><p>Clarify 2&ndash;3 core features and the key numbers (users, read:write ratio, latency, availability), do a quick estimate, then sketch the API and data model before drawing boxes. The estimate tells you whether you need caching, sharding or queues.</p></details>
+  <details class="qa"><summary>URL shortener: how do you avoid two links getting the same code?</summary><p>Don't rely on random luck. Either encode a unique counter in base62, or hand each server a block of pre-generated keys from a key service. If you hash the URL, check for a collision and retry with a salt.</p></details>
+  <details class="qa"><summary>Rate limiter: what happens if Redis goes down?</summary><p>Decide per endpoint. Most APIs fail open with a local in-memory limiter as a safety net. Login, OTP and payment initiation fail closed, because abuse costs more than a short outage.</p></details>
+  <details class="qa"><summary>Chat: how do you keep messages in order?</summary><p>Give each conversation its own sequence number (Redis INCR or one stream partition per conversation). Clients sort by it and fetch any gaps. Global ordering isn't needed.</p></details>
+  <details class="qa"><summary>Feed: what is the celebrity problem?</summary><p>With fan-out on write, one post by an account with millions of followers means millions of feed writes. The hybrid fix: push posts from normal accounts, and pull celebrity posts at read time and merge them in.</p></details>
+  <details class="qa"><summary>Video: why cut a video into segments at several bitrates?</summary><p>Segments let you encode in parallel (minutes, not hours) and let the player switch quality at every segment boundary. The bitrate ladder gives every network a rung it can play without stalling, and small immutable segments cache well on the CDN.</p></details>
+  <details class="qa"><summary>Video: what is the biggest cost, and how do you cut it?</summary><p>Egress (CDN bandwidth), not storage or compute. Keep the cache hit ratio high, use per-title encoding and newer codecs where devices support them, and move the long tail of rarely watched videos to cooler storage tiers.</p></details>
+  <details class="qa"><summary>Ledger: why store a balance if you can sum the entries?</summary><p>Summing is slow for busy accounts and makes the overdraw check expensive. Store the balance, update it in the same transaction as the entries, and run a nightly check that it still equals the sum.</p></details>
+</div>
+
+<div class="pager"><a href="20-system-design-playbook.html">← 20 · System Design Playbook</a><a class="next" href="22-dotnet-system-design-use-cases.html">22 · Top 10 .NET Use Cases →</a></div>
+</main>
+<footer>Tech Concepts Prep · Section 21</footer>
+<script src="assets/menu-data.js"></script>
+<script src="assets/menu.js"></script>
+<script src="assets/revise/21.js"></script>
+<script src="assets/revise.js"></script>
+<script src="assets/app.js"></script>
+<script src="assets/viz.js"></script>
+</body>
+</html>

@@ -10,7 +10,9 @@ import vm from 'node:vm';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dataDir = join(root, 'assets', 'revise');
 const want = process.argv.slice(2);
-const pages = Object.fromEntries(readdirSync(root).filter(f => /^\d{2}-.*\.html$/.test(f)).map(f => [f.slice(0, 2), f]));
+const pages = Object.fromEntries(readdirSync(root)
+  .filter(f => /^\d{2}-.*\.html$/.test(f) && !/http-equiv="refresh"/.test(readFileSync(join(root, f), 'utf8')))
+  .map(f => [f.slice(0, 2), f]));
 const files = readdirSync(dataDir).filter(f => /^\d{2}\.js$/.test(f)).map(f => f.slice(0, 2)).filter(n => !want.length || want.includes(n));
 const words = s => String(s).replace(/<[^>]+>/g, '').trim().split(/\s+/).filter(Boolean).length;
 let failed = 0;
