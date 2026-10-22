@@ -69,7 +69,9 @@ There's no framework and no build step. Every page is a hand-written HTML file t
   - `.week-head`: number, tag, title and a Done checkbox `input[data-week="N"]` (progress is saved in `localStorage` as `aiArchitectPlanProgress`)
   - `p.learn`
   - **`.topics` "📌 Topics to master this week"**: `.topic` cards, each a `<b>` name plus a one-line explanation
-  - **`ol.steps`, the main learning path.** Numbered steps, one link each, in the order to do them. Each `li` starts with a `.kind` label: `k-watch` ▶ Watch, `k-course` 🎓 Course, `k-read` 📄 Read, `k-build` 🛠 Build, `k-revise` ✅ Check (explain the 📌 topics in 30 seconds), `k-exam` 🏅 Exam. Start with the simplest video, then course, docs, build, check. Only core items go here; Optional items stay in the resources box.
+  - **`ol.steps`, the main learning path.** Numbered steps, one link each, in the order to do them. Each `li` starts with a `.kind` label: `k-watch` ▶ Watch, `k-course` 🎓 Course, `k-read` 📄 Read, `k-lab` 🧪 Practice (links to `#lab-wN`, always just before Build), `k-build` 🛠 Build, `k-revise` ✅ Check (explain the 📌 topics in 30 seconds), `k-exam` 🏅 Exam. Start with the simplest video, then course, docs, practice, build, check. Only core items go here; Optional items stay in the resources box.
+  - **`div.practice#lab-wN` "🧪 Practice online (no install)"**: one `.ex` card per exercise, tied to that week's topics. Each card has a `<b>` title naming the topic, the playground link, a `.cost` pill (free, or `.cost.paid` when it needs an API key or cloud account), an `<ol>` of 2–4 concrete steps with the example input in `<code>`, and a `p.expect` "✔ You should see:" line. Prefer browser-only tools (Colab, Codespaces, Hugging Face Spaces, vendor playgrounds). Colab links to GitHub notebooks use `https://colab.research.google.com/github/<owner>/<repo>/blob/main/<path>.ipynb`; check that the notebook exists and that any cell, variable or prompt you quote is really in it. Don't use GitHub Models (retired July 2026).
+  - **`div.tips` "💡 Best practices &amp; tips"**: a `.tips-grid` with a "Best practices" list (one `<li>` per topic, starting with the topic name in `<b>`) and a short "Learning tips" list.
   - `details.more` (collapsed) holding `.res-grid` with the full 🎓 Courses, 📄 Docs and `.res.videos` ▶ Videos lists, including Optional extras
 - Page 17 (RAG & GenAI) topics are written into the plan as 📌 topic cards, not linked. Weeks 1–4 hold 17.1–17.16, week 11 holds 17.18 and week 12 holds 17.17. The one-liners are copied from page 17's `p.oneliner`, so if those change, update the cards too.
 - Pills:
@@ -88,7 +90,7 @@ There's no framework and no build step. Every page is a hand-written HTML file t
   foreach($u in $hrefs){ if($u -match 'youtube\.com'){ try { $null=Invoke-RestMethod "https://www.youtube.com/oembed?url=$([uri]::EscapeDataString($u))&format=json" } catch { "YT FAIL $u" } } else { $code=curl.exe -s -o NUL -L -A "Mozilla/5.0" -w "%{http_code}" --max-time 20 $u; if($code -ne '200'){ "$code $u" } } }
   ```
 
-  A 403 from claude.com, anthropic.com, huggingface.co or iso.org is bot-blocking, so open those in a browser to confirm.
+  A 403 from claude.com, anthropic.com, huggingface.co, iso.org, aistudio.google.com, lmarena.ai, projector.tensorflow.org, playground.ai.cloudflare.com, partyrock.aws or tavily.com is bot-blocking, so open those in a browser to confirm.
 - Screenshots: headless Edge ignores `#anchor` on first load and won't go below about 500 px wide. Capture through a small wrapper page that puts the plan in an `<iframe>` (390 px wide for mobile, with `#wN` in the iframe URL).
 
 ## Page anatomy
