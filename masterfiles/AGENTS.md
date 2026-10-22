@@ -58,11 +58,12 @@ There's no framework and no build step. Every page is a hand-written HTML file t
 | `assets/revise/NN.js` | Quick-revision data for page NN. See "Quick revise data" below |
 | `tools/check-revise.mjs` | Validates the revise data against each page: `node tools/check-revise.mjs [NN ...]` |
 | `render.yaml` | Render static-site blueprint |
-| `AI/AI-Architect-12-Week-Plan.html` | Standalone AI Architect learning plan (Week 0–12 plus a 6-week fast track). See "Standalone learning plans" below |
+| `AI/index.html` | Standalone AI Architect learning plan (Week 0–12 plus a 6-week fast track). See "Standalone learning plans" below |
+| `AI/AI-Architect-12-Week-Plan.html` | Redirect stub to `AI/index.html` (the plan's old URL), keeping `#week` links. Keep it |
 | `masterfiles/` | This guide, `CLAUDE.md` and `ENHANCEMENTS.md` |
 
 ## Standalone learning plans (`AI/`)
-`AI/AI-Architect-12-Week-Plan.html` is a self-contained study plan, not a numbered site page. Live at `/AI/AI-Architect-12-Week-Plan.html` on both sites.
+`AI/index.html` is a self-contained study plan, not a numbered site page. Live at `/AI/index.html` (and `/AI/`) on both sites. It moved there from `AI/AI-Architect-12-Week-Plan.html` in October 2026; that file is now a redirect stub.
 - It has its own inline CSS and JS and doesn't use `assets/`. It isn't in the menu, nav, index or revise data, so the section rules above (animated visuals, `.dotnet` boxes, `span.num`, revise data) don't apply.
 - The site-wide rules still apply: no employer names, it must work at 390 px, and it's saved as UTF-8 without BOM.
 - Structure: a `#how` "How to use" panel, a roadmap grid, a `#pace` fast-track table, then one `section.week#wN` per week (N = 0–12). Each week has:
@@ -92,7 +93,7 @@ There's no framework and no build step. Every page is a hand-written HTML file t
 - Check every link before committing. YouTube links go through oEmbed (it returns the real title and channel); other links go through curl:
 
   ```powershell
-  $c=[IO.File]::ReadAllText('AI\AI-Architect-12-Week-Plan.html')
+  $c=[IO.File]::ReadAllText('AI\index.html')
   $hrefs=[regex]::Matches($c,'href="(https?://[^"]+)"') | % { $_.Groups[1].Value } | Sort-Object -Unique
   foreach($u in $hrefs){ if($u -match 'youtube\.com'){ try { $null=Invoke-RestMethod "https://www.youtube.com/oembed?url=$([uri]::EscapeDataString($u))&format=json" } catch { "YT FAIL $u" } } else { $code=curl.exe -s -o NUL -L -A "Mozilla/5.0" -w "%{http_code}" --max-time 20 $u; if($code -ne '200'){ "$code $u" } } }
   ```

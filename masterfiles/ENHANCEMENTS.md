@@ -18,7 +18,7 @@ Each of these appears inside other sections, but has no dedicated concept sectio
 - [ ] A Principal Software Engineer behavioural page (STAR, same format as pages 26–28). Page 29.5 has four starter prompts.
 - [ ] A behavioural page for other roles if needed (e.g. Integration Architect, Enterprise Architect), in the same format as pages 26–28.
 
-## AI Architect learning plan (`AI/AI-Architect-12-Week-Plan.html`)
+## AI Architect learning plan (`AI/index.html`)
 Done so far: Week 0–12 plan with "📌 Topics to master this week" cards, numbered "Your steps, in order" per week (Watch → Course → Read → Build → Check), a "🧪 Practice online (no install)" box per week (36 browser exercises, each with a link, an example, steps and the expected result), a "💡 Best practices &amp; tips" box per week (one best practice per topic plus learning tips), a collapsed box of all resources (Courses, Docs, Videos with Optional tags), a 6-week fast track, a daily routine, and all 18 page 17 (RAG & GenAI) topics written into the weeks that teach them. Also done: 📌 topic cards and a ✅ Check step in every week from 1 to 12 (page 18 and 16.9 topics in weeks 5–9), a 🏗 design question and a 📝 5-question quiz per week, a free Gemini key option, per-step ticks, a fast-track view, a start-date picker, a cost worksheet in week 2, a capstone rubric and portfolio checklist, new topics (open-weight models, cost estimation, multimodal and voice agents, data privacy), an optional Google Cloud track, and dark mode. See AGENTS.md "Standalone learning plans" for the structure and the link check.
 - [x] Add page 18 (Agentic AI) topics as 📌 topic cards in weeks 5–8.
 - [ ] Add matching topic cards from page 14 (security), e.g. secrets management and Zero Trust, to week 11.
