@@ -19,14 +19,17 @@ Each of these appears inside other sections, but has no dedicated concept sectio
 - [ ] A behavioural page for other roles if needed (e.g. Integration Architect, Enterprise Architect), in the same format as pages 26–28.
 
 ## AI Architect learning plan (`AI/AI-Architect-12-Week-Plan.html`)
-Done so far: Week 0–12 plan with "📌 Topics to master this week" cards, numbered "Your steps, in order" per week (Watch → Course → Read → Build → Check), a "🧪 Practice online (no install)" box per week (36 browser exercises, each with a link, an example, steps and the expected result), a "💡 Best practices &amp; tips" box per week (one best practice per topic plus learning tips), a collapsed box of all resources (Courses, Docs, Videos with Optional tags), a 6-week fast track, a daily routine, and all 18 page 17 (RAG & GenAI) topics written into the weeks that teach them. See AGENTS.md "Standalone learning plans" for the structure and the link check.
-- [ ] Add page 18 (Agentic AI) topics as 📌 topic cards in weeks 5–8 the same way as page 17, plus the matching topics from pages 14 (security) and 16 (cloud cheat sheet).
+Done so far: Week 0–12 plan with "📌 Topics to master this week" cards, numbered "Your steps, in order" per week (Watch → Course → Read → Build → Check), a "🧪 Practice online (no install)" box per week (36 browser exercises, each with a link, an example, steps and the expected result), a "💡 Best practices &amp; tips" box per week (one best practice per topic plus learning tips), a collapsed box of all resources (Courses, Docs, Videos with Optional tags), a 6-week fast track, a daily routine, and all 18 page 17 (RAG & GenAI) topics written into the weeks that teach them. Also done: 📌 topic cards and a ✅ Check step in every week from 1 to 12 (page 18 and 16.9 topics in weeks 5–9), a 🏗 design question and a 📝 5-question quiz per week, a free Gemini key option, per-step ticks, a fast-track view, a start-date picker, a cost worksheet in week 2, a capstone rubric and portfolio checklist, new topics (open-weight models, cost estimation, multimodal and voice agents, data privacy), an optional Google Cloud track, and dark mode. See AGENTS.md "Standalone learning plans" for the structure and the link check.
+- [x] Add page 18 (Agentic AI) topics as 📌 topic cards in weeks 5–8.
+- [ ] Add matching topic cards from page 14 (security), e.g. secrets management and Zero Trust, to week 11.
+- [ ] A calendar download (iCal) or Markdown checklist built from the start date.
+- [ ] Save quiz scores per week in localStorage and show them on the roadmap cards.
 - [ ] Recheck the 🧪 Practice exercises each quarter. Playground UIs change often (button names, free tiers, sign-in rules), and notebooks get renamed.
 - [ ] Recheck every link and exam code each quarter. Videos get removed, URLs move, and Microsoft and AWS change exam codes often.
-- [ ] Add a Google Cloud option (Vertex AI, Agent Development Kit, Professional ML Engineer) alongside weeks 9–10.
+- [x] Add a Google Cloud option alongside weeks 9–10 (done as the optional `#gcp` track: Gemini Enterprise Agent Platform, ADK, Kaggle 5-day agents course).
 - [ ] A "Week 13+" path: AI-500 exam prep, then specialisations (multimodal and voice agents, fine-tuning and post-training, self-hosted open-weight models).
-- [ ] A fast-track switch that hides Optional items, and a tick per item as well as per week.
-- [ ] A "start date" picker that shows calendar dates per week, plus an iCal or Markdown checklist download.
+- [x] A fast-track switch that hides Optional items, and a tick per item as well as per week.
+- [x] A "start date" picker that shows calendar dates per week (the iCal or Markdown download is still open, above).
 - [ ] Link it from `index.html` (for example a card in the learning path), or turn it into a numbered site page with an animated roadmap and revise data.
 - [ ] Move the link check from AGENTS.md into `tools/check-links.ps1` and run it in the GitHub Action below.
 
