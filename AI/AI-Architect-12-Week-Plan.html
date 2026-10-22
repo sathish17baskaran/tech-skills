@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Architect – 12-Week Learning Plan</title>
+<style>
+  :root {
+    --bg: #f5f7fb; --card: #ffffff; --ink: #1d2330; --muted: #5b6475; --line: #e3e7ef;
+    --found: #2f6fde; --rag: #0f9d8a; --agent: #8a4fdc; --cloud: #e07a1f; --secure: #d23f5b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--ink); line-height: 1.5; }
+  header { background: linear-gradient(120deg, #1b2a4e, #2f4f8f); color: #fff; padding: 36px 24px 28px; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+  header h1 { margin: 0 0 6px; font-size: 30px; }
+  header p { margin: 0; opacity: .85; }
+  .meta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+  .chip { background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.25); padding: 4px 12px; border-radius: 999px; font-size: 13px; }
+  .progress { margin-top: 18px; background: rgba(255,255,255,.18); border-radius: 999px; height: 10px; overflow: hidden; }
+  .progress > div { height: 100%; width: 0; background: #7fe3a5; transition: width .3s; }
+  .progress-label { font-size: 13px; margin-top: 6px; opacity: .9; }
+  nav { position: sticky; top: 0; z-index: 5; background: #fff; border-bottom: 1px solid var(--line); }
+  nav .wrap { display: flex; gap: 6px; overflow-x: auto; padding: 10px 20px; }
+  nav a { flex: none; text-decoration: none; color: var(--ink); font-size: 13px; padding: 5px 11px; border-radius: 6px; border: 1px solid var(--line); }
+  nav a:hover { background: #eef2fa; }
+  h2 { font-size: 21px; margin: 34px 0 14px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+  .legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; background: var(--c); }
+  .roadmap { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+  .step { background: var(--card); border: 1px solid var(--line); border-top: 4px solid var(--c); border-radius: 8px; padding: 10px 12px; text-decoration: none; color: inherit; }
+  .step:hover { box-shadow: 0 3px 10px rgba(20,30,60,.08); }
+  .step b { display: block; font-size: 12px; color: var(--c); text-transform: uppercase; letter-spacing: .04em; }
+  .step span { font-size: 14px; font-weight: 600; }
+  .step small { display: block; color: var(--muted); font-size: 12px; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f0f3f9; font-weight: 600; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .week { background: var(--card); border: 1px solid var(--line); border-left: 6px solid var(--c); border-radius: 10px; margin-bottom: 18px; }
+  .week-head { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+  .week-num { flex: none; width: 44px; height: 44px; border-radius: 50%; background: var(--c); color: #fff; display: grid; place-items: center; font-weight: 700; }
+  .week-head h3 { margin: 0; font-size: 18px; }
+  .week-head .tag { font-size: 12px; color: var(--c); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  .done-toggle { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); cursor: pointer; white-space: nowrap; }
+  .done-toggle input { width: 18px; height: 18px; accent-color: var(--c); }
+  .week.done { opacity: .65; }
+  .week-body { padding: 14px 18px 16px; }
+  .learn { margin: 0 0 12px; color: var(--muted); }
+  .learn strong { color: var(--ink); }
+  .week table td:first-child { width: 42%; }
+  .week a { color: #1f5fbf; word-break: break-word; }
+  .cost { font-size: 12px; padding: 1px 8px; border-radius: 999px; background: #e8f5ee; color: #1d7a46; white-space: nowrap; }
+  .cost.paid { background: #fdf0e3; color: #a65a10; }
+  .cost.cert { background: #efe8fb; color: #6a3bb5; }
+  .lab { margin-top: 12px; background: #f6f8fc; border: 1px dashed #c9d3e6; border-radius: 8px; padding: 10px 12px; font-size: 14px; }
+  .lab b { color: var(--c); }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; }
+  .panel h3 { margin: 0 0 8px; font-size: 16px; }
+  .panel ul, .panel ol { margin: 0; padding-left: 20px; font-size: 14px; }
+  .panel li { margin: 4px 0; }
+  footer { color: var(--muted); font-size: 12px; text-align: center; padding: 30px 20px 40px; }
+  .c-found { --c: var(--found); } .c-rag { --c: var(--rag); } .c-agent { --c: var(--agent); } .c-cloud { --c: var(--cloud); } .c-secure { --c: var(--secure); }
+  @media (max-width: 640px) {
+    header h1 { font-size: 24px; }
+    .roadmap { grid-template-columns: 1fr 1fr; }
+    .step { padding: 8px 10px; }
+    .step span { font-size: 13px; }
+    .week-head { padding: 12px 14px; flex-wrap: wrap; }
+    .week-body { padding: 12px 14px; }
+    .week table, .week tbody, .week tr, .week td { display: block; width: 100% !important; }
+    .week tr:first-child { display: none; }
+    .week tr { padding: 8px 0; border-bottom: 1px solid var(--line); }
+    .week td { border: 0; padding: 2px 0; }
+    .week td:first-child { font-weight: 600; }
+    .week td:nth-child(2), .week td:nth-child(3) { display: inline-block; width: auto !important; margin-right: 10px; }
+    .grid2 { grid-template-columns: 1fr; }
+  }
+  @media print {
+    nav, .done-toggle, .progress, .progress-label { display: none; }
+    header { background: #1b2a4e !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .week { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1>AI Architect – 12-Week Learning Plan</h1>
+    <p>GenAI · AI Architecture · RAG · Agentic AI (LangGraph, Multi-Agent) · MCP · Azure AI · AWS AI · AI Security &amp; Governance</p>
+    <div class="meta">
+      <span class="chip">⏱ ~10–12 hrs / week</span>
+      <span class="chip">🛠 One running project that grows each week</span>
+      <span class="chip">🎓 Target certs: AI-103 · AIP-C01 · AI-500</span>
+    </div>
+    <div class="progress"><div id="bar"></div></div>
+    <div class="progress-label" id="barLabel">0 of 12 weeks complete</div>
+  </div>
+</header>
+
+<nav>
+  <div class="wrap">
+    <a href="#overview">Overview</a>
+    <a href="#w1">W1</a><a href="#w2">W2</a><a href="#w3">W3</a><a href="#w4">W4</a>
+    <a href="#w5">W5</a><a href="#w6">W6</a><a href="#w7">W7</a><a href="#w8">W8</a>
+    <a href="#w9">W9</a><a href="#w10">W10</a><a href="#w11">W11</a><a href="#w12">W12</a>
+    <a href="#rhythm">Weekly rhythm</a><a href="#certs">Certifications</a>
+  </div>
+</nav>
+
+<main class="wrap">
+
+  <h2 id="overview">Roadmap</h2>
+  <div class="legend">
+    <span class="c-found">Foundations &amp; Architecture</span>
+    <span class="c-rag">RAG</span>
+    <span class="c-agent">Agentic AI &amp; MCP</span>
+    <span class="c-cloud">Cloud (Azure / AWS)</span>
+    <span class="c-secure">Security, Governance &amp; Ops</span>
+  </div>
+  <div class="roadmap">
+    <a class="step c-found" href="#w1"><b>Week 1</b><span>GenAI &amp; LLM Foundations</span><small>Basic chatbot via LLM API</small></a>
+    <a class="step c-found" href="#w2"><b>Week 2</b><span>AI Architecture Fundamentals</span><small>Reference architecture + ADRs</small></a>
+    <a class="step c-rag" href="#w3"><b>Week 3</b><span>RAG Fundamentals</span><small>Doc Q&amp;A with vector DB</small></a>
+    <a class="step c-rag" href="#w4"><b>Week 4</b><span>Advanced RAG Architecture</span><small>Hybrid search, rerank, eval</small></a>
+    <a class="step c-agent" href="#w5"><b>Week 5</b><span>Agentic AI Foundations</span><small>Tool-calling agent</small></a>
+    <a class="step c-agent" href="#w6"><b>Week 6</b><span>LangGraph</span><small>Stateful agent, memory, HITL</small></a>
+    <a class="step c-agent" href="#w7"><b>Week 7</b><span>Multi-Agent Systems</span><small>Supervisor + specialists</small></a>
+    <a class="step c-agent" href="#w8"><b>Week 8</b><span>MCP &amp; A2A</span><small>Tools as MCP servers</small></a>
+    <a class="step c-cloud" href="#w9"><b>Week 9</b><span>Azure AI (Microsoft Foundry)</span><small>Deploy on Azure</small></a>
+    <a class="step c-cloud" href="#w10"><b>Week 10</b><span>AWS AI (Bedrock / AgentCore)</span><small>Deploy on AWS</small></a>
+    <a class="step c-secure" href="#w11"><b>Week 11</b><span>AI Security &amp; Governance</span><small>Threat model, guardrails, risk</small></a>
+    <a class="step c-secure" href="#w12"><b>Week 12</b><span>LLMOps + Architecture Capstone</span><small>Architecture pack + exam booking</small></a>
+  </div>
+
+  <h2>Weekly Plan</h2>
+
+  <!-- WEEK 1 -->
+  <section class="week c-found" id="w1">
+    <div class="week-head">
+      <div class="week-num">1</div>
+      <div><div class="tag">Foundations</div><h3>Generative AI &amp; LLM Foundations</h3></div>
+      <label class="done-toggle"><input type="checkbox" data-week="1"> Done</label>
+    </div>
+    <div class="week-body">
+      <p class="learn"><strong>Learn:</strong> How LLMs work (tokens, context window, temperature, embeddings), model selection, prompt engineering, structured output.</p>
+      <table>
+        <tr><th>Course / Resource</th><th>Link</th><th>Cost</th></tr>
+        <tr><td>Generative AI for Everyone (Andrew Ng)</td><td><a href="https://www.deeplearning.ai/courses/generative-ai-for-everyone/" target="_blank">deeplearning.ai</a></td><td><span class="cost">Free audit</span></td></tr>
+        <tr><td>Generative AI with Large Language Models (AWS + DeepLearning.AI)</td><td><a href="https://www.coursera.org/learn/generative-ai-with-llms" target="_blank">coursera.org</a></td><td><span class="cost paid">Coursera</span></td></tr>
+        <tr><td>ChatGPT Prompt Engineering for Developers</td><td><a href="https://www.deeplearning.ai/courses/chatgpt-prompt-engineering-for-developers" target="_blank">deeplearning.ai</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>Anthropic Prompt Engineering Interactive Tutorial</td><td><a href="https://github.com/anthropics/prompt-eng-interactive-tutorial" target="_blank">github.com</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>Microsoft Generative AI for Beginners (21 lessons)</td><td><a href="https://github.com/microsoft/generative-ai-for-beginners" target="_blank">github.com</a></td><td><span class="cost">Free</span></td></tr>
+      </table>
+      <div class="lab"><b>Lab:</b> Python chatbot using OpenAI / Azure OpenAI / Bedrock API with system prompts and JSON output.</div>
+    </div>
+  </section>
+
+  <!-- WEEK 2 -->
+  <section class="week c-found" id="w2">
+    <div class="week-head">
+      <div class="week-num">2</div>
+      <div><div class="tag">Foundations</div><h3>AI Architecture Fundamentals</h3></div>
+      <label class="done-toggle"><input type="checkbox" data-week="2"> Done</label>
+    </div>
+    <div class="week-body">
+      <p class="learn"><strong>Learn:</strong> GenAI architecture patterns (chat, RAG, agents, fine-tune), build vs buy vs fine-tune, model gateway, latency/cost trade-offs, Well-Architected pillars for AI.</p>
+      <table>
+        <tr><th>Course / Resource</th><th>Link</th><th>Cost</th></tr>
+        <tr><td>Azure Well-Architected Framework – AI workloads</td><td><a href="https://learn.microsoft.com/en-us/azure/well-architected/ai/" target="_blank">learn.microsoft.com</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>Azure baseline end-to-end chat reference architecture</td><td><a href="https://learn.microsoft.com/en-us/azure/architecture/ai-ml/architecture/baseline-openai-e2e-chat" target="_blank">learn.microsoft.com</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>AWS Well-Architected – Generative AI Lens</td><td><a href="https://docs.aws.amazon.com/wellarchitected/latest/generative-ai-lens/generative-ai-lens.html" target="_blank">docs.aws.amazon.com</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>Book: <em>AI Engineering</em> – Chip Huyen (Ch. 1–3, 10)</td><td>O'Reilly</td><td><span class="cost paid">Paid</span></td></tr>
+        <tr><td>Optional cert: AI-901 Azure AI Fundamentals</td><td><a href="https://learn.microsoft.com/en-us/credentials/certifications/azure-ai-fundamentals/" target="_blank">learn.microsoft.com</a></td><td><span class="cost cert">Cert</span></td></tr>
+        <tr><td>Optional cert: AWS Certified AI Practitioner</td><td><a href="https://aws.amazon.com/certification/certified-ai-practitioner/" target="_blank">aws.amazon.com</a></td><td><span class="cost cert">Cert</span></td></tr>
+      </table>
+      <div class="lab"><b>Deliverable:</b> Reference architecture diagram for an "Enterprise AI Assistant" + 3 Architecture Decision Records (model choice, hosting, gateway).</div>
+    </div>
+  </section>
+
+  <!-- WEEK 3 -->
+  <section class="week c-rag" id="w3">
+    <div class="week-head">
+      <div class="week-num">3</div>
+      <div><div class="tag">RAG</div><h3>RAG Fundamentals</h3></div>
+      <label class="done-toggle"><input type="checkbox" data-week="3"> Done</label>
+    </div>
+    <div class="week-body">
+      <p class="learn"><strong>Learn:</strong> Chunking strategies, embeddings, vector databases, similarity search, prompt grounding, citations.</p>
+      <table>
+        <tr><th>Course / Resource</th><th>Link</th><th>Cost</th></tr>
+        <tr><td>Retrieval Augmented Generation (RAG) – DeepLearning.AI</td><td><a href="https://www.coursera.org/learn/retrieval-augmented-generation-rag" target="_blank">coursera.org</a></td><td><span class="cost paid">Coursera</span></td></tr>
+        <tr><td>Vector Databases: from Embeddings to Applications</td><td><a href="https://www.deeplearning.ai/courses/vector-databases-embeddings-applications" target="_blank">deeplearning.ai</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>LangChain: Chat with Your Data</td><td><a href="https://www.deeplearning.ai/courses/langchain-chat-with-your-data" target="_blank">deeplearning.ai</a></td><td><span class="cost">Free</span></td></tr>
+      </table>
+      <div class="lab"><b>Lab:</b> Document Q&amp;A over PDFs using pgvector / Chroma / Azure AI Search, with source citations.</div>
+    </div>
+  </section>
+
+  <!-- WEEK 4 -->
+  <section class="week c-rag" id="w4">
+    <div class="week-head">
+      <div class="week-num">4</div>
+      <div><div class="tag">RAG</div><h3>Advanced RAG Architecture &amp; Evaluation</h3></div>
+      <label class="done-toggle"><input type="checkbox" data-week="4"> Done</label>
+    </div>
+    <div class="week-body">
+      <p class="learn"><strong>Learn:</strong> Hybrid search, reranking, query rewriting, GraphRAG, agentic RAG, multi-tenant / permission-aware retrieval, RAG evaluation.</p>
+      <table>
+        <tr><th>Course / Resource</th><th>Link</th><th>Cost</th></tr>
+        <tr><td>Building and Evaluating Advanced RAG</td><td><a href="https://www.deeplearning.ai/courses/building-evaluating-advanced-rag" target="_blank">deeplearning.ai</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>Knowledge Graphs for RAG</td><td><a href="https://www.deeplearning.ai/courses/knowledge-graphs-rag" target="_blank">deeplearning.ai</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>Azure RAG Solution Design &amp; Evaluation Guide</td><td><a href="https://learn.microsoft.com/en-us/azure/architecture/ai-ml/guide/rag/rag-solution-design-and-evaluation-guide" target="_blank">learn.microsoft.com</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>RAGAS – RAG evaluation framework</td><td><a href="https://docs.ragas.io" target="_blank">docs.ragas.io</a></td><td><span class="cost">Free</span></td></tr>
+      </table>
+      <div class="lab"><b>Lab:</b> Add hybrid search + reranker + evaluation set scoring faithfulness, answer relevance and context recall.</div>
+    </div>
+  </section>
+
+  <!-- WEEK 5 -->
+  <section class="week c-agent" id="w5">
+    <div class="week-head">
+      <div class="week-num">5</div>
+      <div><div class="tag">Agentic AI</div><h3>Agentic AI Foundations</h3></div>
+      <label class="done-toggle"><input type="checkbox" data-week="5"> Done</label>
+    </div>
+    <div class="week-body">
+      <p class="learn"><strong>Learn:</strong> Tool/function calling, ReAct, agentic design patterns (reflection, tool use, planning, multi-agent), agent memory, when <em>not</em> to use agents.</p>
+      <table>
+        <tr><th>Course / Resource</th><th>Link</th><th>Cost</th></tr>
+        <tr><td>Agentic AI (Andrew Ng)</td><td><a href="https://www.deeplearning.ai/courses/agentic-ai/" target="_blank">deeplearning.ai</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>Hugging Face AI Agents Course</td><td><a href="https://huggingface.co/learn/agents-course" target="_blank">huggingface.co</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>Microsoft AI Agents for Beginners</td><td><a href="https://github.com/microsoft/ai-agents-for-beginners" target="_blank">github.com</a></td><td><span class="cost">Free</span></td></tr>
+      </table>
+      <div class="lab"><b>Lab:</b> Turn the RAG app into a tool-calling agent (search, calculator, API lookup).</div>
+    </div>
+  </section>
+
+  <!-- WEEK 6 -->
+  <section class="week c-agent" id="w6">
+    <div class="week-head">
+      <div class="week-num">6</div>
+      <div><div class="tag">Agentic AI</div><h3>LangGraph</h3></div>
+      <label class="done-toggle"><input type="checkbox" data-week="6"> Done</label>
+    </div>
+    <div class="week-body">
+      <p class="learn"><strong>Learn:</strong> Graph state, nodes/edges, conditional routing, checkpointers, persistence, human-in-the-loop, streaming, short- and long-term memory.</p>
+      <table>
+        <tr><th>Course / Resource</th><th>Link</th><th>Cost</th></tr>
+        <tr><td>LangChain Academy – Introduction to LangGraph</td><td><a href="https://academy.langchain.com/courses/intro-to-langgraph" target="_blank">academy.langchain.com</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>AI Agents in LangGraph</td><td><a href="https://www.deeplearning.ai/courses/ai-agents-in-langgraph" target="_blank">deeplearning.ai</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>Long-Term Agentic Memory with LangGraph</td><td><a href="https://www.deeplearning.ai/courses/long-term-agentic-memory-with-langgraph" target="_blank">deeplearning.ai</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>LangGraph source &amp; examples</td><td><a href="https://github.com/langchain-ai/langgraph" target="_blank">github.com</a></td><td><span class="cost">Free</span></td></tr>
+      </table>
+      <div class="lab"><b>Lab:</b> Rebuild the agent in LangGraph with persistent memory and a human approval step before any "write" action.</div>
+    </div>
+  </section>
+
+  <!-- WEEK 7 -->
+  <section class="week c-agent" id="w7">
+    <div class="week-head">
+      <div class="week-num">7</div>
+      <div><div class="tag">Agentic AI</div><h3>Multi-Agent Systems</h3></div>
+      <label class="done-toggle"><input type="checkbox" data-week="7"> Done</label>
+    </div>
+    <div class="week-body">
+      <p class="learn"><strong>Learn:</strong> Supervisor, hierarchical, swarm and network patterns; agent handoffs; shared vs isolated state; cost and loop control. Framework comparison: LangGraph vs CrewAI vs AutoGen vs Microsoft Agent Framework.</p>
+      <table>
+        <tr><th>Course / Resource</th><th>Link</th><th>Cost</th></tr>
+        <tr><td>Multi AI Agent Systems with crewAI</td><td><a href="https://www.deeplearning.ai/courses/multi-ai-agent-systems-with-crewai" target="_blank">deeplearning.ai</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>AI Agentic Design Patterns with AutoGen</td><td><a href="https://www.deeplearning.ai/courses/ai-agentic-design-patterns-with-autogen" target="_blank">deeplearning.ai</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>Microsoft Agent Framework</td><td><a href="https://github.com/microsoft/agent-framework" target="_blank">github.com</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>Evaluating AI Agents</td><td><a href="https://www.deeplearning.ai/courses/evaluating-ai-agents" target="_blank">deeplearning.ai</a></td><td><span class="cost">Free</span></td></tr>
+      </table>
+      <div class="lab"><b>Lab:</b> Supervisor agent routing to 3 specialist agents (e.g. research, policy, summariser) with tracing and loop limits.</div>
+    </div>
+  </section>
+
+  <!-- WEEK 8 -->
+  <section class="week c-agent" id="w8">
+    <div class="week-head">
+      <div class="week-num">8</div>
+      <div><div class="tag">Agentic AI</div><h3>MCP (Model Context Protocol) &amp; A2A</h3></div>
+      <label class="done-toggle"><input type="checkbox" data-week="8"> Done</label>
+    </div>
+    <div class="week-body">
+      <p class="learn"><strong>Learn:</strong> MCP host/client/server architecture; tools, resources and prompts; stdio vs streamable HTTP; remote servers and OAuth; MCP security (tool poisoning, over-permissioning); A2A for agent-to-agent communication.</p>
+      <table>
+        <tr><th>Course / Resource</th><th>Link</th><th>Cost</th></tr>
+        <tr><td>MCP: Build Rich-Context AI Apps with Anthropic</td><td><a href="https://www.deeplearning.ai/courses/mcp-build-rich-context-ai-apps-with-anthropic" target="_blank">deeplearning.ai</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>Claude Academy – Introduction to Model Context Protocol</td><td><a href="https://academy.claude.com/courses/introduction-to-model-context-protocol" target="_blank">academy.claude.com</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>Hugging Face MCP Course</td><td><a href="https://huggingface.co/learn/mcp-course" target="_blank">huggingface.co</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>Microsoft MCP for Beginners</td><td><a href="https://github.com/microsoft/mcp-for-beginners" target="_blank">github.com</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>MCP Specification</td><td><a href="https://modelcontextprotocol.io" target="_blank">modelcontextprotocol.io</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>A2A (Agent2Agent) Protocol</td><td><a href="https://a2a-protocol.org" target="_blank">a2a-protocol.org</a></td><td><span class="cost">Free</span></td></tr>
+      </table>
+      <div class="lab"><b>Lab:</b> Expose your agent tools as an MCP server; consume it from LangGraph and an MCP client (VS Code / Claude Desktop).</div>
+    </div>
+  </section>
+
+  <!-- WEEK 9 -->
+  <section class="week c-cloud" id="w9">
+    <div class="week-head">
+      <div class="week-num">9</div>
+      <div><div class="tag">Cloud – Azure</div><h3>Azure AI (Microsoft Foundry)</h3></div>
+      <label class="done-toggle"><input type="checkbox" data-week="9"> Done</label>
+    </div>
+    <div class="week-body">
+      <p class="learn"><strong>Learn:</strong> Microsoft Foundry, Azure OpenAI, Azure AI Search, Foundry Agent Service, Content Safety, evaluations, private networking + Entra ID, API Management as AI gateway.</p>
+      <table>
+        <tr><th>Course / Resource</th><th>Link</th><th>Cost</th></tr>
+        <tr><td>AI-103: Azure AI Apps and Agents Developer Associate</td><td><a href="https://learn.microsoft.com/en-us/credentials/certifications/azure-ai-apps-and-agents-developer-associate" target="_blank">learn.microsoft.com</a></td><td><span class="cost cert">Cert</span></td></tr>
+        <tr><td>AI-103 Study Guide (links to Learn paths)</td><td><a href="https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/ai-103" target="_blank">learn.microsoft.com</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>Azure AI Search – RAG overview</td><td><a href="https://learn.microsoft.com/en-us/azure/search/retrieval-augmented-generation-overview" target="_blank">learn.microsoft.com</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>Next step: AI-500 Multi-Agent AI Solutions Expert</td><td><a href="https://learn.microsoft.com/en-us/credentials/certifications/multi-agent-ai-solutions-expert" target="_blank">learn.microsoft.com</a></td><td><span class="cost cert">Cert</span></td></tr>
+      </table>
+      <div class="lab"><b>Lab:</b> Deploy the RAG + agent solution on Foundry with AI Search, managed identity and Content Safety.</div>
+    </div>
+  </section>
+
+  <!-- WEEK 10 -->
+  <section class="week c-cloud" id="w10">
+    <div class="week-head">
+      <div class="week-num">10</div>
+      <div><div class="tag">Cloud – AWS</div><h3>AWS AI (Bedrock &amp; AgentCore)</h3></div>
+      <label class="done-toggle"><input type="checkbox" data-week="10"> Done</label>
+    </div>
+    <div class="week-body">
+      <p class="learn"><strong>Learn:</strong> Amazon Bedrock, Knowledge Bases (managed RAG), Bedrock Agents, AgentCore (Runtime, Gateway, Identity, Memory, Observability), Guardrails, SageMaker where needed.</p>
+      <table>
+        <tr><th>Course / Resource</th><th>Link</th><th>Cost</th></tr>
+        <tr><td>AWS Certified Generative AI Developer – Professional (AIP-C01)</td><td><a href="https://aws.amazon.com/certification/certified-generative-ai-developer-professional/" target="_blank">aws.amazon.com</a></td><td><span class="cost cert">Cert</span></td></tr>
+        <tr><td>Skill Builder Exam Prep Plan (~19 hrs, labs + 130+ practice Qs)</td><td><a href="https://skillbuilder.aws/category/exam-prep/generative-ai-developer-professional-AIP-C01" target="_blank">skillbuilder.aws</a></td><td><span class="cost paid">Partly paid</span></td></tr>
+        <tr><td>Amazon Bedrock Workshop</td><td><a href="https://github.com/aws-samples/amazon-bedrock-workshop" target="_blank">github.com</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>Amazon Bedrock AgentCore</td><td><a href="https://aws.amazon.com/bedrock/agentcore/" target="_blank">aws.amazon.com</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>Amazon Bedrock Knowledge Bases</td><td><a href="https://aws.amazon.com/bedrock/knowledge-bases/" target="_blank">aws.amazon.com</a></td><td><span class="cost">Free</span></td></tr>
+      </table>
+      <div class="lab"><b>Lab:</b> Port the solution to Bedrock Knowledge Bases + AgentCore. Write a 1-page <strong>Azure vs AWS comparison</strong> (services, cost, limits).</div>
+    </div>
+  </section>
+
+  <!-- WEEK 11 -->
+  <section class="week c-secure" id="w11">
+    <div class="week-head">
+      <div class="week-num">11</div>
+      <div><div class="tag">Security &amp; Governance</div><h3>AI Security &amp; Governance</h3></div>
+      <label class="done-toggle"><input type="checkbox" data-week="11"> Done</label>
+    </div>
+    <div class="week-body">
+      <p class="learn"><strong>Learn:</strong> Prompt injection (direct and indirect), data leakage, excessive agency, supply-chain risk, red-teaming, guardrails, AI risk frameworks, regulation.</p>
+      <table>
+        <tr><th>Course / Resource</th><th>Link</th><th>Cost</th></tr>
+        <tr><td>OWASP Top 10 for LLM &amp; Agentic Applications</td><td><a href="https://genai.owasp.org/llm-top-10/" target="_blank">genai.owasp.org</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>MITRE ATLAS – AI threat matrix</td><td><a href="https://atlas.mitre.org" target="_blank">atlas.mitre.org</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>Red Teaming LLM Applications</td><td><a href="https://www.deeplearning.ai/courses/red-teaming-llm-applications" target="_blank">deeplearning.ai</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>Microsoft PyRIT – red-teaming toolkit</td><td><a href="https://github.com/Azure/PyRIT" target="_blank">github.com</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>NIST AI Risk Management Framework (+ GenAI Profile AI 600-1)</td><td><a href="https://www.nist.gov/itl/ai-risk-management-framework" target="_blank">nist.gov</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>ISO/IEC 42001 – AI Management System</td><td><a href="https://www.iso.org/standard/81230.html" target="_blank">iso.org</a></td><td><span class="cost paid">Paid std</span></td></tr>
+        <tr><td>Australian Voluntary AI Safety Standard</td><td><a href="https://www.industry.gov.au/publications/voluntary-ai-safety-standard" target="_blank">industry.gov.au</a></td><td><span class="cost">Free</span></td></tr>
+        <tr><td>Azure AI Content Safety / Prompt Shields</td><td><a href="https://learn.microsoft.com/en-us/azure/ai-services/content-safety/" target="_blank">learn.microsoft.com</a></td><td><span class="cost">Free docs</span></td></tr>
+        <tr><td>Amazon Bedrock Guardrails</td><td><a href="https://aws.amazon.com/bedrock/guardrails/" target="_blank">aws.amazon.com</a></td><td><span class="cost">Free docs</span></td></tr>
+        <tr><td>IAPP AIGP – AI Governance Professional</td><td><a href="https://iapp.org/certify/aigp/" target="_blank">iapp.org</a></td><td><span class="cost cert">Cert</span></td></tr>
+      </table>
+      <div class="lab"><b>Deliverable:</b> Threat model (STRIDE + OWASP) of your multi-agent + MCP system, guardrails config, red-team report, AI risk assessment and model card.</div>
+    </div>
+  </section>
+
+  <!-- WEEK 12 -->
+  <section class="week c-secure" id="w12">
+    <div class="week-head">
+      <div class="week-num">12</div>
+      <div><div class="tag">Operate &amp; Architect</div><h3>LLMOps + Architecture Capstone</h3></div>
+      <label class="done-toggle"><input type="checkbox" data-week="12"> Done</label>
+    </div>
+    <div class="week-body">
+      <p class="learn"><strong>Learn:</strong> Evaluation pipelines, tracing and observability (LangSmith, OpenTelemetry), prompt versioning, CI/CD for prompts and agents, FinOps (token budgets, caching, model routing).</p>
+      <div class="grid2">
+        <div class="panel">
+          <h3>Capstone – Enterprise AI Architecture Pack</h3>
+          <ol>
+            <li>Reference architecture (Azure + AWS): gateway, RAG layer, agent orchestration, MCP tool layer, identity, observability</li>
+            <li>ADRs: framework choice, model routing, vector store, single vs multi-agent</li>
+            <li>Security &amp; governance controls mapped to OWASP / NIST / ISO 42001</li>
+            <li>Evaluation results and cost model</li>
+            <li>10-minute architecture presentation</li>
+          </ol>
+        </div>
+        <div class="panel">
+          <h3>Exams</h3>
+          <ul>
+            <li>Book <strong>AI-103</strong> and/or <strong>AIP-C01</strong> for weeks 13–14</li>
+            <li>Then target <strong>AI-500</strong> (Multi-Agent AI Solutions Expert)</li>
+            <li>Optional governance: <strong>IAPP AIGP</strong></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <h2 id="rhythm">Weekly Rhythm (~11 hrs)</h2>
+  <div class="grid2">
+    <div class="panel">
+      <ul>
+        <li><strong>4 hrs</strong> – courses</li>
+        <li><strong>5 hrs</strong> – hands-on lab on the running project</li>
+        <li><strong>1 hr</strong> – architecture reading (cloud architecture centres, engineering blogs)</li>
+        <li><strong>1 hr</strong> – write-up (ADR / diagram / blog) to build your architect portfolio</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3>Tips</h3>
+      <ul>
+        <li>Pick one primary cloud: go deep on Week 9 or 10 and keep the other as comparison.</li>
+        <li>DeepLearning.AI short courses, Hugging Face, Microsoft GitHub curricula and Microsoft Learn are free. Coursera and some Skill Builder labs need a subscription.</li>
+        <li>If a link has moved, search the course title on the provider's catalogue.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 id="certs">Certification Path</h2>
+  <div class="card">
+    <table>
+      <tr><th>Track</th><th>Path</th></tr>
+      <tr><td><strong>Microsoft Azure</strong></td><td>AZ-900 → AI-901 → AI-103 → AZ-305 → AI-500</td></tr>
+      <tr><td><strong>AWS</strong></td><td>Cloud Practitioner → AI Practitioner → ML Engineer Associate → Generative AI Developer Professional (AIP-C01) → Solutions Architect Professional</td></tr>
+      <tr><td><strong>Google Cloud</strong></td><td>Cloud Digital Leader → Generative AI Leader → Professional ML Engineer → Professional Cloud Architect</td></tr>
+      <tr><td><strong>Vendor-neutral</strong></td><td>IAPP AIGP · TOGAF · CKAD</td></tr>
+    </table>
+  </div>
+  <p style="font-size:13px;color:var(--muted)">Note: Microsoft retired AI-900, AI-102 and DP-100 in June 2026 (replaced by AI-901, AI-103 and AI-300). Always confirm exam codes on the official page before booking.</p>
+
+</main>
+
+<footer>AI Architect 12-Week Plan · Progress is saved in this browser (localStorage).</footer>
+
+<script>
+  (function () {
+    var KEY = "aiArchitectPlanProgress";
+    var saved = {};
+    try { saved = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) {}
+    var boxes = document.querySelectorAll("input[data-week]");
+    function update() {
+      var done = 0;
+      boxes.forEach(function (b) {
+        var wk = b.closest(".week");
+        if (b.checked) { done++; wk.classList.add("done"); } else { wk.classList.remove("done"); }
+      });
+      document.getElementById("bar").style.width = (done / boxes.length * 100) + "%";
+      document.getElementById("barLabel").textContent = done + " of " + boxes.length + " weeks complete";
+    }
+    boxes.forEach(function (b) {
+      b.checked = !!saved[b.dataset.week];
+      b.addEventListener("change", function () {
+        saved[b.dataset.week] = b.checked;
+        try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) {}
+        update();
+      });
+    });
+    update();
+  })();
+</script>
+</body>
+</html>
