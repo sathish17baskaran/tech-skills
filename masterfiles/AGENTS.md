@@ -7,6 +7,7 @@ There's no framework and no build step. Every page is a hand-written HTML file t
 - Live: https://tech-skills-cwox.onrender.com and https://sathish17baskaran.github.io/tech-skills/
 - Deploys: pushing to `main` publishes both sites in about a minute (Render via `render.yaml`, GitHub Pages from the repo root).
 - Ideas and backlog: [ENHANCEMENTS.md](ENHANCEMENTS.md).
+- This guide, `CLAUDE.md` and `ENHANCEMENTS.md` live in `masterfiles/`, not the repo root, so AI tools won't load them automatically. Point the assistant to `masterfiles/AGENTS.md` at the start of a task.
 
 ## Content rules
 - The site is for **last-minute interview prep**: keywords, key points, how to approach a question and the steps to answer. Keep new prose short (about 250–350 words per section before the `.dotnet` box) and prefer tables, boxes and visuals.
@@ -57,6 +58,36 @@ There's no framework and no build step. Every page is a hand-written HTML file t
 | `assets/revise/NN.js` | Quick-revision data for page NN. See "Quick revise data" below |
 | `tools/check-revise.mjs` | Validates the revise data against each page: `node tools/check-revise.mjs [NN ...]` |
 | `render.yaml` | Render static-site blueprint |
+| `AI/AI-Architect-12-Week-Plan.html` | Standalone AI Architect learning plan (Week 0–12 plus a 6-week fast track). See "Standalone learning plans" below |
+| `masterfiles/` | This guide, `CLAUDE.md` and `ENHANCEMENTS.md` |
+
+## Standalone learning plans (`AI/`)
+`AI/AI-Architect-12-Week-Plan.html` is a self-contained study plan, not a numbered site page. Live at `/AI/AI-Architect-12-Week-Plan.html` on both sites.
+- It has its own inline CSS and JS and doesn't use `assets/`. It isn't in the menu, nav, index or revise data, so the section rules above (animated visuals, `.dotnet` boxes, `span.num`, revise data) don't apply.
+- The site-wide rules still apply: no employer names, it must work at 390 px, and it's saved as UTF-8 without BOM.
+- Structure: a roadmap grid, a `#pace` fast-track table, then one `section.week#wN` per week (N = 0–12). Each week has:
+  - `.week-head`: number, tag, title and a Done checkbox `input[data-week="N"]` (progress is saved in `localStorage` as `aiArchitectPlanProgress`)
+  - `p.learn`
+  - `.res-grid` with three `.res` boxes: 🎓 Courses, 📄 Docs and `.res.videos` ▶ Videos
+  - `.lab` (the lab or deliverable for the running project)
+- Pills:
+  - `.cost` free, `.cost.paid`, `.cost.cert`
+  - `.opt` for Optional items, which fast-track learners skip
+  - `.start` "⭐ Start here": exactly one per week, the simplest and shortest video
+  - `.site` for links to this site's pages, written as relative links (`../17-rag-genai.html`)
+- Choosing videos: beginner-friendly, highly viewed, from well-known channels (official vendor channels, IBM Technology, 3Blue1Brown, freeCodeCamp, Karpathy, TechWorld with Nana). Show the channel, and the length only when you know it.
+- If you add, remove or merge weeks, update the roadmap cards, the nav links, the `#pace` table and the progress label.
+- Facts change fast here. Before writing, verify exam codes (Microsoft replaced AI-900, AI-102 and DP-100 with AI-901, AI-103 and AI-300 in June 2026), product names (Azure AI Foundry is now Microsoft Foundry) and course URLs.
+- Check every link before committing. YouTube links go through oEmbed (it returns the real title and channel); other links go through curl:
+
+  ```powershell
+  $c=[IO.File]::ReadAllText('AI\AI-Architect-12-Week-Plan.html')
+  $hrefs=[regex]::Matches($c,'href="(https?://[^"]+)"') | % { $_.Groups[1].Value } | Sort-Object -Unique
+  foreach($u in $hrefs){ if($u -match 'youtube\.com'){ try { $null=Invoke-RestMethod "https://www.youtube.com/oembed?url=$([uri]::EscapeDataString($u))&format=json" } catch { "YT FAIL $u" } } else { $code=curl.exe -s -o NUL -L -A "Mozilla/5.0" -w "%{http_code}" --max-time 20 $u; if($code -ne '200'){ "$code $u" } } }
+  ```
+
+  A 403 from claude.com, anthropic.com, huggingface.co or iso.org is bot-blocking, so open those in a browser to confirm.
+- Screenshots: headless Edge ignores `#anchor` on first load and won't go below about 500 px wide. Capture through a small wrapper page that puts the plan in an `<iframe>` (390 px wide for mobile, with `#wN` in the iframe URL).
 
 ## Page anatomy
 Copy the skeleton from the most similar existing page. The required parts, in order:

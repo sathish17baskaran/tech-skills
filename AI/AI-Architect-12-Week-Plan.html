@@ -62,6 +62,9 @@
   .cost { font-size: 11px; padding: 1px 8px; border-radius: 999px; background: #e8f5ee; color: #1d7a46; white-space: nowrap; margin-left: 4px; }
   .cost.paid { background: #fdf0e3; color: #a65a10; }
   .cost.cert { background: #efe8fb; color: #6a3bb5; }
+  .opt { font-size: 11px; padding: 1px 8px; border-radius: 999px; background: #eef0f4; color: #5b6475; white-space: nowrap; margin-left: 4px; }
+  .site { font-size: 11px; padding: 1px 8px; border-radius: 999px; background: #e6f0ff; color: #1f5fbf; white-space: nowrap; margin-left: 4px; }
+  .pace td:first-child { font-weight: 600; white-space: nowrap; }
   .start { font-size: 11px; padding: 1px 8px; border-radius: 999px; background: #fff1c2; color: #8a5a00; font-weight: 600; white-space: nowrap; margin-left: 4px; }
   .lab { margin-top: 12px; background: #f6f8fc; border: 1px dashed #c9d3e6; border-radius: 8px; padding: 10px 12px; font-size: 14px; }
   .lab b { color: var(--c); }
@@ -95,20 +98,22 @@
     <h1>AI Architect – 12-Week Learning Plan</h1>
     <p>GenAI · AI Architecture · RAG · Agentic AI (LangGraph, Multi-Agent) · MCP · Azure AI · AWS AI · AI Security &amp; Governance</p>
     <div class="meta">
-      <span class="chip">⏱ ~10–12 hrs / week</span>
+      <span class="chip">⏱ Standard: 12 weeks · ~11 hrs/week</span>
+      <span class="chip">🚀 Fast track: 6 weeks · ~20 hrs/week</span>
       <span class="chip">🎓 Courses · 📄 Docs · ▶ Videos every week</span>
       <span class="chip">⭐ "Start here" = simplest video first</span>
       <span class="chip">🏅 Target certs: AI-103 · AIP-C01 · AI-500</span>
     </div>
     <div class="progress"><div id="bar"></div></div>
-    <div class="progress-label" id="barLabel">0 of 12 weeks complete</div>
+    <div class="progress-label" id="barLabel">0 of 13 weeks complete (Week 0–12)</div>
   </div>
 </header>
 
 <nav>
   <div class="wrap">
     <a href="#overview">Overview</a>
-    <a href="#w1">W1</a><a href="#w2">W2</a><a href="#w3">W3</a><a href="#w4">W4</a>
+    <a href="#pace">Pace</a>
+    <a href="#w0">W0</a><a href="#w1">W1</a><a href="#w2">W2</a><a href="#w3">W3</a><a href="#w4">W4</a>
     <a href="#w5">W5</a><a href="#w6">W6</a><a href="#w7">W7</a><a href="#w8">W8</a>
     <a href="#w9">W9</a><a href="#w10">W10</a><a href="#w11">W11</a><a href="#w12">W12</a>
     <a href="#rhythm">Weekly rhythm</a><a href="#certs">Certifications</a>
@@ -126,6 +131,7 @@
     <span class="c-secure">Security, Governance &amp; Ops</span>
   </div>
   <div class="roadmap">
+    <a class="step c-found" href="#w0"><b>Week 0</b><span>Prerequisites (2–3 days)</span><small>Python, APIs, Git, cloud accounts</small></a>
     <a class="step c-found" href="#w1"><b>Week 1</b><span>GenAI &amp; LLM Foundations</span><small>Basic chatbot via LLM API</small></a>
     <a class="step c-found" href="#w2"><b>Week 2</b><span>AI Architecture Fundamentals</span><small>Reference architecture + ADRs</small></a>
     <a class="step c-rag" href="#w3"><b>Week 3</b><span>RAG Fundamentals</span><small>Doc Q&amp;A with vector DB</small></a>
@@ -140,7 +146,70 @@
     <a class="step c-secure" href="#w12"><b>Week 12</b><span>LLMOps + Architecture Capstone</span><small>Architecture pack + exam booking</small></a>
   </div>
 
+  <h2 id="pace">Choose Your Pace – Learn Faster</h2>
+  <div class="card">
+    <table class="pace">
+      <tr><th>Fast track (6 weeks, ~20 hrs/week)</th><th>Covers</th><th>Focus</th></tr>
+      <tr><td>Fast week 1</td><td>Week 0 + 1 + 2</td><td>Prerequisites, LLM basics, architecture patterns</td></tr>
+      <tr><td>Fast week 2</td><td>Week 3 + 4</td><td>RAG, from basic to advanced, with evaluation</td></tr>
+      <tr><td>Fast week 3</td><td>Week 5 + 6</td><td>Agents and LangGraph</td></tr>
+      <tr><td>Fast week 4</td><td>Week 7 + 8</td><td>Multi-agent systems, MCP and A2A</td></tr>
+      <tr><td>Fast week 5</td><td>Week 9 <em>or</em> 10 + Week 11</td><td>Your main cloud in depth, then security and governance</td></tr>
+      <tr><td>Fast week 6</td><td>Week 12</td><td>LLMOps, the other cloud (⭐ videos only), capstone, book the exam</td></tr>
+    </table>
+  </div>
+  <div class="grid2" style="margin-top:14px">
+    <div class="panel">
+      <h3>🚀 How to learn faster</h3>
+      <ul>
+        <li><strong>Build first.</strong> Start each week's lab on day 1. Use the courses only to get unstuck.</li>
+        <li><strong>Skip anything tagged <span class="opt">Optional</span></strong> on the fast track.</li>
+        <li><strong>Already know a topic?</strong> If you can already do the lab, skip that week's courses and just do the lab and docs.</li>
+        <li><strong>Watch videos at 1.25–1.5× speed.</strong> Always start with the ⭐ one.</li>
+        <li><strong>Keep one running project.</strong> Each week extends it, so you never start from scratch.</li>
+        <li><strong>Use an AI assistant as a tutor.</strong> Ask it to explain errors and quiz you at the end of each week.</li>
+        <li><strong>Book the exam on day 1.</strong> A fixed date keeps the pace up.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3>⏰ Daily routine (fast track)</h3>
+      <ul>
+        <li><strong>Weekdays (~2.5 hrs):</strong> 30 min video, 90 min building, 20 min docs, 10 min notes</li>
+        <li><strong>Weekend (~4–5 hrs/day):</strong> finish the lab, write the ADR or diagram, and do a self-quiz</li>
+        <li><strong>End of week:</strong> explain the topic out loud in 2 minutes. If you can't, revisit the ⭐ video and docs.</li>
+        <li><strong>Revise for interviews:</strong> <a href="../revise.html">flashcards and quiz on this site</a></li>
+      </ul>
+    </div>
+  </div>
+
   <h2>Weekly Plan</h2>
+
+  <!-- WEEK 0 -->
+  <section class="week c-found" id="w0">
+    <div class="week-head">
+      <div class="week-num">0</div>
+      <div><div class="tag">Prerequisites · 2–3 days</div><h3>Setup &amp; Prerequisites</h3></div>
+      <label class="done-toggle"><input type="checkbox" data-week="0"> Done</label>
+    </div>
+    <div class="week-body">
+      <p class="learn"><strong>Learn:</strong> Enough Python to call APIs (variables, functions, lists/dicts, pip, virtual environments), REST and JSON, Git basics, Jupyter or VS Code, plus an Azure and/or AWS free account with LLM API access. <em>Skip this week if you already code in Python.</em></p>
+      <div class="res-grid">
+        <div class="res"><h4>🎓 Courses</h4><ul>
+          <li><a href="https://www.deeplearning.ai/courses/ai-python-for-beginners" target="_blank" rel="noopener">AI Python for Beginners (Andrew Ng)</a><span class="cost">Free</span><span class="sub">Python taught through AI examples</span></li>
+          <li><a href="https://www.py4e.com" target="_blank" rel="noopener">Python for Everybody</a><span class="cost">Free</span><span class="opt">Optional</span></li>
+        </ul></div>
+        <div class="res"><h4>📄 Docs</h4><ul>
+          <li><a href="https://platform.openai.com/docs/quickstart" target="_blank" rel="noopener">OpenAI API quickstart (first API call)</a></li>
+          <li><a href="https://learn.microsoft.com/en-us/azure/foundry/" target="_blank" rel="noopener">Microsoft Foundry docs (quickstarts)</a></li>
+          <li><a href="https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html" target="_blank" rel="noopener">Amazon Bedrock docs (getting started)</a></li>
+        </ul></div>
+        <div class="res videos"><h4>▶ Videos</h4><ul>
+          <li><a href="https://www.youtube.com/watch?v=rfscVS0vtbw" target="_blank" rel="noopener">Learn Python – Full Course for Beginners</a><span class="start">⭐ Start here</span><span class="sub">freeCodeCamp · watch only the parts you need</span></li>
+        </ul></div>
+      </div>
+      <div class="lab"><b>Setup:</b> Python and VS Code installed, a GitHub repo for your running project, and an API key that works (Azure OpenAI, Bedrock or OpenAI) tested with one "hello" call.</div>
+    </div>
+  </section>
 
   <!-- WEEK 1 -->
   <section class="week c-found" id="w1">
@@ -154,10 +223,10 @@
       <div class="res-grid">
         <div class="res"><h4>🎓 Courses</h4><ul>
           <li><a href="https://www.deeplearning.ai/courses/generative-ai-for-everyone/" target="_blank" rel="noopener">Generative AI for Everyone (Andrew Ng)</a><span class="cost">Free audit</span></li>
-          <li><a href="https://www.coursera.org/learn/generative-ai-with-llms" target="_blank" rel="noopener">Generative AI with Large Language Models</a><span class="cost paid">Coursera</span><span class="sub">AWS + DeepLearning.AI</span></li>
+          <li><a href="https://www.coursera.org/learn/generative-ai-with-llms" target="_blank" rel="noopener">Generative AI with Large Language Models</a><span class="cost paid">Coursera</span><span class="opt">Optional</span><span class="sub">AWS + DeepLearning.AI</span></li>
           <li><a href="https://www.deeplearning.ai/courses/chatgpt-prompt-engineering-for-developers" target="_blank" rel="noopener">ChatGPT Prompt Engineering for Developers</a><span class="cost">Free</span></li>
           <li><a href="https://github.com/microsoft/generative-ai-for-beginners" target="_blank" rel="noopener">Microsoft Generative AI for Beginners</a><span class="cost">Free</span><span class="sub">21 lessons</span></li>
-          <li><a href="https://github.com/anthropics/prompt-eng-interactive-tutorial" target="_blank" rel="noopener">Anthropic Prompt Engineering Tutorial</a><span class="cost">Free</span></li>
+          <li><a href="https://github.com/anthropics/prompt-eng-interactive-tutorial" target="_blank" rel="noopener">Anthropic Prompt Engineering Tutorial</a><span class="cost">Free</span><span class="opt">Optional</span></li>
         </ul></div>
         <div class="res"><h4>📄 Docs</h4><ul>
           <li><a href="https://platform.openai.com/docs/guides/prompt-engineering" target="_blank" rel="noopener">OpenAI – Prompt engineering guide</a></li>
@@ -167,7 +236,7 @@
           <li><a href="https://www.youtube.com/watch?v=LPZh9BOjkQs" target="_blank" rel="noopener">Large Language Models explained briefly</a><span class="start">⭐ Start here</span><span class="sub">3Blue1Brown · ~8 min</span></li>
           <li><a href="https://www.youtube.com/watch?v=2IK3DFHRFfw" target="_blank" rel="noopener">Generative AI in a Nutshell</a><span class="sub">Henrik Kniberg · ~18 min</span></li>
           <li><a href="https://www.youtube.com/watch?v=zjkBMFhNj_g" target="_blank" rel="noopener">Intro to Large Language Models</a><span class="sub">Andrej Karpathy · 1 hr</span></li>
-          <li><a href="https://www.youtube.com/watch?v=7xTGNNLPyMI" target="_blank" rel="noopener">Deep Dive into LLMs like ChatGPT</a><span class="sub">Andrej Karpathy · 3.5 hrs (optional deep dive)</span></li>
+          <li><a href="https://www.youtube.com/watch?v=7xTGNNLPyMI" target="_blank" rel="noopener">Deep Dive into LLMs like ChatGPT</a><span class="opt">Optional</span><span class="sub">Andrej Karpathy · 3.5 hrs</span></li>
         </ul></div>
       </div>
       <div class="lab"><b>Lab:</b> Python chatbot using OpenAI / Azure OpenAI / Bedrock API with system prompts and JSON output.</div>
@@ -182,24 +251,26 @@
       <label class="done-toggle"><input type="checkbox" data-week="2"> Done</label>
     </div>
     <div class="week-body">
-      <p class="learn"><strong>Learn:</strong> GenAI architecture patterns (chat, RAG, agents, fine-tune), build vs buy vs fine-tune, model gateway, latency/cost trade-offs, Well-Architected pillars for AI.</p>
+      <p class="learn"><strong>Learn:</strong> GenAI architecture patterns (chat, RAG, agents, fine-tune), build vs buy vs fine-tune, <strong>model selection</strong> (hosted vs open-weight, small vs large, multimodal), <strong>when to fine-tune</strong> (LoRA) vs RAG vs prompting, AI gateway and model routing, latency/cost trade-offs, Well-Architected pillars for AI.</p>
       <div class="res-grid">
         <div class="res"><h4>🎓 Courses &amp; certs</h4><ul>
+          <li><a href="https://www.deeplearning.ai/courses/finetuning-large-language-models" target="_blank" rel="noopener">Finetuning Large Language Models</a><span class="cost">Free</span><span class="sub">~1.5 hrs: when fine-tuning beats RAG and prompting</span></li>
           <li>Book: <em>AI Engineering</em> – Chip Huyen<span class="cost paid">O'Reilly</span><span class="sub">Ch. 1–3 and 10</span></li>
-          <li><a href="https://learn.microsoft.com/en-us/credentials/certifications/azure-ai-fundamentals/" target="_blank" rel="noopener">AI-901 Azure AI Fundamentals</a><span class="cost cert">Optional cert</span></li>
-          <li><a href="https://aws.amazon.com/certification/certified-ai-practitioner/" target="_blank" rel="noopener">AWS Certified AI Practitioner</a><span class="cost cert">Optional cert</span></li>
+          <li><a href="https://learn.microsoft.com/en-us/credentials/certifications/azure-ai-fundamentals/" target="_blank" rel="noopener">AI-901 Azure AI Fundamentals</a><span class="cost cert">Cert</span><span class="opt">Optional</span></li>
+          <li><a href="https://aws.amazon.com/certification/certified-ai-practitioner/" target="_blank" rel="noopener">AWS Certified AI Practitioner</a><span class="cost cert">Cert</span><span class="opt">Optional</span></li>
         </ul></div>
         <div class="res"><h4>📄 Docs</h4><ul>
           <li><a href="https://learn.microsoft.com/en-us/azure/well-architected/ai/" target="_blank" rel="noopener">Azure Well-Architected – AI workloads</a></li>
           <li><a href="https://learn.microsoft.com/en-us/azure/architecture/ai-ml/architecture/baseline-openai-e2e-chat" target="_blank" rel="noopener">Azure baseline end-to-end chat reference architecture</a></li>
           <li><a href="https://docs.aws.amazon.com/wellarchitected/latest/generative-ai-lens/generative-ai-lens.html" target="_blank" rel="noopener">AWS Well-Architected – Generative AI Lens</a></li>
+          <li><a href="https://learn.microsoft.com/en-us/azure/foundry/fine-tuning/overview" target="_blank" rel="noopener">Microsoft Foundry – Fine-tuning overview</a></li>
         </ul></div>
         <div class="res videos"><h4>▶ Videos</h4><ul>
           <li><a href="https://www.youtube.com/watch?v=zYGDpG-pTho" target="_blank" rel="noopener">RAG vs Fine-Tuning vs Prompt Engineering</a><span class="start">⭐ Start here</span><span class="sub">IBM Technology · 13 min</span></li>
           <li><a href="https://www.youtube.com/watch?v=vD0E3EUb8-8" target="_blank" rel="noopener">Context Engineering vs. Prompt Engineering</a><span class="sub">IBM Technology</span></li>
         </ul></div>
       </div>
-      <div class="lab"><b>Deliverable:</b> Reference architecture diagram for an "Enterprise AI Assistant" + 3 Architecture Decision Records (model choice, hosting, gateway).</div>
+      <div class="lab"><b>Deliverable:</b> Reference architecture diagram for an "Enterprise AI Assistant" + 3 Architecture Decision Records (model choice, hosting, gateway) + a one-page "RAG vs fine-tune vs prompt" decision guide.</div>
     </div>
   </section>
 
@@ -211,21 +282,22 @@
       <label class="done-toggle"><input type="checkbox" data-week="3"> Done</label>
     </div>
     <div class="week-body">
-      <p class="learn"><strong>Learn:</strong> Chunking strategies, embeddings, vector databases, similarity search, prompt grounding, citations.</p>
+      <p class="learn"><strong>Learn:</strong> <strong>Document ingestion</strong> (parsing PDFs, tables, scanned files), chunking strategies, metadata, embeddings, vector databases, similarity search, prompt grounding, citations, <strong>permission-aware retrieval</strong> (users only see what they're allowed to).</p>
       <div class="res-grid">
         <div class="res"><h4>🎓 Courses</h4><ul>
-          <li><a href="https://www.coursera.org/learn/retrieval-augmented-generation-rag" target="_blank" rel="noopener">Retrieval Augmented Generation (RAG)</a><span class="cost paid">Coursera</span><span class="sub">DeepLearning.AI</span></li>
+          <li><a href="https://www.coursera.org/learn/retrieval-augmented-generation-rag" target="_blank" rel="noopener">Retrieval Augmented Generation (RAG)</a><span class="cost paid">Coursera</span><span class="opt">Optional</span><span class="sub">DeepLearning.AI</span></li>
           <li><a href="https://www.deeplearning.ai/courses/vector-databases-embeddings-applications" target="_blank" rel="noopener">Vector Databases: from Embeddings to Applications</a><span class="cost">Free</span></li>
           <li><a href="https://www.deeplearning.ai/courses/langchain-chat-with-your-data" target="_blank" rel="noopener">LangChain: Chat with Your Data</a><span class="cost">Free</span></li>
         </ul></div>
         <div class="res"><h4>📄 Docs</h4><ul>
           <li><a href="https://learn.microsoft.com/en-us/azure/search/retrieval-augmented-generation-overview" target="_blank" rel="noopener">Azure AI Search – RAG overview</a></li>
           <li><a href="https://docs.aws.amazon.com/bedrock/latest/userguide/knowledge-base.html" target="_blank" rel="noopener">Amazon Bedrock – Knowledge Bases (managed RAG)</a></li>
+          <li><a href="../17-rag-genai.html">RAG &amp; GenAI interview notes</a><span class="site">This site</span></li>
         </ul></div>
         <div class="res videos"><h4>▶ Videos</h4><ul>
           <li><a href="https://www.youtube.com/watch?v=T-D1OfcDW1M" target="_blank" rel="noopener">What is Retrieval-Augmented Generation (RAG)?</a><span class="start">⭐ Start here</span><span class="sub">IBM Technology · ~7 min</span></li>
           <li><a href="https://www.youtube.com/watch?v=swvzKSOEluc" target="_blank" rel="noopener">RAG Crash Course for Beginners</a><span class="sub">KodeKloud · ~1 hr</span></li>
-          <li><a href="https://www.youtube.com/watch?v=sVcwVQRHIc8" target="_blank" rel="noopener">Learn RAG From Scratch (LangChain engineer)</a><span class="sub">freeCodeCamp · ~2.5 hrs</span></li>
+          <li><a href="https://www.youtube.com/watch?v=sVcwVQRHIc8" target="_blank" rel="noopener">Learn RAG From Scratch (LangChain engineer)</a><span class="opt">Optional</span><span class="sub">freeCodeCamp · ~2.5 hrs</span></li>
         </ul></div>
       </div>
       <div class="lab"><b>Lab:</b> Document Q&amp;A over PDFs using pgvector / Chroma / Azure AI Search, with source citations.</div>
@@ -244,7 +316,7 @@
       <div class="res-grid">
         <div class="res"><h4>🎓 Courses</h4><ul>
           <li><a href="https://www.deeplearning.ai/courses/building-evaluating-advanced-rag" target="_blank" rel="noopener">Building and Evaluating Advanced RAG</a><span class="cost">Free</span></li>
-          <li><a href="https://www.deeplearning.ai/courses/knowledge-graphs-rag" target="_blank" rel="noopener">Knowledge Graphs for RAG</a><span class="cost">Free</span></li>
+          <li><a href="https://www.deeplearning.ai/courses/knowledge-graphs-rag" target="_blank" rel="noopener">Knowledge Graphs for RAG</a><span class="cost">Free</span><span class="opt">Optional</span></li>
         </ul></div>
         <div class="res"><h4>📄 Docs</h4><ul>
           <li><a href="https://learn.microsoft.com/en-us/azure/architecture/ai-ml/guide/rag/rag-solution-design-and-evaluation-guide" target="_blank" rel="noopener">Azure – RAG solution design &amp; evaluation guide</a></li>
@@ -268,7 +340,7 @@
       <label class="done-toggle"><input type="checkbox" data-week="5"> Done</label>
     </div>
     <div class="week-body">
-      <p class="learn"><strong>Learn:</strong> Tool/function calling, ReAct, agentic design patterns (reflection, tool use, planning, multi-agent), agent memory, when <em>not</em> to use agents.</p>
+      <p class="learn"><strong>Learn:</strong> Tool/function calling, structured outputs, ReAct, agentic design patterns (reflection, tool use, planning, multi-agent), <strong>context engineering</strong> (what goes into the context window and when), agent memory, workflows vs agents, when <em>not</em> to use agents.</p>
       <div class="res-grid">
         <div class="res"><h4>🎓 Courses</h4><ul>
           <li><a href="https://www.deeplearning.ai/courses/agentic-ai" target="_blank" rel="noopener">Agentic AI (Andrew Ng)</a><span class="cost">Free</span></li>
@@ -277,6 +349,8 @@
         </ul></div>
         <div class="res"><h4>📄 Docs</h4><ul>
           <li><a href="https://www.anthropic.com/engineering/building-effective-agents" target="_blank" rel="noopener">Anthropic – Building effective agents</a><span class="sub">Must-read: workflows vs agents</span></li>
+          <li><a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents" target="_blank" rel="noopener">Anthropic – Effective context engineering for AI agents</a></li>
+          <li><a href="../18-agentic-ai.html">Agentic AI interview notes</a><span class="site">This site</span></li>
         </ul></div>
         <div class="res videos"><h4>▶ Videos</h4><ul>
           <li><a href="https://www.youtube.com/watch?v=F8NKVhkZZWI" target="_blank" rel="noopener">What are AI Agents?</a><span class="start">⭐ Start here</span><span class="sub">IBM Technology</span></li>
@@ -301,7 +375,7 @@
         <div class="res"><h4>🎓 Courses</h4><ul>
           <li><a href="https://academy.langchain.com/courses/intro-to-langgraph" target="_blank" rel="noopener">LangChain Academy – Introduction to LangGraph</a><span class="cost">Free</span></li>
           <li><a href="https://www.deeplearning.ai/courses/ai-agents-in-langgraph" target="_blank" rel="noopener">AI Agents in LangGraph</a><span class="cost">Free</span></li>
-          <li><a href="https://www.deeplearning.ai/courses/long-term-agentic-memory-with-langgraph" target="_blank" rel="noopener">Long-Term Agentic Memory with LangGraph</a><span class="cost">Free</span></li>
+          <li><a href="https://www.deeplearning.ai/courses/long-term-agentic-memory-with-langgraph" target="_blank" rel="noopener">Long-Term Agentic Memory with LangGraph</a><span class="cost">Free</span><span class="opt">Optional</span></li>
         </ul></div>
         <div class="res"><h4>📄 Docs</h4><ul>
           <li><a href="https://docs.langchain.com/oss/python/langgraph/overview" target="_blank" rel="noopener">LangGraph – Official docs</a></li>
@@ -309,7 +383,7 @@
         </ul></div>
         <div class="res videos"><h4>▶ Videos</h4><ul>
           <li><a href="https://www.youtube.com/watch?v=UklCxmEvz2w" target="_blank" rel="noopener">LangGraph Tutorial for Beginners: Build Your First AI Agent</a><span class="start">⭐ Start here</span><span class="sub">DataCamp · ~1 hr</span></li>
-          <li><a href="https://www.youtube.com/watch?v=jGg_1h0qzaM" target="_blank" rel="noopener">LangGraph Complete Course for Beginners</a><span class="sub">freeCodeCamp · ~3 hrs · 1M+ views</span></li>
+          <li><a href="https://www.youtube.com/watch?v=jGg_1h0qzaM" target="_blank" rel="noopener">LangGraph Complete Course for Beginners</a><span class="opt">Optional</span><span class="sub">freeCodeCamp · ~3 hrs · 1M+ views</span></li>
         </ul></div>
       </div>
       <div class="lab"><b>Lab:</b> Rebuild the agent in LangGraph with persistent memory and a human approval step before any "write" action.</div>
@@ -328,7 +402,7 @@
       <div class="res-grid">
         <div class="res"><h4>🎓 Courses</h4><ul>
           <li><a href="https://www.deeplearning.ai/courses/multi-ai-agent-systems-with-crewai" target="_blank" rel="noopener">Multi AI Agent Systems with crewAI</a><span class="cost">Free</span></li>
-          <li><a href="https://www.deeplearning.ai/courses/ai-agentic-design-patterns-with-autogen" target="_blank" rel="noopener">AI Agentic Design Patterns with AutoGen</a><span class="cost">Free</span></li>
+          <li><a href="https://www.deeplearning.ai/courses/ai-agentic-design-patterns-with-autogen" target="_blank" rel="noopener">AI Agentic Design Patterns with AutoGen</a><span class="cost">Free</span><span class="opt">Optional</span></li>
           <li><a href="https://www.deeplearning.ai/courses/evaluating-ai-agents" target="_blank" rel="noopener">Evaluating AI Agents</a><span class="cost">Free</span></li>
         </ul></div>
         <div class="res"><h4>📄 Docs</h4><ul>
@@ -358,8 +432,8 @@
         <div class="res"><h4>🎓 Courses</h4><ul>
           <li><a href="https://www.deeplearning.ai/courses/mcp-build-rich-context-ai-apps-with-anthropic" target="_blank" rel="noopener">MCP: Build Rich-Context AI Apps with Anthropic</a><span class="cost">Free</span></li>
           <li><a href="https://academy.claude.com/courses/introduction-to-model-context-protocol" target="_blank" rel="noopener">Claude Academy – Introduction to MCP</a><span class="cost">Free</span></li>
-          <li><a href="https://huggingface.co/learn/mcp-course" target="_blank" rel="noopener">Hugging Face MCP Course</a><span class="cost">Free</span></li>
-          <li><a href="https://github.com/microsoft/mcp-for-beginners" target="_blank" rel="noopener">Microsoft MCP for Beginners</a><span class="cost">Free</span></li>
+          <li><a href="https://huggingface.co/learn/mcp-course" target="_blank" rel="noopener">Hugging Face MCP Course</a><span class="cost">Free</span><span class="opt">Optional</span></li>
+          <li><a href="https://github.com/microsoft/mcp-for-beginners" target="_blank" rel="noopener">Microsoft MCP for Beginners</a><span class="cost">Free</span><span class="opt">Optional</span></li>
         </ul></div>
         <div class="res"><h4>📄 Docs</h4><ul>
           <li><a href="https://modelcontextprotocol.io/docs/getting-started/intro" target="_blank" rel="noopener">MCP – What is MCP? (official docs)</a></li>
@@ -370,7 +444,7 @@
           <li><a href="https://www.youtube.com/watch?v=eur8dUO9mvE" target="_blank" rel="noopener">What is MCP? Integrate AI Agents with Databases &amp; APIs</a><span class="start">⭐ Start here</span><span class="sub">IBM Technology · ~4 min</span></li>
           <li><a href="https://www.youtube.com/watch?v=oblaHqULUHk" target="_blank" rel="noopener">MCP Explained Simply – What It Is and Why It Exists</a><span class="sub">TechWorld with Nana · ~30 min</span></li>
           <li><a href="https://www.youtube.com/watch?v=BMDFPOyezH4" target="_blank" rel="noopener">A2A vs MCP: AI Agent Communication Explained</a><span class="sub">IBM Technology · ~12 min</span></li>
-          <li><a href="https://www.youtube.com/watch?v=kQmXtrmQ5Zg" target="_blank" rel="noopener">Building Agents with MCP – Full Workshop</a><span class="sub">Anthropic @ AI Engineer · ~1 hr 45 min</span></li>
+          <li><a href="https://www.youtube.com/watch?v=kQmXtrmQ5Zg" target="_blank" rel="noopener">Building Agents with MCP – Full Workshop</a><span class="opt">Optional</span><span class="sub">Anthropic @ AI Engineer · ~1 hr 45 min</span></li>
         </ul></div>
       </div>
       <div class="lab"><b>Lab:</b> Expose your agent tools as an MCP server; consume it from LangGraph and an MCP client (VS Code / Claude Desktop).</div>
@@ -399,7 +473,7 @@
         <div class="res videos"><h4>▶ Videos</h4><ul>
           <li><a href="https://www.youtube.com/watch?v=iR7_57lJOz8" target="_blank" rel="noopener">Foundry Agent Service + Microsoft Agent Framework Explained</a><span class="start">⭐ Start here</span><span class="sub">Microsoft Mechanics (official) · ~15 min</span></li>
           <li><a href="https://www.youtube.com/watch?v=Sq8Cq7RZM2o" target="_blank" rel="noopener">Azure AI Foundry Overview</a><span class="sub">John Savill's Technical Training · ~1.5 hrs</span></li>
-          <li><a href="https://www.youtube.com/watch?v=tZ6Y1IIAdx8" target="_blank" rel="noopener">Microsoft Foundry – Step-by-Step: Build an AI Agent (No Code)</a><span class="sub">Tech with Kirk · ~45 min</span></li>
+          <li><a href="https://www.youtube.com/watch?v=tZ6Y1IIAdx8" target="_blank" rel="noopener">Microsoft Foundry – Step-by-Step: Build an AI Agent (No Code)</a><span class="opt">Optional</span><span class="sub">Tech with Kirk · ~45 min</span></li>
         </ul></div>
       </div>
       <div class="lab"><b>Lab:</b> Deploy the RAG + agent solution on Foundry with AI Search, managed identity and Content Safety.</div>
@@ -428,7 +502,7 @@
         <div class="res videos"><h4>▶ Videos</h4><ul>
           <li><a href="https://www.youtube.com/watch?v=FAgmR9VV0GQ" target="_blank" rel="noopener">Amazon Bedrock for Beginners – First Prompt to AI Agent</a><span class="start">⭐ Start here</span><span class="sub">AWS Developers (official) · ~45 min</span></li>
           <li><a href="https://www.youtube.com/playlist?list=PLhr1KZpdzukfZdp5SGgm2yBPglHNHn-Ig" target="_blank" rel="noopener">Amazon Bedrock AgentCore – Deep Dive Series</a><span class="sub">Amazon Web Services (official) · playlist</span></li>
-          <li><a href="https://www.youtube.com/watch?v=wqmeZOT6mmc" target="_blank" rel="noopener">re:Invent 2025 – Architecting scalable &amp; secure agentic AI with AgentCore</a><span class="sub">AWS Events · architect level</span></li>
+          <li><a href="https://www.youtube.com/watch?v=wqmeZOT6mmc" target="_blank" rel="noopener">re:Invent 2025 – Architecting scalable &amp; secure agentic AI with AgentCore</a><span class="opt">Optional</span><span class="sub">AWS Events · architect level</span></li>
         </ul></div>
       </div>
       <div class="lab"><b>Lab:</b> Port the solution to Bedrock Knowledge Bases + AgentCore. Write a 1-page <strong>Azure vs AWS comparison</strong> (services, cost, limits).</div>
@@ -443,18 +517,20 @@
       <label class="done-toggle"><input type="checkbox" data-week="11"> Done</label>
     </div>
     <div class="week-body">
-      <p class="learn"><strong>Learn:</strong> Prompt injection (direct and indirect), data leakage, excessive agency, supply-chain risk, red-teaming, guardrails, AI risk frameworks, regulation.</p>
+      <p class="learn"><strong>Learn:</strong> Prompt injection (direct and indirect), data leakage, excessive agency, <strong>agent-specific risks</strong> (tool misuse, identity and permissions for agents, memory poisoning), supply-chain risk, red-teaming, guardrails, AI risk frameworks, regulation (EU AI Act, Australian guidance).</p>
       <div class="res-grid">
         <div class="res"><h4>🎓 Courses &amp; certs</h4><ul>
           <li><a href="https://www.deeplearning.ai/courses/red-teaming-llm-applications" target="_blank" rel="noopener">Red Teaming LLM Applications</a><span class="cost">Free</span></li>
           <li><a href="https://github.com/Azure/PyRIT" target="_blank" rel="noopener">Microsoft PyRIT – red-teaming toolkit</a><span class="cost">Free</span></li>
-          <li><a href="https://iapp.org/certify/aigp/" target="_blank" rel="noopener">IAPP AIGP – AI Governance Professional</a><span class="cost cert">Cert</span></li>
+          <li><a href="https://iapp.org/certify/aigp/" target="_blank" rel="noopener">IAPP AIGP – AI Governance Professional</a><span class="cost cert">Cert</span><span class="opt">Optional</span></li>
         </ul></div>
         <div class="res"><h4>📄 Docs</h4><ul>
-          <li><a href="https://genai.owasp.org/llm-top-10/" target="_blank" rel="noopener">OWASP Top 10 for LLM &amp; Agentic Applications</a></li>
+          <li><a href="https://genai.owasp.org/llm-top-10/" target="_blank" rel="noopener">OWASP Top 10 for LLM Applications</a></li>
+          <li><a href="https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/" target="_blank" rel="noopener">OWASP Top 10 for Agentic Applications (2026)</a></li>
           <li><a href="https://atlas.mitre.org" target="_blank" rel="noopener">MITRE ATLAS – AI threat matrix</a></li>
           <li><a href="https://www.nist.gov/itl/ai-risk-management-framework" target="_blank" rel="noopener">NIST AI RMF (+ GenAI Profile AI 600-1)</a></li>
-          <li><a href="https://www.iso.org/standard/81230.html" target="_blank" rel="noopener">ISO/IEC 42001 – AI Management System</a><span class="cost paid">Paid std</span></li>
+          <li><a href="https://www.iso.org/standard/81230.html" target="_blank" rel="noopener">ISO/IEC 42001 – AI Management System</a><span class="cost paid">Paid std</span><span class="opt">Optional</span></li>
+          <li><a href="https://artificialintelligenceact.eu" target="_blank" rel="noopener">EU AI Act – explorer and summaries</a></li>
           <li><a href="https://www.industry.gov.au/publications/voluntary-ai-safety-standard" target="_blank" rel="noopener">Australian Voluntary AI Safety Standard</a></li>
           <li><a href="https://learn.microsoft.com/en-us/azure/ai-services/content-safety/" target="_blank" rel="noopener">Azure AI Content Safety / Prompt Shields</a></li>
           <li><a href="https://aws.amazon.com/bedrock/guardrails/" target="_blank" rel="noopener">Amazon Bedrock Guardrails</a></li>
@@ -478,7 +554,7 @@
       <label class="done-toggle"><input type="checkbox" data-week="12"> Done</label>
     </div>
     <div class="week-body">
-      <p class="learn"><strong>Learn:</strong> Evaluation pipelines, tracing and observability (LangSmith, OpenTelemetry), prompt versioning, CI/CD for prompts and agents, FinOps (token budgets, caching, model routing).</p>
+      <p class="learn"><strong>Learn:</strong> Evaluation pipelines, tracing and observability (LangSmith, OpenTelemetry), prompt versioning, CI/CD for prompts and agents, FinOps (token budgets, caching, model routing). <strong>Architect skills:</strong> AI strategy and use-case prioritisation (value vs feasibility vs risk), ROI and total cost of ownership, the AI operating model (centre of excellence, use-case intake, risk tiers, approval gates), and explaining designs to executives.</p>
       <div class="res-grid">
         <div class="res"><h4>📄 Docs</h4><ul>
           <li><a href="https://docs.langchain.com/langsmith/observability" target="_blank" rel="noopener">LangSmith – Observability &amp; evaluation</a></li>
@@ -487,7 +563,7 @@
         <div class="res videos"><h4>▶ Videos</h4><ul>
           <li><a href="https://www.youtube.com/watch?v=446x7GqXdaA" target="_blank" rel="noopener">AI Agents Best Practices: Monitoring, Governance &amp; Optimization</a><span class="start">⭐ Start here</span><span class="sub">IBM Technology · ~9 min</span></li>
           <li><a href="https://www.youtube.com/watch?v=tFXm5ijih98" target="_blank" rel="noopener">LangSmith Tutorial – LLM Evaluation for Beginners</a><span class="sub">Dave Ebbelaar · ~36 min</span></li>
-          <li><a href="https://www.youtube.com/watch?v=I3CWFDgqvq8" target="_blank" rel="noopener">End-to-End LLMOps Project on Azure with Observability</a><span class="sub">Krish Naik · advanced, hands-on</span></li>
+          <li><a href="https://www.youtube.com/watch?v=I3CWFDgqvq8" target="_blank" rel="noopener">End-to-End LLMOps Project on Azure with Observability</a><span class="opt">Optional</span><span class="sub">Krish Naik · advanced, hands-on</span></li>
         </ul></div>
       </div>
       <div class="grid2" style="margin-top:12px">
@@ -497,23 +573,26 @@
             <li>Reference architecture (Azure + AWS): gateway, RAG layer, agent orchestration, MCP tool layer, identity, observability</li>
             <li>ADRs: framework choice, model routing, vector store, single vs multi-agent</li>
             <li>Security &amp; governance controls mapped to OWASP / NIST / ISO 42001</li>
-            <li>Evaluation results and cost model</li>
+            <li>Evaluation results and cost model (ROI / TCO)</li>
+            <li>AI operating model: use-case intake, prioritisation, risk tiers, approval gates</li>
             <li>10-minute architecture presentation</li>
+            <li>Publish the project on GitHub and write a LinkedIn post about it</li>
           </ol>
         </div>
         <div class="panel">
-          <h3>Exams</h3>
+          <h3>Exams &amp; interview prep</h3>
           <ul>
             <li>Book <strong>AI-103</strong> and/or <strong>AIP-C01</strong> for weeks 13–14</li>
             <li>Then target <strong>AI-500</strong> (Multi-Agent AI Solutions Expert)</li>
             <li>Optional governance: <strong>IAPP AIGP</strong></li>
+            <li>Revise on this site: <a href="../17-rag-genai.html">RAG &amp; GenAI</a> · <a href="../18-agentic-ai.html">Agentic AI</a> · <a href="../25-interview-readiness.html">Interview readiness</a> · <a href="../revise.html">Flashcards &amp; quiz</a></li>
           </ul>
         </div>
       </div>
     </div>
   </section>
 
-  <h2 id="rhythm">Weekly Rhythm (~11 hrs)</h2>
+  <h2 id="rhythm">Weekly Rhythm – Standard Pace (~11 hrs)</h2>
   <div class="grid2">
     <div class="panel">
       <ul>
@@ -564,7 +643,7 @@
         if (b.checked) { done++; wk.classList.add("done"); } else { wk.classList.remove("done"); }
       });
       document.getElementById("bar").style.width = (done / boxes.length * 100) + "%";
-      document.getElementById("barLabel").textContent = done + " of " + boxes.length + " weeks complete";
+      document.getElementById("barLabel").textContent = done + " of " + boxes.length + " weeks complete (Week 0–12)";
     }
     boxes.forEach(function (b) {
       b.checked = !!saved[b.dataset.week];
