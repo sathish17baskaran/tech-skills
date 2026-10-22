@@ -78,6 +78,9 @@
   .kind { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 4px; white-space: nowrap; }
   .k-watch { background: #fde8e8; color: #c4302b; } .k-course { background: #e8f5ee; color: #1d7a46; } .k-read { background: #e6f0ff; color: #1f5fbf; }
   .k-build { background: #f0e8fb; color: #6a3bb5; } .k-revise { background: #e6f7f5; color: #0f7d6e; } .k-exam { background: #fff1c2; color: #8a5a00; }
+  .topics { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; margin: 0 0 14px; }
+  .topic { background: #fbfcfe; border: 1px solid var(--line); border-left: 3px solid var(--c); border-radius: 6px; padding: 8px 10px; font-size: 13px; color: var(--muted); }
+  .topic b { display: block; color: var(--ink); font-size: 14px; margin-bottom: 2px; }
   details.more { margin-top: 4px; }
   details.more > summary { cursor: pointer; font-size: 13px; color: var(--muted); padding: 6px 0; }
   details.more[open] > summary { margin-bottom: 8px; }
@@ -132,7 +135,6 @@
     <a href="#how">How to use</a>
     <a href="#overview">Roadmap</a>
     <a href="#pace">Pace</a>
-    <a href="#topics">Page 17 topics</a>
     <a href="#w0">W0</a><a href="#w1">W1</a><a href="#w2">W2</a><a href="#w3">W3</a><a href="#w4">W4</a>
     <a href="#w5">W5</a><a href="#w6">W6</a><a href="#w7">W7</a><a href="#w8">W8</a>
     <a href="#w9">W9</a><a href="#w10">W10</a><a href="#w11">W11</a><a href="#w12">W12</a>
@@ -160,7 +162,8 @@
         <li><span class="kind k-course">🎓 Course</span> learn hands-on with guided lessons and code.</li>
         <li><span class="kind k-read">📄 Read</span> official docs: the source of truth (skim, then go back when you need detail).</li>
         <li><span class="kind k-build">🛠 Build</span> add this week's feature to your running project.</li>
-        <li><span class="kind k-revise">📘 Revise</span> / <span class="kind k-exam">🏅 Exam</span> lock in what you learned.</li>
+        <li><span class="kind k-revise">✅ Check</span> explain each 📌 topic of the week in 30 seconds. If you can't, redo that step.</li>
+        <li><span class="kind k-exam">🏅 Exam</span> book or sit the certification.</li>
       </ul>
       <p style="font-size:13px;color:var(--muted);margin:8px 0 0">The "All resources" box under each week's steps is only for extras. You can ignore it.</p>
     </div>
@@ -226,19 +229,6 @@
     </div>
   </div>
 
-  <h2 id="topics">RAG &amp; GenAI Topics (page 17) in This Plan</h2>
-  <div class="card">
-    <table>
-      <tr><th>Week</th><th>Page 17 topics you revise that week</th></tr>
-      <tr><td><a href="#w1">Week 1</a></td><td><a href="../17-rag-genai.html#llm">17.1 LLM basics</a> · <a href="../17-rag-genai.html#prompting">17.2 Prompt engineering</a></td></tr>
-      <tr><td><a href="#w2">Week 2</a></td><td><a href="../17-rag-genai.html#approach">17.3 Prompting vs RAG vs fine-tuning</a></td></tr>
-      <tr><td><a href="#w3">Week 3</a></td><td><a href="../17-rag-genai.html#rag">17.4 RAG overview</a> · <a href="../17-rag-genai.html#chunking">17.5 Chunking</a> · <a href="../17-rag-genai.html#embedding">17.6 Embedding</a> · <a href="../17-rag-genai.html#vector">17.7 Vector search</a> · <a href="../17-rag-genai.html#topk">17.8 Top-K retrieval</a> · <a href="../17-rag-genai.html#metadata">17.9 Metadata filtering</a></td></tr>
-      <tr><td><a href="#w4">Week 4</a></td><td><a href="../17-rag-genai.html#hybrid">17.10 Hybrid search</a> · <a href="../17-rag-genai.html#ranking">17.11 Re-ranking</a> · <a href="../17-rag-genai.html#query">17.12 Query transformation</a> · <a href="../17-rag-genai.html#fusion">17.13 RAG Fusion</a> · <a href="../17-rag-genai.html#eval">17.14 RAG evaluation</a> · <a href="../17-rag-genai.html#advanced">17.15 Advanced RAG patterns</a> · <a href="../17-rag-genai.html#failures">17.16 Failure points &amp; fixes</a></td></tr>
-      <tr><td><a href="#w11">Week 11</a></td><td><a href="../17-rag-genai.html#responsible">17.18 Responsible AI</a></td></tr>
-      <tr><td><a href="#w12">Week 12</a></td><td><a href="../17-rag-genai.html#llmops">17.17 LLMOps &amp; the GenAI platform</a></td></tr>
-    </table>
-  </div>
-
   <h2>Weekly Plan</h2>
 
   <!-- WEEK 0 -->
@@ -285,6 +275,11 @@
     </div>
     <div class="week-body">
       <p class="learn"><strong>Learn:</strong> How LLMs work (tokens, context window, temperature, embeddings), model selection, prompt engineering, structured output.</p>
+      <p class="steps-title">📌 Topics to master this week</p>
+      <div class="topics">
+        <div class="topic"><b>LLM basics</b>An LLM predicts the next token from the tokens it has seen. It knows only its training data plus whatever you put in the prompt.</div>
+        <div class="topic"><b>Prompt engineering</b>A prompt is a spec for the model. A clear role, explicit rules, a few examples and an output contract turn a flaky demo into a predictable component.</div>
+      </div>
       <p class="steps-title">👣 Your steps, in order</p>
       <ol class="steps">
         <li><span class="kind k-watch">▶ Watch</span><a href="https://www.youtube.com/watch?v=LPZh9BOjkQs" target="_blank" rel="noopener">Large Language Models explained briefly</a><span class="sub">3Blue1Brown · ~8 min</span></li>
@@ -294,7 +289,7 @@
         <li><span class="kind k-course">🎓 Course</span><a href="https://www.deeplearning.ai/courses/chatgpt-prompt-engineering-for-developers" target="_blank" rel="noopener">ChatGPT Prompt Engineering for Developers</a><span class="sub">Free · prompting with code</span></li>
         <li><span class="kind k-read">📄 Read</span><a href="https://platform.openai.com/docs/guides/prompt-engineering" target="_blank" rel="noopener">OpenAI – Prompt engineering guide</a></li>
         <li><span class="kind k-build">🛠 Build</span>A Python chatbot using the OpenAI, Azure OpenAI or Bedrock API, with a system prompt and JSON output.</li>
-        <li><span class="kind k-revise">📘 Revise</span><a href="../17-rag-genai.html#llm">17.1 LLM basics</a> · <a href="../17-rag-genai.html#prompting">17.2 Prompt engineering</a><span class="sub">this site</span></li>
+        <li><span class="kind k-revise">✅ Check</span>Explain both 📌 topics out loud in 30 seconds each: how an LLM works, and what makes a good prompt.</li>
       </ol>
       <details class="more"><summary>📚 All resources for this week (extras and optional)</summary>
       <div class="res-grid">
@@ -329,6 +324,10 @@
     </div>
     <div class="week-body">
       <p class="learn"><strong>Learn:</strong> GenAI architecture patterns (chat, RAG, agents, fine-tune), build vs buy vs fine-tune, <strong>model selection</strong> (hosted vs open-weight, small vs large, multimodal), <strong>when to fine-tune</strong> (LoRA) vs RAG vs prompting, AI gateway and model routing, latency/cost trade-offs, Well-Architected pillars for AI.</p>
+      <p class="steps-title">📌 Topics to master this week</p>
+      <div class="topics">
+        <div class="topic"><b>Prompting vs RAG vs fine-tuning (and choosing a model)</b>Start with prompting. Add RAG when the model lacks knowledge. Fine-tune only when it lacks a behaviour. Then pick the smallest model that passes your evaluation.</div>
+      </div>
       <p class="steps-title">👣 Your steps, in order</p>
       <ol class="steps">
         <li><span class="kind k-watch">▶ Watch</span><a href="https://www.youtube.com/watch?v=zYGDpG-pTho" target="_blank" rel="noopener">RAG vs Fine-Tuning vs Prompt Engineering</a><span class="sub">IBM Technology · 13 min</span></li>
@@ -337,7 +336,7 @@
         <li><span class="kind k-read">📄 Read</span><a href="https://learn.microsoft.com/en-us/azure/architecture/ai-ml/architecture/baseline-openai-e2e-chat" target="_blank" rel="noopener">Azure baseline end-to-end chat reference architecture</a><span class="sub">your first real reference architecture</span></li>
         <li><span class="kind k-read">📄 Read</span><a href="https://learn.microsoft.com/en-us/azure/well-architected/ai/" target="_blank" rel="noopener">Azure Well-Architected – AI workloads</a><span class="sub">skim · or the <a href="https://docs.aws.amazon.com/wellarchitected/latest/generative-ai-lens/generative-ai-lens.html" target="_blank" rel="noopener">AWS Generative AI Lens</a></span></li>
         <li><span class="kind k-build">🛠 Build</span>Draw a reference architecture for an "Enterprise AI Assistant" and write 3 ADRs (model choice, hosting, gateway), plus a one-page "RAG vs fine-tune vs prompt" decision guide.</li>
-        <li><span class="kind k-revise">📘 Revise</span><a href="../17-rag-genai.html#approach">17.3 Prompting vs RAG vs fine-tuning (and choosing a model)</a><span class="sub">this site</span></li>
+        <li><span class="kind k-revise">✅ Check</span>Given a new use case, can you say in 30 seconds whether to prompt, use RAG or fine-tune, and which model size to try first?</li>
       </ol>
       <details class="more"><summary>📚 All resources for this week (extras and optional)</summary>
       <div class="res-grid">
@@ -371,6 +370,15 @@
     </div>
     <div class="week-body">
       <p class="learn"><strong>Learn:</strong> <strong>Document ingestion</strong> (parsing PDFs, tables, scanned files), chunking strategies, embeddings, vector databases, similarity search, <strong>top-K retrieval</strong>, <strong>metadata filtering</strong>, prompt grounding, citations, <strong>permission-aware retrieval</strong> (users only see what they're allowed to).</p>
+      <p class="steps-title">📌 Topics to master this week</p>
+      <div class="topics">
+        <div class="topic"><b>RAG overview</b>Retrieve the relevant pieces of your knowledge, augment the prompt with them, then let the LLM generate a grounded answer with citations.</div>
+        <div class="topic"><b>Chunking</b>Split documents into small, meaningful pieces. Each chunk should be precise enough to retrieve and complete enough to answer from.</div>
+        <div class="topic"><b>Embedding</b>Turns text (or images) into a list of numbers (a vector), so that similar meaning ends up close together.</div>
+        <div class="topic"><b>Vector search</b>Find the stored vectors nearest to the query vector. Nearest = most similar in meaning.</div>
+        <div class="topic"><b>Top-K retrieval</b>Return the K most similar chunks to the query. K controls the trade-off between recall and noise.</div>
+        <div class="topic"><b>Metadata filtering</b>Narrow the search with structured attributes (date, product, region, access level) as well as semantic similarity.</div>
+      </div>
       <p class="steps-title">👣 Your steps, in order</p>
       <ol class="steps">
         <li><span class="kind k-watch">▶ Watch</span><a href="https://www.youtube.com/watch?v=T-D1OfcDW1M" target="_blank" rel="noopener">What is Retrieval-Augmented Generation (RAG)?</a><span class="sub">IBM Technology · ~7 min</span></li>
@@ -379,7 +387,7 @@
         <li><span class="kind k-watch">▶ Watch</span><a href="https://www.youtube.com/watch?v=swvzKSOEluc" target="_blank" rel="noopener">RAG Crash Course for Beginners</a><span class="sub">KodeKloud · ~1 hr · code along</span></li>
         <li><span class="kind k-read">📄 Read</span><a href="https://learn.microsoft.com/en-us/azure/search/retrieval-augmented-generation-overview" target="_blank" rel="noopener">Azure AI Search – RAG overview</a><span class="sub">or <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/knowledge-base.html" target="_blank" rel="noopener">Bedrock Knowledge Bases</a> on AWS</span></li>
         <li><span class="kind k-build">🛠 Build</span>Document Q&amp;A over your PDFs (pgvector, Chroma or Azure AI Search) that shows source citations.</li>
-        <li><span class="kind k-revise">📘 Revise</span><a href="../17-rag-genai.html#rag">17.4 RAG overview</a> · <a href="../17-rag-genai.html#chunking">17.5 Chunking</a> · <a href="../17-rag-genai.html#embedding">17.6 Embedding</a> · <a href="../17-rag-genai.html#vector">17.7 Vector search</a> · <a href="../17-rag-genai.html#topk">17.8 Top-K retrieval</a> · <a href="../17-rag-genai.html#metadata">17.9 Metadata filtering</a><span class="sub">this site</span></li>
+        <li><span class="kind k-revise">✅ Check</span>Walk through the RAG pipeline end to end (chunk → embed → vector search → top-K → metadata filter → answer) and explain each 📌 topic in 30 seconds.</li>
       </ol>
       <details class="more"><summary>📚 All resources for this week (extras and optional)</summary>
       <div class="res-grid">
@@ -391,7 +399,6 @@
         <div class="res"><h4>📄 Docs</h4><ul>
           <li><a href="https://learn.microsoft.com/en-us/azure/search/retrieval-augmented-generation-overview" target="_blank" rel="noopener">Azure AI Search – RAG overview</a></li>
           <li><a href="https://docs.aws.amazon.com/bedrock/latest/userguide/knowledge-base.html" target="_blank" rel="noopener">Amazon Bedrock – Knowledge Bases (managed RAG)</a></li>
-          <li><a href="../17-rag-genai.html">RAG &amp; GenAI interview notes</a><span class="site">This site</span></li>
         </ul></div>
         <div class="res videos"><h4>▶ Videos</h4><ul>
           <li><a href="https://www.youtube.com/watch?v=T-D1OfcDW1M" target="_blank" rel="noopener">What is Retrieval-Augmented Generation (RAG)?</a><span class="start">⭐ Start here</span><span class="sub">IBM Technology · ~7 min</span></li>
@@ -412,6 +419,16 @@
     </div>
     <div class="week-body">
       <p class="learn"><strong>Learn:</strong> Hybrid search, ranking and re-ranking, <strong>query transformation</strong> (rewriting, multi-query, HyDE), <strong>RAG Fusion</strong>, advanced patterns (GraphRAG, agentic RAG, parent-child chunks), multi-tenant / permission-aware retrieval, RAG evaluation, and <strong>common RAG failure points and their fixes</strong>.</p>
+      <p class="steps-title">📌 Topics to master this week</p>
+      <div class="topics">
+        <div class="topic"><b>Hybrid search</b>Run keyword search (BM25: exact terms) and vector search (meaning) together, then fuse the results. You get the best of both.</div>
+        <div class="topic"><b>Ranking &amp; re-ranking</b>First-stage retrieval is fast but rough. A re-ranker carefully re-scores the shortlist and puts the truly relevant chunks on top.</div>
+        <div class="topic"><b>Query transformation</b>Users ask vague, messy or multi-part questions. Rewrite the query into something that retrieves better before you search.</div>
+        <div class="topic"><b>RAG Fusion</b>Generate multiple versions of the user's query, retrieve for each, then fuse all the result lists with Reciprocal Rank Fusion before generating.</div>
+        <div class="topic"><b>RAG evaluation</b>Evaluate retrieval (did we find the right chunks?) and generation (is the answer faithful and useful?) separately. You can't improve what you don't measure.</div>
+        <div class="topic"><b>Advanced RAG patterns</b>Variants that go beyond basic retrieve-then-generate for harder questions and data, such as parent-child chunks, GraphRAG and agentic RAG.</div>
+        <div class="topic"><b>Common failure points &amp; fixes</b>Answer not found → better parsing, chunking, hybrid search. Wrong answer → re-ranker, smaller K. Outdated → re-index with version filters. Hallucination → "answer only from context" plus citations. Restricted data shown → ACL filters. Slow or costly → caching and fewer chunks.</div>
+      </div>
       <p class="steps-title">👣 Your steps, in order</p>
       <ol class="steps">
         <li><span class="kind k-watch">▶ Watch</span><a href="https://www.youtube.com/watch?v=R5MPqm0V6aQ" target="_blank" rel="noopener">RAG Reranking Explained</a><span class="sub">pixegami</span></li>
@@ -420,7 +437,7 @@
         <li><span class="kind k-watch">▶ Watch</span><a href="https://www.youtube.com/watch?v=5fp6e5nhJRk" target="_blank" rel="noopener">RAGAS: How to Evaluate a RAG Application</a><span class="sub">Mervin Praison</span></li>
         <li><span class="kind k-read">📄 Read</span><a href="https://learn.microsoft.com/en-us/azure/architecture/ai-ml/guide/rag/rag-solution-design-and-evaluation-guide" target="_blank" rel="noopener">Azure – RAG solution design &amp; evaluation guide</a><span class="sub">the architect's checklist for RAG</span></li>
         <li><span class="kind k-build">🛠 Build</span>Add hybrid search, a reranker and query rewriting (or RAG Fusion), then an evaluation set scoring faithfulness, answer relevance and context recall (<a href="https://docs.ragas.io" target="_blank" rel="noopener">RAGAS docs</a>).</li>
-        <li><span class="kind k-revise">📘 Revise</span><a href="../17-rag-genai.html#hybrid">17.10 Hybrid search</a> · <a href="../17-rag-genai.html#ranking">17.11 Re-ranking</a> · <a href="../17-rag-genai.html#query">17.12 Query transformation</a> · <a href="../17-rag-genai.html#fusion">17.13 RAG Fusion</a> · <a href="../17-rag-genai.html#eval">17.14 RAG evaluation</a> · <a href="../17-rag-genai.html#advanced">17.15 Advanced RAG patterns</a> · <a href="../17-rag-genai.html#failures">17.16 Failure points &amp; fixes</a><span class="sub">this site</span></li>
+        <li><span class="kind k-revise">✅ Check</span>Explain each 📌 topic in 30 seconds, and for each failure point name its likely cause and fix.</li>
       </ol>
       <details class="more"><summary>📚 All resources for this week (extras and optional)</summary>
       <div class="res-grid">
@@ -460,7 +477,7 @@
         <li><span class="kind k-course">🎓 Course</span><a href="https://www.deeplearning.ai/courses/agentic-ai" target="_blank" rel="noopener">Agentic AI (Andrew Ng)</a><span class="sub">Free · the four agentic design patterns, in code</span></li>
         <li><span class="kind k-read">📄 Read</span><a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents" target="_blank" rel="noopener">Anthropic – Effective context engineering for AI agents</a></li>
         <li><span class="kind k-build">🛠 Build</span>Turn your RAG app into an agent that calls tools (search, calculator, an API lookup).</li>
-        <li><span class="kind k-revise">📘 Revise</span><a href="../18-agentic-ai.html">Agentic AI interview notes</a><span class="sub">this site</span></li>
+        <li><span class="kind k-revise">✅ Check</span>In 30 seconds, explain workflows vs agents, the four agentic design patterns, and when <em>not</em> to use an agent.</li>
       </ol>
       <details class="more"><summary>📚 All resources for this week (extras and optional)</summary>
       <div class="res-grid">
@@ -692,6 +709,11 @@
     </div>
     <div class="week-body">
       <p class="learn"><strong>Learn:</strong> Prompt injection (direct and indirect), data leakage, excessive agency, <strong>agent-specific risks</strong> (tool misuse, identity and permissions for agents, memory poisoning), supply-chain risk, red-teaming, guardrails, AI risk frameworks, regulation (EU AI Act, Australian guidance).</p>
+      <p class="steps-title">📌 Topics to master this week</p>
+      <div class="topics">
+        <div class="topic"><b>Responsible AI</b>Turns "be ethical" into engineering controls: agreed principles, impact assessments, harm testing, transparency, human oversight and an audit trail.</div>
+        <div class="topic"><b>AI security (OWASP LLM &amp; Agentic Top 10)</b>Treat every input, retrieved document and tool result as untrusted. Defend against prompt injection, data leakage and excessive agency with guardrails, least privilege and human approval.</div>
+      </div>
       <p class="steps-title">👣 Your steps, in order</p>
       <ol class="steps">
         <li><span class="kind k-watch">▶ Watch</span><a href="https://www.youtube.com/watch?v=jrHRe9lSqqA" target="_blank" rel="noopener">What Is a Prompt Injection Attack?</a><span class="sub">IBM Technology</span></li>
@@ -704,7 +726,7 @@
         <li><span class="kind k-read">📄 Read</span><a href="https://www.nist.gov/itl/ai-risk-management-framework" target="_blank" rel="noopener">NIST AI RMF</a><span class="sub">skim, plus the <a href="https://www.industry.gov.au/publications/voluntary-ai-safety-standard" target="_blank" rel="noopener">Australian AI Safety Standard</a> and the <a href="https://artificialintelligenceact.eu" target="_blank" rel="noopener">EU AI Act</a></span></li>
         <li><span class="kind k-read">📄 Read</span><a href="https://learn.microsoft.com/en-us/azure/ai-services/content-safety/" target="_blank" rel="noopener">Azure AI Content Safety / Prompt Shields</a><span class="sub">or <a href="https://aws.amazon.com/bedrock/guardrails/" target="_blank" rel="noopener">Bedrock Guardrails</a> on AWS</span></li>
         <li><span class="kind k-build">🛠 Build</span>Threat-model your multi-agent and MCP system (STRIDE and OWASP), add guardrails, run a red-team test, and write an AI risk assessment and model card.</li>
-        <li><span class="kind k-revise">📘 Revise</span><a href="../17-rag-genai.html#responsible">17.18 Responsible AI</a><span class="sub">this site</span></li>
+        <li><span class="kind k-revise">✅ Check</span>Name the six Responsible AI controls and the top 3 OWASP LLM risks with one fix each, in 30 seconds.</li>
       </ol>
       <details class="more"><summary>📚 All resources for this week (extras and optional)</summary>
       <div class="res-grid">
@@ -744,13 +766,18 @@
     </div>
     <div class="week-body">
       <p class="learn"><strong>Learn:</strong> Evaluation pipelines, tracing and observability (LangSmith, OpenTelemetry), prompt versioning, CI/CD for prompts and agents, FinOps (token budgets, caching, model routing). <strong>Architect skills:</strong> AI strategy and use-case prioritisation (value vs feasibility vs risk), ROI and total cost of ownership, the AI operating model (centre of excellence, use-case intake, risk tiers, approval gates), and explaining designs to executives.</p>
+      <p class="steps-title">📌 Topics to master this week</p>
+      <div class="topics">
+        <div class="topic"><b>LLMOps &amp; the GenAI platform</b>DevOps for LLM apps: one gateway in front of every model, token cost control, versioned prompts with evaluations in CI, tracing, content safety and clear data-privacy rules.</div>
+        <div class="topic"><b>AI strategy &amp; operating model</b>Prioritise use cases by value, feasibility and risk. Run them through one intake with risk tiers and approval gates, owned by an AI centre of excellence.</div>
+      </div>
       <p class="steps-title">👣 Your steps, in order</p>
       <ol class="steps">
         <li><span class="kind k-watch">▶ Watch</span><a href="https://www.youtube.com/watch?v=446x7GqXdaA" target="_blank" rel="noopener">AI Agents Best Practices: Monitoring, Governance &amp; Optimization</a><span class="sub">IBM Technology · ~9 min</span></li>
         <li><span class="kind k-watch">▶ Watch</span><a href="https://www.youtube.com/watch?v=tFXm5ijih98" target="_blank" rel="noopener">LangSmith Tutorial – LLM Evaluation for Beginners</a><span class="sub">Dave Ebbelaar · ~36 min</span></li>
         <li><span class="kind k-read">📄 Read</span><a href="https://docs.langchain.com/langsmith/observability" target="_blank" rel="noopener">LangSmith – Observability &amp; evaluation</a><span class="sub">or <a href="https://learn.microsoft.com/en-us/azure/foundry/concepts/observability" target="_blank" rel="noopener">Foundry observability</a> on Azure</span></li>
         <li><span class="kind k-build">🛠 Build</span>Add tracing and an automated evaluation run to your project, then build the capstone architecture pack (see the checklist below).</li>
-        <li><span class="kind k-revise">📘 Revise</span><a href="../17-rag-genai.html#llmops">17.17 LLMOps &amp; the GenAI platform</a> · <a href="../18-agentic-ai.html">Agentic AI</a> · <a href="../25-interview-readiness.html">Interview readiness</a> · <a href="../revise.html">Flashcards &amp; quiz</a><span class="sub">this site</span></li>
+        <li><span class="kind k-revise">✅ Check</span>Explain both 📌 topics in 30 seconds, then present your capstone in 10 minutes to a friend or colleague.</li>
         <li><span class="kind k-exam">🏅 Exam</span>Sit <strong>AI-103</strong> or <strong>AIP-C01</strong> in weeks 13–14, then aim for <strong>AI-500</strong>.</li>
       </ol>
       <details class="more"><summary>📚 All resources for this week (extras and optional)</summary>
@@ -785,7 +812,7 @@
             <li>Book <strong>AI-103</strong> and/or <strong>AIP-C01</strong> for weeks 13–14</li>
             <li>Then target <strong>AI-500</strong> (Multi-Agent AI Solutions Expert)</li>
             <li>Optional governance: <strong>IAPP AIGP</strong></li>
-            <li>Revise on this site: <a href="../17-rag-genai.html">RAG &amp; GenAI</a> · <a href="../18-agentic-ai.html">Agentic AI</a> · <a href="../25-interview-readiness.html">Interview readiness</a> · <a href="../revise.html">Flashcards &amp; quiz</a></li>
+            <li>Revise on this site: <a href="../18-agentic-ai.html">Agentic AI</a> · <a href="../25-interview-readiness.html">Interview readiness</a> · <a href="../revise.html">Flashcards &amp; quiz</a></li>
           </ul>
         </div>
       </div>

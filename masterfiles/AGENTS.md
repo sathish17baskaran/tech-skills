@@ -65,12 +65,13 @@ There's no framework and no build step. Every page is a hand-written HTML file t
 `AI/AI-Architect-12-Week-Plan.html` is a self-contained study plan, not a numbered site page. Live at `/AI/AI-Architect-12-Week-Plan.html` on both sites.
 - It has its own inline CSS and JS and doesn't use `assets/`. It isn't in the menu, nav, index or revise data, so the section rules above (animated visuals, `.dotnet` boxes, `span.num`, revise data) don't apply.
 - The site-wide rules still apply: no employer names, it must work at 390 px, and it's saved as UTF-8 without BOM.
-- Structure: a `#how` "How to use" panel, a roadmap grid, a `#pace` fast-track table, a `#topics` table mapping page 17 sections to weeks, then one `section.week#wN` per week (N = 0–12). Each week has:
+- Structure: a `#how` "How to use" panel, a roadmap grid, a `#pace` fast-track table, then one `section.week#wN` per week (N = 0–12). Each week has:
   - `.week-head`: number, tag, title and a Done checkbox `input[data-week="N"]` (progress is saved in `localStorage` as `aiArchitectPlanProgress`)
   - `p.learn`
-  - **`ol.steps`, the main learning path.** Numbered steps, one link each, in the order to do them. Each `li` starts with a `.kind` label: `k-watch` ▶ Watch, `k-course` 🎓 Course, `k-read` 📄 Read, `k-build` 🛠 Build, `k-revise` 📘 Revise, `k-exam` 🏅 Exam. Start with the simplest video, then course, docs, build, revise. Only core items go here; Optional items stay in the resources box.
+  - **`.topics` "📌 Topics to master this week"**: `.topic` cards, each a `<b>` name plus a one-line explanation
+  - **`ol.steps`, the main learning path.** Numbered steps, one link each, in the order to do them. Each `li` starts with a `.kind` label: `k-watch` ▶ Watch, `k-course` 🎓 Course, `k-read` 📄 Read, `k-build` 🛠 Build, `k-revise` ✅ Check (explain the 📌 topics in 30 seconds), `k-exam` 🏅 Exam. Start with the simplest video, then course, docs, build, check. Only core items go here; Optional items stay in the resources box.
   - `details.more` (collapsed) holding `.res-grid` with the full 🎓 Courses, 📄 Docs and `.res.videos` ▶ Videos lists, including Optional extras
-- Site topics: each week's 📘 Revise step links the matching sections of this site (e.g. `../17-rag-genai.html#chunking`). If page 17's sections change, update both the Revise steps and the `#topics` table.
+- Page 17 (RAG & GenAI) topics are written into the plan as 📌 topic cards, not linked. Weeks 1–4 hold 17.1–17.16, week 11 holds 17.18 and week 12 holds 17.17. The one-liners are copied from page 17's `p.oneliner`, so if those change, update the cards too.
 - Pills:
   - `.cost` free, `.cost.paid`, `.cost.cert`
   - `.opt` for Optional items, which fast-track learners skip
