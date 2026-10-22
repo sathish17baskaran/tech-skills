@@ -19,7 +19,8 @@ Each of these appears inside other sections, but has no dedicated concept sectio
 - [ ] A behavioural page for other roles if needed (e.g. Integration Architect, Enterprise Architect), in the same format as pages 26–28.
 
 ## AI Architect learning plan (`AI/AI-Architect-12-Week-Plan.html`)
-Done so far: Week 0–12 plan with Courses, Docs and Videos boxes, a ⭐ "Start here" video and Optional tags in every week, a 6-week fast track, a daily routine, and links to pages 17, 18 and 25. See AGENTS.md "Standalone learning plans" for the structure and the link check.
+Done so far: Week 0–12 plan with numbered "Your steps, in order" per week (Watch → Course → Read → Build → Revise), a collapsed box of all resources (Courses, Docs, Videos with Optional tags), a 6-week fast track, a daily routine, and every page 17 (RAG & GenAI) section linked from the week that teaches it. See AGENTS.md "Standalone learning plans" for the structure and the link check.
+- [ ] Map page 18 (Agentic AI) sections to weeks 5–8 the same way as page 17, plus the matching sections of pages 14 (security) and 16 (cloud cheat sheet).
 - [ ] Recheck every link and exam code each quarter. Videos get removed, URLs move, and Microsoft and AWS change exam codes often.
 - [ ] Add a Google Cloud option (Vertex AI, Agent Development Kit, Professional ML Engineer) alongside weeks 9–10.
 - [ ] A "Week 13+" path: AI-500 exam prep, then specialisations (multimodal and voice agents, fine-tuning and post-training, self-hosted open-weight models).
